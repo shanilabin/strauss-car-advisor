@@ -1,0 +1,6 @@
+* text=auto eol=lf
+
+# The Tax Authority file is windows-1255 encoded - keep its bytes exactly as published
+*.csv -text
+*.xlsx binary
+*.pdf binary

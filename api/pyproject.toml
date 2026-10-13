@@ -1,0 +1,42 @@
+[project]
+name = "strauss-api"
+version = "0.1.0"
+description = "Strauss car advisor - net-pay engine, agent and API"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.17.0",
+    "uvicorn>=0.32",
+]
+
+# Vercel: zero-config FastAPI. The entrypoint is index.py at the project root (api/).
+[tool.vercel]
+entrypoint = "index:app"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+# Hebrew text in strings and comments is intentional
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["strauss"]
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

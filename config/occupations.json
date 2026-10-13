@@ -1,0 +1,100 @@
+[
+  {
+    "name": "נציג/ת מכירות שטח",
+    "group": "ב",
+    "carRequired": true,
+    "waiverAllowed": false,
+    "maintenance": 0
+  },
+  {
+    "name": "מנהל/ת אזור מכירות",
+    "group": "ג",
+    "carRequired": true,
+    "waiverAllowed": false,
+    "maintenance": 0
+  },
+  {
+    "name": "טכנאי/ת שירות",
+    "group": "א",
+    "carRequired": true,
+    "waiverAllowed": false,
+    "maintenance": 0
+  },
+  {
+    "name": "נהג/ת הפצה",
+    "group": "א",
+    "carRequired": true,
+    "waiverAllowed": false,
+    "maintenance": 0
+  },
+  {
+    "name": "מפקח/ת איכות במפעל",
+    "group": "א",
+    "carRequired": false,
+    "waiverAllowed": true,
+    "maintenance": 1200
+  },
+  {
+    "name": "רכז/ת רכש",
+    "group": "א",
+    "carRequired": false,
+    "waiverAllowed": true,
+    "maintenance": 1200
+  },
+  {
+    "name": "מהנדס/ת תהליך",
+    "group": "ב",
+    "carRequired": false,
+    "waiverAllowed": true,
+    "maintenance": 1500
+  },
+  {
+    "name": "מפתח/ת תוכנה",
+    "group": "ב",
+    "carRequired": false,
+    "waiverAllowed": true,
+    "maintenance": 1500
+  },
+  {
+    "name": "אנליסט/ית נתונים",
+    "group": "ב",
+    "carRequired": false,
+    "waiverAllowed": true,
+    "maintenance": 1500
+  },
+  {
+    "name": "מנהל/ת מוצר",
+    "group": "ג",
+    "carRequired": false,
+    "waiverAllowed": true,
+    "maintenance": 2000
+  },
+  {
+    "name": "מנהל/ת פיתוח",
+    "group": "ג",
+    "carRequired": false,
+    "waiverAllowed": true,
+    "maintenance": 2000
+  },
+  {
+    "name": "מנהל/ת משאבי אנוש",
+    "group": "ג",
+    "carRequired": false,
+    "waiverAllowed": true,
+    "maintenance": 2000
+  },
+  {
+    "name": "מנהל/ת מחלקה",
+    "group": "ד",
+    "carRequired": false,
+    "waiverAllowed": true,
+    "maintenance": 2600
+  },
+  {
+    "name": "מנהל/ת חטיבה",
+    "group": "ד",
+    "carRequired": false,
+    "waiverAllowed": true,
+    "maintenance": 3000
+  }
+]

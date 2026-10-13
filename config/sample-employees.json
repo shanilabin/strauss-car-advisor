@@ -1,0 +1,139 @@
+[
+  {
+    "id": "E-001",
+    "name": "נועה לוי",
+    "occupation": "מנהל/ת מוצר",
+    "group": "ג",
+    "salary": {
+      "base": 18500,
+      "commissions": 0,
+      "bonus": 0
+    },
+    "deductions": {
+      "pensionPct": 6,
+      "studyFundPct": 2.5,
+      "creditPoints": 2.75
+    },
+    "childrenUnder23": 2,
+    "current": {
+      "kind": "car",
+      "catalogId": "CAR-09",
+      "participation": 300
+    },
+    "question": "אם אעבור מהקורולה קרוס ל-BYD Atto 3 החשמלי - כמה זה ישנה לי בנטו?"
+  },
+  {
+    "id": "E-002",
+    "name": "דוד כהן",
+    "occupation": "נציג/ת מכירות שטח",
+    "group": "ב",
+    "salary": {
+      "base": 9800,
+      "commissions": 2400,
+      "bonus": 0
+    },
+    "deductions": {
+      "pensionPct": 6,
+      "studyFundPct": 0,
+      "creditPoints": 2.25
+    },
+    "childrenUnder23": 5,
+    "current": {
+      "kind": "car",
+      "catalogId": "CAR-05",
+      "participation": 250
+    },
+    "question": "יש לי 5 ילדים. אם אקח קרניבל במסלול ברוכת ילדים - מה יקרה לנטו?"
+  },
+  {
+    "id": "E-003",
+    "name": "רחל פרידמן",
+    "occupation": "מפתח/ת תוכנה",
+    "group": "ב",
+    "salary": {
+      "base": 21000,
+      "commissions": 0,
+      "bonus": 0
+    },
+    "deductions": {
+      "pensionPct": 6.5,
+      "studyFundPct": 2.5,
+      "creditPoints": 2.75
+    },
+    "childrenUnder23": 0,
+    "current": {
+      "kind": "waiver",
+      "maintenance": 1500
+    },
+    "question": "היום אני מקבלת אחזקת רכב. אם אקח MG4 חשמלי - כמה אפסיד או ארוויח בנטו?"
+  },
+  {
+    "id": "E-004",
+    "name": "יוסי מזרחי",
+    "occupation": "מנהל/ת אזור מכירות",
+    "group": "ג",
+    "salary": {
+      "base": 16000,
+      "commissions": 3000,
+      "bonus": 0
+    },
+    "deductions": {
+      "pensionPct": 6,
+      "studyFundPct": 2.5,
+      "creditPoints": 2.25
+    },
+    "childrenUnder23": 3,
+    "current": {
+      "kind": "car",
+      "catalogId": "CAR-12",
+      "participation": 400
+    },
+    "question": "אם אחליף את הטוסון ב-EV3 - מה ההפרש בנטו?"
+  },
+  {
+    "id": "E-005",
+    "name": "מיכל אברהם",
+    "occupation": "מנהל/ת פיתוח",
+    "group": "ג",
+    "salary": {
+      "base": 27000,
+      "commissions": 0,
+      "bonus": 0
+    },
+    "deductions": {
+      "pensionPct": 7,
+      "studyFundPct": 2.5,
+      "creditPoints": 2.75
+    },
+    "childrenUnder23": 1,
+    "current": {
+      "kind": "car",
+      "catalogId": "CAR-13",
+      "participation": 350
+    },
+    "question": "אם אוותר על הרכב ואקבל אחזקה - כמה אקבל בנטו?"
+  },
+  {
+    "id": "E-006",
+    "name": "אלי שמעון",
+    "occupation": "מנהל/ת מחלקה",
+    "group": "ד",
+    "salary": {
+      "base": 32000,
+      "commissions": 0,
+      "bonus": 2000
+    },
+    "deductions": {
+      "pensionPct": 6,
+      "studyFundPct": 2.5,
+      "creditPoints": 2.25
+    },
+    "childrenUnder23": 4,
+    "current": {
+      "kind": "car",
+      "catalogId": "CAR-15",
+      "participation": 500
+    },
+    "question": "אם אעבור מהאוקטביה לטסלה מודל 3 - מה יקרה לנטו?"
+  }
+]

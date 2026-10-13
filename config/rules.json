@@ -1,0 +1,153 @@
+{
+  "version": "2026-10-13.1",
+  "effectiveFrom": "2026-01-01",
+  "currency": "ILS",
+  "note": "נתוני דמה של האתגר (קוד פתוח). בפיילוט מחליפים את הקובץ בנתונים האמיתיים - לא את הקוד.",
+  "groups": [
+    {
+      "code": "א",
+      "budget": 3500
+    },
+    {
+      "code": "ב",
+      "budget": 3700
+    },
+    {
+      "code": "ג",
+      "budget": 4500
+    },
+    {
+      "code": "ד",
+      "budget": 5200
+    }
+  ],
+  "chooseFrom": "own_or_lower",
+  "enforceBudget": true,
+  "unusedBudget": "not_paid",
+  "electric": {
+    "netBonus": 250,
+    "method": "gross_up",
+    "drives": [
+      "ELECTRIC"
+    ]
+  },
+  "specialTracks": [
+    {
+      "id": "family",
+      "label": "מסלול ברוכת ילדים",
+      "catalogGroup": "משפחתי",
+      "requires": {
+        "minChildren": 4,
+        "childMaxAge": 23
+      },
+      "gapSplitEmployee": 0.5
+    }
+  ],
+  "waiver": {
+    "allowedBy": "occupation",
+    "maintenanceIsTaxable": true,
+    "maintenanceIsPensionable": false
+  },
+  "participation": {
+    "policy": "default_pending_rep"
+  },
+  "payroll": {
+    "pensionableComponents": [
+      "base",
+      "commissions",
+      "bonus"
+    ],
+    "studyFundComponents": [
+      "base",
+      "commissions",
+      "bonus"
+    ],
+    "studyFundCeiling": null
+  },
+  "netMethod": {
+    "basis": "monthly",
+    "taxYear": 2025,
+    "creditPointValue": 242,
+    "brackets": [
+      [
+        7010,
+        0.1
+      ],
+      [
+        10060,
+        0.14
+      ],
+      [
+        16150,
+        0.2
+      ],
+      [
+        22440,
+        0.31
+      ],
+      [
+        46690,
+        0.35
+      ],
+      [
+        60130,
+        0.47
+      ],
+      [
+        null,
+        0.5
+      ]
+    ],
+    "nationalInsurance": {
+      "threshold": 7522,
+      "ceiling": 50695,
+      "lowRate": 0.0104,
+      "highRate": 0.07
+    },
+    "health": {
+      "threshold": 7522,
+      "ceiling": 50695,
+      "lowRate": 0.0323,
+      "highRate": 0.0517
+    },
+    "pensionCredit": {
+      "rate": 0.35,
+      "incomeCeiling": 9500,
+      "maxContributionRate": 0.07
+    }
+  },
+  "valueOfUse": {
+    "taxYear": 2026,
+    "source": "רשות המסים - הקובץ המורחב 2026",
+    "driveField": {
+      "0": "PETROL",
+      "1": "HYBRID",
+      "2": "PLUG_IN",
+      "3": "ELECTRIC"
+    },
+    "csv": {
+      "encoding": "windows-1255",
+      "columns": {
+        "taxYear": "שנת מס",
+        "regYear": "שנת רישום",
+        "vehicleTypeCode": "קוד סוג רכב",
+        "makerCode": "קוד תוצר",
+        "makerName": "תוצר",
+        "modelCode": "קוד דגם",
+        "modelDesc": "תאור דגם",
+        "fuelType": "סוג דלק",
+        "commercialName": "כינוי מסחרי",
+        "automatic": "לא-0.כן-1 אוטומט",
+        "driveCode": "1-חשמלי.2-היברידי.3-פלג-אין",
+        "greenScore": "ציון ירוק",
+        "pollutionLevel": "דרגת זיהום",
+        "engineCc": "נפח מנוע",
+        "weight": "משקל",
+        "effectiveDate": "תאריך תחולה",
+        "listPrice": "מחיר מחירון",
+        "adjustedPrice": "מחיר מתואם",
+        "valueOfUse": "שווי שימוש"
+      }
+    }
+  }
+}

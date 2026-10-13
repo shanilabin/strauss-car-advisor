@@ -3,17 +3,17 @@
 Read before any task: [ARCHITECTURE.md](ARCHITECTURE.md) (the contract) and [TASKS.md](TASKS.md) (who does what).
 
 ## Ownership - never edit the other developer's folder
-- Developer A (backend): `api/`, `config/`, `supabase/`, `.github/`, `research/`
+- Developer A (backend): `api/` (incl. `api/config/`), `supabase/`, `research/`, `data/`, `.github/`
 - Developer B (frontend): `web/`
 - `web/lib/api/schema.d.ts` is generated (`pnpm gen:api`) - never edit by hand.
 - If a task needs a change outside your folder, stop and say so instead of making it.
 
 ## Non-negotiables
-- The LLM never computes numbers. All money math lives in `api/strauss/domain/` (pure, `Decimal`, no I/O).
-- No business number in code (budgets, rates, amounts) - it belongs in `config/*.json`.
+- The LLM never computes numbers, and every number on screen is rendered from an engine DTO (never from bot text). All money math lives in `api/strauss/domain/` (pure, `Decimal`, no I/O).
+- No business number in code (budgets, rates, amounts) - it belongs in `api/config/*.json`.
 - Value of use is looked up by the full 5-field key, never by name alone.
 - Missing information is asked (employee or rep), never guessed.
-- `config/reference-results.json` must keep matching: 36/36.
+- `api/config/reference-results.json` must keep matching: 36/36.
 - User-facing text is Hebrew. Code, identifiers and commit messages are English.
 - Never commit secrets. Only `.env.example` files are tracked.
 

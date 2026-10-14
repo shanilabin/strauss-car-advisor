@@ -82,6 +82,12 @@ def config_hash() -> str:
     return load_bundle().config_hash
 
 
+def read_reference_results() -> list[dict[str, Any]]:
+    """The challenge's reference sheet ('חישובים'), used by the engine's reference tests."""
+    results: list[dict[str, Any]] = _read_json(CONFIG_DIR, "reference-results.json")
+    return results
+
+
 @lru_cache
 def load_sample_employees() -> tuple[SampleEmployee, ...]:
     """The challenge's fictitious sample employees (demo and tests)."""

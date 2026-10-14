@@ -103,8 +103,9 @@ def test_net_option_equals_breakdown_net_and_today_plus_delta() -> None:
     for result in comparison["results"]:
         if result["breakdown"] is None:
             continue
-        assert result["net_option"] == result["breakdown"]["net"]
-        assert round(result["net_today"] + result["delta"], 2) == result["net_option"]
+        # Headline numbers are whole shekels; the breakdown keeps agorot (ARCHITECTURE.md, rounding policy)
+        assert result["net_option"] == round(result["breakdown"]["net"])
+        assert result["net_today"] + result["delta"] == result["net_option"]
 
 
 def test_ineligible_option_shows_reason_but_no_numbers() -> None:

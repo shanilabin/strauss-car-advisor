@@ -22,7 +22,6 @@ from strauss.domain.models import (
     CalculationContext,
     CarArrangement,
     Comparison,
-    Deductions,
     NetBreakdown,
     OptionResult,
     ParticipationStatus,
@@ -192,11 +191,7 @@ def _sample_profile(employee_id: str) -> Profile:
         occupation=emp.occupation,
         group=emp.group,
         salary=emp.salary,
-        deductions=Deductions(
-            pension_pct=emp.deductions.pension_pct,
-            study_fund_pct=emp.deductions.study_fund_pct,
-            credit_points=emp.deductions.credit_points,
-        ),
+        deductions=emp.deductions.to_domain(),
         children_under_23=emp.children_under_23,
         current=current,
     )

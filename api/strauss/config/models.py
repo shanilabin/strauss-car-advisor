@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 from pydantic import AliasGenerator, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from strauss.domain.models import Drive, SalaryInput
+from strauss.domain.models import Deductions, Drive, SalaryInput
 from strauss.domain.money import Money, Quantity
 
 
@@ -55,6 +55,11 @@ class SampleDeductions(ConfigModel):
     pension_pct: Quantity
     study_fund_pct: Quantity
     credit_points: Quantity
+
+    def to_domain(self) -> Deductions:
+        return Deductions(
+            pension_pct=self.pension_pct, study_fund_pct=self.study_fund_pct, credit_points=self.credit_points
+        )
 
 
 class SampleCurrentCar(ConfigModel):

@@ -59,7 +59,7 @@
 | A1.2 | **ingest** | `ingest/tax_authority_csv.py`: לפי `rules.valueOfUse.csv` (קידוד, מיפוי עמודות), trim, קודים כמחרוזת, `drive_code` לפי `driveField`, upsert בקבוצות · דוח | 77,988 שורות · 0 כפילויות · ATTO 3 2025 = 3,130 |
 | A2.4 | **שווי שימוש אמיתי** | `ports/ValueOfUseRepo` · `adapters/supabase_repos.py` + `csv_value_of_use.py` (לבדיקות) · `vehicles/search`, `vehicles/value-of-use` אמיתיים | "atto" מחזיר ATTO 3 עם מפתח מלא; ATTO 3 ≠ TANG |
 | A3.1 | **זכאות** | `eligibility.py` לפי הסדר בסעיף 3 · `reason_code`ים: `OK_OWN_OR_LOWER`, `HIGHER_GROUP`, `OVER_BUDGET`, `TRACK_OK`, `TRACK_MIN_CHILDREN`, `WAIVER_OK`, `CAR_REQUIRED`, `OCCUPATION_GROUP_MISMATCH` | בדיקה לכל קוד + תרחישי קצה 1-4 |
-| A3.2 | **אפשרויות, השוואה, מפל, הסבר, חסרים** | `options.py`, `compare.py`, `waterfall.py` (פירוק לפי סדר + בדיקת כיסוי), `explain.py` (תבניות בעברית + מקורות), `missing.py` | `OptionResult` מכיל את **כל** שדות דרישה 23 + `CalculationContext` · סכום המפל = ההפרש |
+| A3.2 | **אפשרויות, השוואה, מפל, הסבר, חסרים** | `options.py`, `compare.py`, `waterfall.py` (פירוק לפי סדר + בדיקת כיסוי), `explain.py` (תבניות בעברית + מקורות), `missing.py` | `OptionResult` מכיל את **כל** שדות דרישה 23 + `CalculationContext` · סכום המפל = ההפרש · **בדיקת הייחוס (36/36) עוברת דרך `compare()` האמיתי**, ולא דרך בניית תרחישים בקוד הבדיקה |
 
 ### ב׳
 | ID | משימה | פרטים | גמור כש... |

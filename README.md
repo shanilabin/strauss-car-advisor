@@ -11,7 +11,7 @@
 |---|---|---|
 | `api/` | מנוע נטו, סוכן, API | Python 3.12 · FastAPI · Pydantic · PydanticAI |
 | `web/` | מסך עובד, מסך נציג, השוואה | Next.js 16 · Tailwind · shadcn/ui |
-| `config/` | כללים, קטלוג, עיסוקים (נתונים, לא קוד) | JSON |
+| `api/config/` | כללים, קטלוג, עיסוקים (נתונים, לא קוד) | JSON |
 | `supabase/` | סכמת מסד הנתונים | Postgres · RLS · Realtime |
 | `research/` | הוכחת נוסחת הנטו + המרת קבצי האתגר | Python |
 | `data/source/` | קבצי האתגר המקוריים + מאגר רשות המסים | — |
@@ -48,7 +48,7 @@ cd web && pnpm lint && pnpm typecheck
 ```
 
 ## עדכון הכללים
-הכללים, הקטלוג והעיסוקים נמצאים ב-`config/`. בפיילוט מחליפים את הקבצים, לא את הקוד.
+הכללים, הקטלוג והעיסוקים נמצאים ב-`api/config/`. בפיילוט מחליפים את הקבצים, לא את הקוד.
 כדי לייצר אותם מחדש מקבצי האתגר:
 ```bash
 uv run --project api --with openpyxl python research/build_config.py

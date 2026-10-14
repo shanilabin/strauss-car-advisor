@@ -17,7 +17,7 @@ import openpyxl
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "data" / "source"
-OUT = ROOT / "config"
+OUT = ROOT / "api" / "config"
 
 DRIVE_HE = {"בנזין": "PETROL", "היברידי": "HYBRID", "פלאג-אין": "PLUG_IN", "חשמלי": "ELECTRIC"}
 YES = {"כן": True, "לא": False}
@@ -207,7 +207,7 @@ def main() -> None:
     }
     for name, data in files.items():
         (OUT / name).write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        print(f"config/{name}: {len(data)} entries")
+        print(f"api/config/{name}: {len(data)} entries")
 
 
 if __name__ == "__main__":

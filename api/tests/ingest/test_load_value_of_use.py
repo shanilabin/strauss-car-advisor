@@ -31,8 +31,11 @@ def all_rows() -> list[dict[str, Any]]:
     return read_and_validate(TAX_AUTHORITY_CSV, SPEC)
 
 
+API = "https://abcdefghijklmnopqrst.supabase.co"
+
+
 def client_with(handler: Any, key: str = "sb_secret_test") -> httpx.Client:
-    return rest_client("https://example.supabase.co", key, transport=httpx.MockTransport(handler))
+    return rest_client(API, key, transport=httpx.MockTransport(handler))
 
 
 def test_row_conversion_keeps_codes_as_text_and_numbers_as_integers() -> None:
@@ -101,7 +104,7 @@ def test_upload_stops_on_the_first_failed_batch() -> None:
 
 def test_missing_credentials_fail_clearly() -> None:
     with pytest.raises(SupabaseError, match="SUPABASE_SECRET_KEY"):
-        rest_client("https://example.supabase.co", "")
+        rest_client(API, "")
 
 
 def test_count_reads_the_exact_count_header() -> None:
@@ -167,3 +170,18 @@ def test_replace_deletes_only_the_tax_year_before_uploading() -> None:
         delete_tax_year(client, 2026)
     assert seen[0].method == "DELETE"
     assert seen[0].url.params["tax_year"] == "eq.2026"
+
+
+def test_a_dashboard_link_is_rejected_with_guidance() -> None:
+    with pytest.raises(SupabaseError, match="Project URL"):
+        rest_client("https://supabase.com/dashboard/project/abcdefghijklmnopqrst", "sb_secret_test")
+
+
+def test_a_redirect_is_a_failure_not_a_silent_success() -> None:
+    """Regression: the dashboard answered uploads with redirects, which used to count as success."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(307, headers={"location": "https://supabase.com/dashboard"})
+
+    with client_with(handler) as client, pytest.raises(SupabaseError, match="307"):
+        upload(client, [{"n": 1}], size=2000)

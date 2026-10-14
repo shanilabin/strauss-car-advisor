@@ -16,7 +16,7 @@ from typing import Any
 
 from strauss import ENGINE_VERSION
 from strauss.agent.schemas import AgentReply, ComparisonCard, OptionsCard, RepPendingCard, TraceEvent
-from strauss.config.loader import config_hash, load_catalog, load_rules_raw, load_sample_employees
+from strauss.config.loader import config_hash, load_catalog, load_rules, load_sample_employees
 from strauss.config.models import CatalogCar, SampleCurrentCar
 from strauss.domain.models import (
     CalculationContext,
@@ -58,11 +58,11 @@ def _now() -> datetime:
 
 
 def calculation_context() -> CalculationContext:
-    rules = load_rules_raw()
+    rules = load_rules()
     return CalculationContext(
-        payroll_tax_year=rules["netMethod"]["taxYear"],
-        value_of_use_tax_year=rules["valueOfUse"]["taxYear"],
-        config_version=rules["version"],
+        payroll_tax_year=rules.net_method.tax_year,
+        value_of_use_tax_year=rules.value_of_use.tax_year,
+        config_version=rules.version,
         config_hash=config_hash(),
         engine_version=ENGINE_VERSION,
     )
@@ -74,7 +74,7 @@ def calculation_context() -> CalculationContext:
 def catalog_vehicle(car: CatalogCar) -> Vehicle:
     return Vehicle(
         key=VehicleKey(
-            tax_year=load_rules_raw()["valueOfUse"]["taxYear"],
+            tax_year=load_rules().value_of_use.tax_year,
             reg_year=car.reg_year,
             vehicle_type_code=car.vehicle_type_code,
             maker_code=car.maker_code,

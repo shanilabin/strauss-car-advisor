@@ -11,6 +11,7 @@ def test_health_ok() -> None:
     body = response.json()
     assert body["status"] == "ok"
     assert set(body["configured"]) == {"supabase", "gemini", "openrouter", "groq"}
+    assert body["config_version"] and len(body["config_hash"]) == 64
 
 
 def test_openapi_available() -> None:

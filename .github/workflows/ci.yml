@@ -26,6 +26,8 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy
       - run: uv run pytest -q
+      - name: Config bundle is valid (incl. catalog vs Tax Authority data)
+        run: uv run python -m strauss.config.check --csv ../data/source/value-of-use-2026.csv
       - name: API contract (openapi.json) is up to date
         run: uv run python scripts/export_openapi.py --check
 

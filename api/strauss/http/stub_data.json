@@ -4,13 +4,27 @@
     "revision": 3,
     "occupation": "מנהל/ת מוצר",
     "group": "ג",
-    "salary": {"base": 18500, "commissions": 0, "bonus": 0},
-    "deductions": {"pension_pct": 6, "study_fund_pct": 2.5, "credit_points": 2.75},
+    "salary": {
+      "base": 18500,
+      "commissions": 0,
+      "bonus": 0
+    },
+    "deductions": {
+      "pension_pct": 6,
+      "study_fund_pct": 2.5,
+      "credit_points": 2.75
+    },
     "children_under_23": 2,
     "current": {
       "kind": "car",
       "vehicle": {
-        "key": {"tax_year": 2026, "reg_year": 2025, "vehicle_type_code": 1, "maker_code": "00413", "model_code": "00296"},
+        "key": {
+          "tax_year": 2026,
+          "reg_year": 2025,
+          "vehicle_type_code": 1,
+          "maker_code": "00413",
+          "model_code": "00296"
+        },
         "maker_name": "טויוטה יפן",
         "commercial_name": "COROLLA CROSS",
         "model_desc": "ZVG12L-KHXGBW",
@@ -24,76 +38,217 @@
     }
   },
   "today": {
-    "gross_cash": 18500, "value_of_use": 4070, "taxable_income": 22570,
-    "income_tax": 3443.15, "national_insurance": 1131.59, "health": 1020.94,
-    "pension": 1110, "study_fund": 462.5, "participation": 300,
-    "track_employee_share": 0, "electric_gross_up": 0, "maintenance": 0, "net": 11031.82
+    "gross_cash": 18500,
+    "value_of_use": 4070,
+    "taxable_income": 22570,
+    "income_tax": 3443.15,
+    "national_insurance": 1131.59,
+    "health": 1020.94,
+    "pension": 1110,
+    "study_fund": 462.5,
+    "participation": 300,
+    "track_employee_share": 0,
+    "electric_gross_up": 0,
+    "maintenance": 0,
+    "net": 11031.82
   },
   "results": [
     {
-      "option": {"id": "waiver", "kind": "WAIVER", "label": "ויתור על הרכב"},
-      "eligibility": {"eligible": true, "reason_code": "WAIVER_OK", "reason": "העיסוק שלך מאפשר לוותר על הרכב ולקבל אחזקת רכב", "params": {"occupation": "מנהל/ת מוצר"}},
+      "option": {
+        "id": "waiver",
+        "kind": "WAIVER",
+        "label": "ויתור על הרכב"
+      },
+      "eligibility": {
+        "eligible": true,
+        "reason_code": "WAIVER_OK",
+        "reason": "העיסוק שלך מאפשר לוותר על הרכב ולקבל אחזקת רכב",
+        "params": {
+          "occupation": "מנהל/ת מוצר"
+        }
+      },
       "complete": true,
-      "cost_to_company": 2000, "group_budget": 4500,
+      "cost_to_company": 2000,
+      "group_budget": 4500,
       "maintenance": 2000,
       "breakdown": {
-        "gross_cash": 20500, "value_of_use": 0, "taxable_income": 20500,
-        "income_tax": 2796.25, "national_insurance": 986.69, "health": 913.92,
-        "pension": 1110, "study_fund": 462.5, "participation": 0,
-        "track_employee_share": 0, "electric_gross_up": 0, "maintenance": 2000, "net": 14230.64
+        "gross_cash": 20500,
+        "value_of_use": 0,
+        "taxable_income": 20500,
+        "income_tax": 2796.25,
+        "national_insurance": 986.69,
+        "health": 913.92,
+        "pension": 1110,
+        "study_fund": 462.5,
+        "participation": 0,
+        "track_employee_share": 0,
+        "electric_gross_up": 0,
+        "maintenance": 2000,
+        "net": 14230.64
       },
-      "net_today": 11031.82, "net_option": 14230.64, "delta": 3198.82,
+      "net_today": 11032,
+      "net_option": 14231,
+      "delta": 3199,
       "waterfall": [
-        {"key": "value_of_use", "label": "בלי שווי שימוש", "delta": 1762.22, "net_after": 12794.04},
-        {"key": "maintenance", "label": "אחזקת רכב", "delta": 1136.60, "net_after": 13930.64},
-        {"key": "participation", "label": "בלי השתתפות", "delta": 300.00, "net_after": 14230.64}
+        {
+          "key": "value_of_use",
+          "label": "בלי שווי שימוש",
+          "delta": 1762,
+          "net_after": 12794
+        },
+        {
+          "key": "maintenance",
+          "label": "אחזקת רכב",
+          "delta": 1137,
+          "net_after": 13931
+        },
+        {
+          "key": "participation",
+          "label": "בלי השתתפות",
+          "delta": 300,
+          "net_after": 14231
+        }
       ],
       "explanation": [
         "בלי רכב לא נוסף לשכר שלך שווי שימוש של 4,070 ₪, ולכן המס יורד.",
         "במקום הרכב מקבלים אחזקת רכב של 2,000 ₪ (חייבת במס) ולא משלמים השתתפות. ביחד: 3,199+ ₪ בחודש."
       ],
       "sources": [
-        {"field": "maintenance", "kind": "CONFIG", "label": "אחזקת רכב לפי עיסוק", "ref": "occupations[מנהל/ת מוצר].maintenance"},
-        {"field": "group_budget", "kind": "CONFIG", "label": "תקציב קבוצה ג", "ref": "rules.groups[ג].budget"}
+        {
+          "field": "maintenance",
+          "kind": "CONFIG",
+          "label": "אחזקת רכב לפי עיסוק",
+          "ref": "occupations[מנהל/ת מוצר].maintenance"
+        },
+        {
+          "field": "group_budget",
+          "kind": "CONFIG",
+          "label": "תקציב קבוצה ג",
+          "ref": "rules.groups[ג].budget"
+        }
       ]
     },
     {
-      "option": {"id": "CAR-10", "kind": "CATALOG_CAR", "label": "BYD ATTO 3 (2025)", "catalog_id": "CAR-10", "drive": "ELECTRIC"},
-      "eligibility": {"eligible": true, "reason_code": "OK_OWN_OR_LOWER", "reason": "הרכב מהקבוצה שלך או נמוכה ממנה", "params": {"car_group": "ג", "employee_group": "ג"}},
-      "complete": true,
-      "cost_to_company": 4100, "group_budget": 4500,
-      "participation": 300, "participation_status": "DEFAULT_PENDING",
-      "value_of_use": 3130, "electric_refund_net": 250,
-      "breakdown": {
-        "gross_cash": 18939.91, "value_of_use": 3130, "taxable_income": 22069.91,
-        "income_tax": 3282.92, "national_insurance": 1096.58, "health": 995.09,
-        "pension": 1110, "study_fund": 462.5, "participation": 300,
-        "track_employee_share": 0, "electric_gross_up": 439.91, "maintenance": 0, "net": 11692.82
+      "option": {
+        "id": "CAR-10",
+        "kind": "CATALOG_CAR",
+        "label": "BYD ATTO 3 (2025)",
+        "catalog_id": "CAR-10",
+        "drive": "ELECTRIC"
       },
-      "net_today": 11031.82, "net_option": 11692.82, "delta": 661.00,
+      "eligibility": {
+        "eligible": true,
+        "reason_code": "OK_OWN_OR_LOWER",
+        "reason": "הרכב מהקבוצה שלך או נמוכה ממנה",
+        "params": {
+          "car_group": "ג",
+          "employee_group": "ג"
+        }
+      },
+      "complete": true,
+      "cost_to_company": 4100,
+      "group_budget": 4500,
+      "participation": 300,
+      "participation_status": "DEFAULT_PENDING",
+      "value_of_use": 3130,
+      "electric_refund_net": 250,
+      "breakdown": {
+        "gross_cash": 18939.91,
+        "value_of_use": 3130,
+        "taxable_income": 22069.91,
+        "income_tax": 3282.92,
+        "national_insurance": 1096.58,
+        "health": 995.09,
+        "pension": 1110,
+        "study_fund": 462.5,
+        "participation": 300,
+        "track_employee_share": 0,
+        "electric_gross_up": 439.91,
+        "maintenance": 0,
+        "net": 11692.82
+      },
+      "net_today": 11032,
+      "net_option": 11693,
+      "delta": 661,
       "waterfall": [
-        {"key": "value_of_use", "label": "שווי שימוש נמוך יותר", "delta": 411.00, "net_after": 11442.82},
-        {"key": "electric_refund", "label": "החזר חשמל (מגולם)", "delta": 250.00, "net_after": 11692.82}
+        {
+          "key": "value_of_use",
+          "label": "שווי שימוש נמוך יותר",
+          "delta": 411,
+          "net_after": 11443
+        },
+        {
+          "key": "electric_refund",
+          "label": "החזר חשמל (מגולם)",
+          "delta": 250,
+          "net_after": 11693
+        }
       ],
       "explanation": [
         "שווי השימוש יורד מ-4,070 ל-3,130 ₪ בחודש, ולכן המס שלך יורד.",
         "בנוסף מקבלים החזר חשמל של 250 ₪ נטו. ביחד: 661+ ₪ בחודש."
       ],
       "sources": [
-        {"field": "value_of_use", "kind": "VALUE_OF_USE_DB", "label": "מאגר שווי שימוש 2026, רשות המסים", "ref": "2026/2025/1/01014/00003"},
-        {"field": "electric_refund_net", "kind": "CONFIG", "label": "החזר חשמל נטו", "ref": "rules.electric.netBonus"},
-        {"field": "participation", "kind": "CONFIG", "label": "השתתפות ברירת מחדל - ממתינה לאישור נציג", "ref": "catalog[CAR-10].defaultParticipation"},
-        {"field": "cost_to_company", "kind": "CONFIG", "label": "עלות חודשית לחברה", "ref": "catalog[CAR-10].monthlyCost"},
-        {"field": "group_budget", "kind": "CONFIG", "label": "תקציב קבוצה ג", "ref": "rules.groups[ג].budget"}
+        {
+          "field": "value_of_use",
+          "kind": "VALUE_OF_USE_DB",
+          "label": "מאגר שווי שימוש 2026, רשות המסים",
+          "ref": "2026/2025/1/01014/00003"
+        },
+        {
+          "field": "electric_refund_net",
+          "kind": "CONFIG",
+          "label": "החזר חשמל נטו",
+          "ref": "rules.electric.netBonus"
+        },
+        {
+          "field": "participation",
+          "kind": "CONFIG",
+          "label": "השתתפות ברירת מחדל - ממתינה לאישור נציג",
+          "ref": "catalog[CAR-10].defaultParticipation"
+        },
+        {
+          "field": "cost_to_company",
+          "kind": "CONFIG",
+          "label": "עלות חודשית לחברה",
+          "ref": "catalog[CAR-10].monthlyCost"
+        },
+        {
+          "field": "group_budget",
+          "kind": "CONFIG",
+          "label": "תקציב קבוצה ג",
+          "ref": "rules.groups[ג].budget"
+        }
       ]
     },
     {
-      "option": {"id": "CAR-14", "kind": "CATALOG_CAR", "label": "TESLA MODEL 3 (2025)", "catalog_id": "CAR-14", "drive": "ELECTRIC"},
-      "eligibility": {"eligible": false, "reason_code": "HIGHER_GROUP", "reason": "הרכב מקבוצה ד, גבוהה מהקבוצה שלך (ג)", "params": {"car_group": "ד", "employee_group": "ג"}},
+      "option": {
+        "id": "CAR-14",
+        "kind": "CATALOG_CAR",
+        "label": "TESLA MODEL 3 (2025)",
+        "catalog_id": "CAR-14",
+        "drive": "ELECTRIC"
+      },
+      "eligibility": {
+        "eligible": false,
+        "reason_code": "HIGHER_GROUP",
+        "reason": "הרכב מקבוצה ד, גבוהה מהקבוצה שלך (ג)",
+        "params": {
+          "car_group": "ד",
+          "employee_group": "ג"
+        }
+      },
       "complete": true,
-      "explanation": ["אפשר לבחור רכב מהקבוצה שלך או מקבוצה נמוכה יותר, לא מקבוצה גבוהה."],
+      "explanation": [
+        "אפשר לבחור רכב מהקבוצה שלך או מקבוצה נמוכה יותר, לא מקבוצה גבוהה."
+      ],
       "sources": [
-        {"field": "eligibility", "kind": "CONFIG", "label": "בחירה מהקבוצה או נמוכה ממנה", "ref": "rules.chooseFrom"}
+        {
+          "field": "eligibility",
+          "kind": "CONFIG",
+          "label": "בחירה מהקבוצה או נמוכה ממנה",
+          "ref": "rules.chooseFrom"
+        }
       ]
     }
   ],
@@ -101,12 +256,27 @@
     "id": "q-stub-1",
     "field": "participation:CAR-10",
     "question": "מה סכום ההשתתפות של העובדת ב-BYD ATTO 3 (2025), וממתי הוא בתוקף?",
-    "context": {"occupation": "מנהל/ת מוצר", "group": "ג", "requested_car": "BYD ATTO 3 (2025)", "current_car": "TOYOTA COROLLA CROSS (2025)"},
+    "context": {
+      "occupation": "מנהל/ת מוצר",
+      "group": "ג",
+      "requested_car": "BYD ATTO 3 (2025)",
+      "current_car": "TOYOTA COROLLA CROSS (2025)"
+    },
     "status": "OPEN",
     "created_at": "2026-10-14T09:00:00Z"
   },
   "messages": [
-    {"id": "m-1", "role": "user", "text": "אני שוקלת לעבור לרכב חשמלי. כמה זה ישנה לי בנטו?", "created_at": "2026-10-14T08:58:00Z"},
-    {"id": "m-2", "role": "assistant", "text": "הנה ההשוואה בין הרכב שלך היום לבין ה-ATTO 3 החשמלי. את ההשתתפות ברכב החדש שאלתי את נציג התחבורה, וההשוואה תתעדכן כשהוא יענה.", "created_at": "2026-10-14T09:00:00Z"}
+    {
+      "id": "m-1",
+      "role": "user",
+      "text": "אני שוקלת לעבור לרכב חשמלי. כמה זה ישנה לי בנטו?",
+      "created_at": "2026-10-14T08:58:00Z"
+    },
+    {
+      "id": "m-2",
+      "role": "assistant",
+      "text": "הנה ההשוואה בין הרכב שלך היום לבין ה-ATTO 3 החשמלי. את ההשתתפות ברכב החדש שאלתי את נציג התחבורה, וההשוואה תתעדכן כשהוא יענה.",
+      "created_at": "2026-10-14T09:00:00Z"
+    }
   ]
 }

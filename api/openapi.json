@@ -580,6 +580,7 @@
             "type": "number"
           },
           "code": {
+            "minLength": 1,
             "title": "Code",
             "type": "string"
           }
@@ -593,6 +594,14 @@
       },
       "HealthResponse": {
         "properties": {
+          "config_hash": {
+            "title": "Config Hash",
+            "type": "string"
+          },
+          "config_version": {
+            "title": "Config Version",
+            "type": "string"
+          },
           "configured": {
             "additionalProperties": {
               "type": "boolean"
@@ -622,6 +631,8 @@
           "version",
           "engine_version",
           "environment",
+          "config_version",
+          "config_hash",
           "configured"
         ],
         "title": "HealthResponse",

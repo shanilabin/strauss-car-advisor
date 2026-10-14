@@ -47,8 +47,8 @@ class Occupation(ConfigModel):
 
 
 class GroupBudget(ConfigModel):
-    code: str
-    budget: Money
+    code: str = Field(min_length=1)
+    budget: Money = Field(gt=0)
 
 
 class SampleDeductions(ConfigModel):

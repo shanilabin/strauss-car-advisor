@@ -5,13 +5,13 @@ description = "Strauss car advisor - net-pay engine, agent and API"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
+    "httpx>=0.28",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
 ]
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
     "mypy>=2.4.0",
     "pytest>=9.1.1",
     "ruff>=0.17.0",

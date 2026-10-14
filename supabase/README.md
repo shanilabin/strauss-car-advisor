@@ -28,6 +28,18 @@ npx supabase db push
 1. מדביקות את `scripts/grant_rep_role.sql` ← Run. אמורה לחזור שורה: `rep@demo.local | rep`.
 2. מדביקות את `tests/rls_test.sql` ← Run. אמורות לחזור **18 שורות, כולן `passed = true`**.
 
+## טעינת מאגר רשות המסים (77,988 שורות)
+פעם אחת, וכל פעם שמגיע קובץ חדש. דורש את `api/.env.local` עם `SUPABASE_URL` ו-`SUPABASE_SECRET_KEY`.
+
+```bash
+cd api
+uv run python -m strauss.ingest.load_value_of_use --csv ../data/source/value-of-use-2026.csv
+```
+- קודם כל השורות נקראות ונבדקות. אם יש שורה פגומה, **שום דבר לא עולה**, וההודעה אומרת באיזו שורה.
+- העלאה ב-39 מנות של 2,000. הרצה חוזרת בטוחה (upsert על המפתח).
+- בסוף: ספירת שורות ובדיקה שכל 20 רכבי הקטלוג נמצאים לפי המפתח המלא עם אותו שווי שימוש.
+- `--dry-run`: בדיקה בלבד, בלי העלאה. `--replace`: מוחק קודם את שורות שנת המס, כשמגיע קובץ חדש שהוסרו ממנו דגמים.
+
 ## מיגרציה חדשה
 קובץ חדש ב-`migrations/` בשם `YYYYMMDDHHMMSS_description.sql`, בדיקה מקומית, ואז `npx supabase db push`.
 

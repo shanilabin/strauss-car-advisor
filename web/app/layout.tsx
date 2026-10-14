@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Heebo } from "next/font/google";
+import { Heebo, Secular_One } from "next/font/google";
+
+import { ApiStatus } from "@/components/api-status";
+import { ThemeSync } from "@/components/theme-sync";
+import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
 const heebo = Heebo({
-  variable: "--font-sans",
+  variable: "--font-heebo",
   subsets: ["hebrew", "latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const secularOne = Secular_One({
+  variable: "--font-secular-one",
+  weight: "400",
+  subsets: ["hebrew", "latin"],
 });
 
 export const metadata: Metadata = {
@@ -22,9 +27,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="he"
       dir="rtl"
-      className={`${heebo.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${heebo.variable} ${secularOne.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="flex min-h-full flex-col font-sans">
+        <ThemeSync />
+        <div className="flex flex-1 flex-col pt-(--topbar-h)">{children}</div>
+        <footer className="border-t border-border px-5 py-3 text-xs text-muted-foreground lg:px-8">
+          <ApiStatus />
+        </footer>
+      </body>
     </html>
   );
 }

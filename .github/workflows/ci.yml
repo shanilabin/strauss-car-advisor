@@ -51,3 +51,12 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm build
+
+  db:
+    name: db (migrations · RLS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Apply migrations to a throwaway Postgres and run the RLS checks
+        run: uv run --no-project --python 3.12 --with pgserver --with "psycopg[binary]" python supabase/tests/run_local.py

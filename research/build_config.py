@@ -6,8 +6,10 @@ Run from the repo root:
     uv run --project api --with openpyxl python research/build_config.py
 
 The output is committed. In a pilot, Strauss replaces these JSON files with real data - not the code.
-Everything here is a straight conversion, except the fields marked DERIVED, which were recovered by
-reverse-engineering the reference sheet (see research/verify_reference.py and GUIDE.md, part D).
+Everything here is a straight conversion. Three rules we first recovered by reverse-engineering the
+reference sheet (research/verify_reference.py) were later published by the organizers in the updated
+rules file (2026-10-14): the 7% pension-credit cap, contributions on the full gross, and participation
+as a net-only deduction. They are now read from that file. "note" fields are documentation and dropped.
 """
 
 import json
@@ -43,10 +45,16 @@ def parse_current(raw: str, participation: float | int, catalog: list[dict]) -> 
     return {"kind": "car", "catalogId": match["id"], "participation": participation}
 
 
+def _without_notes(section: dict) -> dict:
+    return {k: v for k, v in section.items() if k != "note"}
+
+
 def build_rules(src: dict) -> dict:
     nm = src["netMethod"]
+    family = src["familyTrack"]
+    components = ["base", "commissions", "bonus"] if nm["contributionsBase"] == "gross" else ["base"]
     return {
-        "version": "2026-10-13.1",
+        "version": "2026-10-14.1",
         "effectiveFrom": "2026-01-01",
         "currency": "ILS",
         "note": src["note"],
@@ -64,19 +72,19 @@ def build_rules(src: dict) -> dict:
                 "id": "family",
                 "label": "מסלול ברוכת ילדים",
                 "catalogGroup": "משפחתי",
-                "requires": {
-                    "minChildren": src["familyTrack"]["minChildren"],
-                    "childMaxAge": src["familyTrack"]["childMaxAge"],
-                },
-                "gapSplitEmployee": src["familyTrack"]["gapSplitEmployee"],
+                "cars": family["cars"],
+                "requires": {"minChildren": family["minChildren"], "childMaxAge": family["childMaxAge"]},
+                "gapSplitEmployee": family["gapSplitEmployee"],
             }
         ],
         "waiver": src["waiver"],
-        "participation": {"policy": "default_pending_rep"},
+        "participation": {
+            "policy": "default_pending_rep",
+            "reducesValueOfUse": nm["participation"]["reducesValueOfUse"],
+        },
         "payroll": {
-            # DERIVED: pension and study fund are computed on commissions and bonus too (reference sheet).
-            "pensionableComponents": ["base", "commissions", "bonus"],
-            "studyFundComponents": ["base", "commissions", "bonus"],
+            "pensionableComponents": components,
+            "studyFundComponents": components,
             "studyFundCeiling": None,
         },
         "netMethod": {
@@ -86,8 +94,8 @@ def build_rules(src: dict) -> dict:
             "brackets": nm["brackets"],
             "nationalInsurance": nm["nationalInsurance"],
             "health": nm["health"],
-            # DERIVED: the credit applies to contributions up to 7% of the (capped) pensionable income.
-            "pensionCredit": {**nm["pensionCredit"], "maxContributionRate": 0.07},
+            "pensionCredit": _without_notes(nm["pensionCredit"]),
+            "rounding": _without_notes(nm["rounding"]),
         },
         "valueOfUse": {
             "taxYear": 2026,

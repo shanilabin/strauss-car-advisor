@@ -35,6 +35,7 @@ class SpecialTrack(ConfigModel):
     id: str = Field(min_length=1)
     label: str = Field(min_length=1)
     catalog_group: str = Field(min_length=1, description="Catalog group whose cars belong to this track")
+    cars: list[str] = Field(default_factory=list, description="Catalog ids in the track (cross-checked)")
     requires: TrackRequirements
     gap_split_employee: Rate = Field(description="Employee's share of the cost above the group budget")
 
@@ -47,6 +48,9 @@ class Waiver(ConfigModel):
 
 class Participation(ConfigModel):
     policy: Literal["default_pending_rep", "always_ask_rep", "default_confirmed"]
+    reduces_value_of_use: Literal[False] = Field(
+        description="Participation is a net-only deduction (the only treatment the engine implements)"
+    )
 
 
 class Payroll(ConfigModel):
@@ -98,6 +102,13 @@ class PensionCredit(ConfigModel):
     max_contribution_rate: Rate
 
 
+class Rounding(ConfigModel):
+    """No rounding during the calculation (including the gross-up); whole shekels only for display."""
+
+    during: Literal["none"]
+    display: Literal["shekel"]
+
+
 class NetMethod(ConfigModel):
     basis: Literal["monthly"]
     tax_year: int = Field(ge=2000, le=2100)
@@ -106,6 +117,7 @@ class NetMethod(ConfigModel):
     national_insurance: TwoTier
     health: TwoTier
     pension_credit: PensionCredit
+    rounding: Rounding
 
     @model_validator(mode="after")
     def _brackets_are_ordered(self) -> Self:

@@ -77,7 +77,19 @@ def _check_groups(bundle: ConfigBundle, report: ValidationReport) -> None:
             report.error(
                 "unknown_group", f"occupations[{occ.name}].group", f"קבוצת זכאות לא מוגדרת: {occ.group}"
             )
+    catalog_by_id = {car.id: car for car in bundle.catalog}
     for track in bundle.rules.special_tracks:
+        for car_id in track.cars:
+            listed = catalog_by_id.get(car_id)
+            path = f"rules.specialTracks[{track.id}].cars"
+            if listed is None:
+                report.error("unknown_track_car", path, f"הרכב {car_id} לא קיים בקטלוג")
+            elif listed.group != track.catalog_group:
+                report.error(
+                    "track_car_wrong_group",
+                    path,
+                    f"הרכב {car_id} בקבוצה {listed.group}, לא בקבוצת המסלול {track.catalog_group}",
+                )
         if not any(car.group == track.catalog_group for car in bundle.catalog):
             report.warning(
                 "empty_track",

@@ -70,6 +70,8 @@ BROKEN_RULES = [
     ),
     pytest.param(_set(["groups", 0, "budget"], -3500), "greater than 0", id="negative-budget"),
     pytest.param(_set(["effectiveFrom"], "2026-02-30"), "effectiveFrom", id="impossible-date"),
+    pytest.param(_set(["netMethod", "rounding", "during"], "agorot"), "none", id="unsupported-rounding"),
+    pytest.param(_set(["participation", "reducesValueOfUse"], True), "False", id="unsupported-participation"),
 ]
 
 

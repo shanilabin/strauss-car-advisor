@@ -79,8 +79,8 @@ def test_breakdown_adds_up_to_net() -> None:
         + result.participation
         + result.track_employee_share
     )
-    assert result.gross_cash - deductions == result.net
-    assert result.net == D("11031.82")
+    assert result.gross_cash - deductions == result.net  # exact: no rounding during the calculation
+    assert result.net.quantize(D("0.01")) == D("11031.82")
 
 
 def test_value_of_use_is_taxed_but_never_paid() -> None:
@@ -117,7 +117,7 @@ def test_pension_and_study_fund_include_commissions_and_bonus() -> None:
 def test_study_fund_ceiling_applies_when_configured() -> None:
     payroll = RULES.payroll.model_copy(update={"study_fund_ceiling": D(15712)})
     result = compute_net(salary("32000"), NOA_DEDUCTIONS, Scenario(), with_rules(payroll=payroll))
-    assert result.study_fund == round(D(15712) * D("0.025"), 2)
+    assert result.study_fund == D(15712) * D("0.025")
 
 
 def test_income_tax_is_never_negative() -> None:
@@ -151,17 +151,15 @@ def test_gross_up_gives_exactly_the_net_bonus(pay: SalaryInput) -> None:
     scenario = Scenario(value_of_use=D(3130), participation=D(300))
     before = compute_net(pay, NOA_DEDUCTIONS, scenario, RULES).net
     after = compute_net_with_electric(pay, NOA_DEDUCTIONS, scenario, RULES).net
-    gain = after - before
-    assert RULES.electric.net_bonus <= gain <= RULES.electric.net_bonus + D("0.01")
+    assert abs((after - before) - RULES.electric.net_bonus) <= D("0.000001")  # exactly +250
 
 
-def test_gross_up_is_the_smallest_amount_in_agorot() -> None:
+def test_gross_up_for_noa_matches_the_marginal_rate() -> None:
+    """Noa's marginal rate here is 31% tax + 7% + 5.17% insurance: G = 250 / (1 - 0.4317)."""
     scenario = Scenario(value_of_use=D(3130), participation=D(300))
     gross_up = solve_gross_up(salary("18500"), NOA_DEDUCTIONS, scenario, RULES)
-    before = compute_net(salary("18500"), NOA_DEDUCTIONS, scenario, RULES).net
-    one_agora_less = replace(scenario, electric_gross_up=gross_up - D("0.01"))
-    assert compute_net(salary("18500"), NOA_DEDUCTIONS, one_agora_less, RULES).net - before < D(250)
-    assert gross_up == gross_up.quantize(D("0.01"))
+    expected = D(250) / (1 - D("0.31") - D("0.07") - D("0.0517"))
+    assert abs(gross_up - expected) < D("0.00001")
 
 
 def test_gross_up_grows_with_the_marginal_rate() -> None:
@@ -187,14 +185,14 @@ def test_unsolvable_gross_up_raises_instead_of_returning_a_number() -> None:
         solve_gross_up(salary("18500"), NOA_DEDUCTIONS, Scenario(), with_rules(net_method=confiscatory))
 
 
-def test_gross_up_stays_within_one_agora_across_a_salary_sweep() -> None:
-    """Rounding makes the gain slightly non-monotone; the solver must still land within one agora."""
+def test_gross_up_is_exact_across_a_salary_sweep() -> None:
+    """The employee sees exactly +250 net at every salary, from minimum wage to the top bracket."""
     scenario = Scenario(value_of_use=D(3130), participation=D(300))
     for base in range(5000, 100001, 733):
         pay = salary(str(base))
         before = compute_net(pay, NOA_DEDUCTIONS, scenario, RULES).net
         gain = compute_net_with_electric(pay, NOA_DEDUCTIONS, scenario, RULES).net - before
-        assert D(250) <= gain <= D("250.01"), base
+        assert abs(gain - D(250)) <= D("0.000001"), base
 
 
 def test_a_preset_refund_is_not_stacked() -> None:

@@ -1,8 +1,7 @@
 "use client";
 
+import { CircleCheck, CircleDashed, CircleX } from "lucide-react";
 import { useEffect, useState } from "react";
-
-import { Badge } from "@/components/ui/badge";
 
 type Health = {
   status: string;
@@ -24,19 +23,38 @@ export function ApiStatus() {
       .catch(() => setState({ kind: "error" }));
   }, []);
 
-  if (state.kind === "loading") return <Badge variant="secondary">בודק חיבור לשרת…</Badge>;
-  if (state.kind === "error") return <Badge variant="destructive">השרת לא זמין</Badge>;
+  if (state.kind === "loading") {
+    return (
+      <p className="flex items-center gap-1.5">
+        <CircleDashed aria-hidden className="size-3.5" />
+        בודק חיבור לשרת…
+      </p>
+    );
+  }
+  if (state.kind === "error") {
+    return (
+      <p className="flex items-center gap-1.5">
+        <CircleX aria-hidden className="size-3.5 text-error" />
+        השרת לא זמין
+      </p>
+    );
+  }
 
   const { health } = state;
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm">
-      <Badge>API: תקין ✓</Badge>
-      <span className="text-muted-foreground">גרסה {health.version}</span>
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className="flex items-center gap-1.5">
+        <CircleCheck aria-hidden className="size-3.5 text-success" />
+        השרת מחובר
+      </span>
+      <span>
+        גרסה <bdi>{health.version}</bdi>
+      </span>
       {Object.entries(health.configured).map(([name, ok]) => (
-        <Badge key={name} variant={ok ? "outline" : "secondary"}>
-          {name} {ok ? "✓" : "—"}
-        </Badge>
+        <span key={name}>
+          <bdi>{name}</bdi>: {ok ? "מוגדר" : "לא מוגדר"}
+        </span>
       ))}
-    </div>
+    </p>
   );
 }

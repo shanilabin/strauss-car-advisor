@@ -67,6 +67,17 @@ def read_rows(path: Path, spec: ValueOfUse) -> Iterator[RawRow]:
             yield RawRow(reader.line_num, {field: row[i].strip() for field, i in index.items()})
 
 
+def read_validated(path: Path, spec: ValueOfUse) -> Iterator[tuple[RawRow, Vehicle]]:
+    """Every row with its validated vehicle. Fails on the first bad row or duplicate key, by line."""
+    seen: set[VehicleKey] = set()
+    for row in read_rows(path, spec):
+        vehicle = validate_row(row, spec)
+        if vehicle.key in seen:
+            raise ValueError(f"שורה {row.line}: מפתח כפול בקובץ רשות המסים: {vehicle.key}")
+        seen.add(vehicle.key)
+        yield row, vehicle
+
+
 def validate_row(row: RawRow, spec: ValueOfUse) -> Vehicle:
     """Convert a row, turning any problem into an error that names the line."""
     try:

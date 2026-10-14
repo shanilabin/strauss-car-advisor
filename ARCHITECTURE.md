@@ -83,7 +83,7 @@ strauss-car-advisor/
 │  ├─ tests/ unit/ · reference/ · property/ · agent/ · api/
 │  └─ evals/  dataset.yaml · run_evals.py · REPORT.md   (pydantic-evals)
 ├─ web/                          👩‍💻 ב׳  ── Next.js (pnpm)
-│  ├─ app/  page.tsx · c/[id]/page.tsx · form/page.tsx · rep/page.tsx · demo/page.tsx · layout.tsx
+│  ├─ app/  page.tsx · c/[id]/page.tsx · form/page.tsx · rep/page.tsx · layout.tsx
 │  ├─ components/ chat/ · profile/ · options/ · compare/ · rep/ · trace/ · ui/ (shadcn)
 │  ├─ lib/ api/{client.ts, schema.d.ts ← מיוצר} · supabase/ · format.ts · hooks/
 │  └─ next.config.ts   rewrites: /api/:path* → API_URL/:path*
@@ -333,7 +333,9 @@ Prefix `/v1` · Auth: `Authorization: Bearer <Supabase JWT>` · שגיאות: `{
 | נגישות | ניווט מקלדת, ניגודיות AA, `aria-live` להודעות בוט |
 | מצב טופס | `/form`: אותם רכיבים בלי הצ'אט; נכנס אוטומטית כשה-API מחזיר `mode:"form"` |
 
-**רכיבים מרכזיים:** `ChatPanel` · `ProfileCard` (עריכה inline) · `OptionsMap` · `ComparisonCard` (כל שדות דרישה 23, כולל שנות המס) · `WaterfallChart` (עם "פירוק לפי סדר") · `WhyPopover` (מקור לכל מספר) · `RepQueue` · `TracePanel` (מתוך ה-trace שחוזר בתשובה) · `DemoQR`⭐.
+**רכיבים מרכזיים:** `ChatPanel` · `ProfileCard` (עריכה inline) · `OptionsMap` · `ComparisonCard` (כל שדות דרישה 23, כולל שנות המס) · `WaterfallChart` (עם "פירוק לפי סדר") · `WhyPopover` (מקור לכל מספר) · `RepQueue` · `AgentActions` ("הצג פעולות AI" בתוך הודעת בוט, מתוך `MessageOut.trace`) · `DemoQR`⭐.
+
+**העיצוב המחייב:** [docs/ui/STRAUSS_UI_FINAL_SPEC.md](docs/ui/STRAUSS_UI_FINAL_SPEC.md), וההתאמה שלו ל-API: [docs/ui/README.md](docs/ui/README.md).
 
 ---
 

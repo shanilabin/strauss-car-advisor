@@ -151,7 +151,16 @@ def compare(option_ids: list[str] | None) -> Comparison:
 
 def _messages(comparison: Comparison) -> list[MessageOut]:
     messages = [MessageOut.model_validate(m) for m in _data()["messages"]]
-    reply = messages[-1].model_copy(update={"cards": [ComparisonCard(comparison=comparison)]})
+    at = messages[-1].created_at
+    trace = [
+        TraceEvent(kind="tool_call", name="compare", data={"option_ids": ["CAR-10"]}, at=at),
+        TraceEvent(kind="tool_result", name="compare", data={"results": 1}, at=at),
+        TraceEvent(
+            kind="tool_call", name="ask_representative", data={"field": "participation:CAR-10"}, at=at
+        ),
+        TraceEvent(kind="guard", name="number_guard", data={"passed": True}, at=at),
+    ]
+    reply = messages[-1].model_copy(update={"cards": [ComparisonCard(comparison=comparison)], "trace": trace})
     return [*messages[:-1], reply]
 
 
@@ -244,7 +253,12 @@ def agent_turn(conversation_id: str, text: str) -> tuple[AgentReply, list[TraceE
     ]
     user_message = MessageOut(id=str(uuid.uuid4()), role=MessageRole.USER, text=text, created_at=now)
     bot_message = MessageOut(
-        id=str(uuid.uuid4()), role=MessageRole.ASSISTANT, text=reply.text, cards=reply.cards, created_at=now
+        id=str(uuid.uuid4()),
+        role=MessageRole.ASSISTANT,
+        text=reply.text,
+        cards=reply.cards,
+        trace=trace,
+        created_at=now,
     )
     state = state.model_copy(update={"messages": [*state.messages, user_message, bot_message]})
     return reply, trace, state

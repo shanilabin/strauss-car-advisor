@@ -252,3 +252,11 @@ def test_profile_patch_ignores_null_instead_of_erasing() -> None:
 
 def test_value_of_use_tolerates_unrelated_query_params() -> None:
     assert client.get(f"/v1/vehicles/value-of-use?{ATTO_3_KEY}&_t=123").status_code == 200
+
+
+def test_assistant_messages_carry_their_trace_after_reload() -> None:
+    """The UI shows 'show AI actions' under each bot message, also after a refresh."""
+    state = client.get("/v1/conversations/x").json()
+    assistant = [m for m in state["messages"] if m["role"] == "assistant"]
+    assert assistant and all(m["trace"] for m in assistant)
+    assert all(m["trace"] == [] for m in state["messages"] if m["role"] == "user")

@@ -685,6 +685,14 @@
           "text": {
             "title": "Text",
             "type": "string"
+          },
+          "trace": {
+            "description": "Assistant messages: the agent actions of the turn that produced this reply (shown under the message as 'show AI actions')",
+            "items": {
+              "$ref": "#/components/schemas/TraceEvent"
+            },
+            "title": "Trace",
+            "type": "array"
           }
         },
         "required": [

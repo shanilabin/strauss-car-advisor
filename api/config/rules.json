@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-13.1",
+  "version": "2026-10-14.1",
   "effectiveFrom": "2026-01-01",
   "currency": "ILS",
   "note": "נתוני דמה של האתגר (קוד פתוח). בפיילוט מחליפים את הקובץ בנתונים האמיתיים - לא את הקוד.",
@@ -36,6 +36,10 @@
       "id": "family",
       "label": "מסלול ברוכת ילדים",
       "catalogGroup": "משפחתי",
+      "cars": [
+        "CAR-19",
+        "CAR-20"
+      ],
       "requires": {
         "minChildren": 4,
         "childMaxAge": 23
@@ -49,7 +53,8 @@
     "maintenanceIsPensionable": false
   },
   "participation": {
-    "policy": "default_pending_rep"
+    "policy": "default_pending_rep",
+    "reducesValueOfUse": false
   },
   "payroll": {
     "pensionableComponents": [
@@ -112,8 +117,12 @@
     },
     "pensionCredit": {
       "rate": 0.35,
-      "incomeCeiling": 9500,
-      "maxContributionRate": 0.07
+      "maxContributionRate": 0.07,
+      "incomeCeiling": 9500
+    },
+    "rounding": {
+      "during": "none",
+      "display": "shekel"
     }
   },
   "valueOfUse": {

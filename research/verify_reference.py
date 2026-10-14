@@ -56,7 +56,8 @@ def net(emp, opt, participation, H):
     vou = float(opt["car"]["שווי שימוש חודשי"]) if opt["type"] == "car" else 0
     fam = 0
     if opt["type"] == "car" and opt["car"]["קבוצה"] == "משפחתי":
-        gap = max(0, R["familyTrack"]["carPrice"] - R["budgets"][emp["קבוצה"]])
+        # updated rules: the track price comes from the catalogue, per car (Carnival 6,000, Santa Fe 5,600)
+        gap = max(0, opt["car"]["עלות חודשית לחברה (דמה)"] - R["budgets"][emp["קבוצה"]])
         fam = gap * R["familyTrack"]["gapSplitEmployee"]
     pens_base = base + comm + bonus if H["pension_on_all"] else base
     pension = pens_base * float(emp["פנסיה עובד %"]) / 100
@@ -82,7 +83,7 @@ def net(emp, opt, participation, H):
     return round(n), round(t), round(i), round(g)
 
 HYPOTHESES = {
-    "1. נאיבי (רק מה שכתוב ב-JSON)":         dict(pension_on_all=False, study_on_all=False, credit_cap_7pct=False),
+    "1. נאיבי (רק מה שהיה כתוב ב-JSON לפני עדכון הכללים)":         dict(pension_on_all=False, study_on_all=False, credit_cap_7pct=False),
     "2. + תקרת זיכוי 7%":                     dict(pension_on_all=False, study_on_all=False, credit_cap_7pct=True),
     "3. + פנסיה על עמלות ובונוס":             dict(pension_on_all=True,  study_on_all=False, credit_cap_7pct=True),
     "4. + השתלמות על עמלות ובונוס (סופי)":    dict(pension_on_all=True,  study_on_all=True,  credit_cap_7pct=True),

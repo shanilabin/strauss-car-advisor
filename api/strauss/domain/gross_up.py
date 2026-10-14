@@ -6,10 +6,9 @@ found by search, never assumed:
 
 1. Bracket: start at hi = netBonus and double until the net gain reaches the target. If it never does
    (e.g. rules with a 100% marginal rate), raise GrossUpUnsolvable - an explicit error, never a number.
-2. Binary-search the bracket in whole agorot for a G whose net gain reaches the target, then step down
-   agora by agora while it still does. Nets are rounded per component, so the gain is not perfectly
-   monotone; the step-down guarantees the smallest qualifying G near the solution. A sweep over many
-   salaries (tests/unit/test_engine.py) checks the gain stays within one agora of the target.
+2. Bisect the bracket. The calculation is exact (no rounding, per rules.netMethod.rounding) and the gain
+   is monotone in G (every marginal rate is below 100%), so bisection converges; it stops when the gain
+   is within TOLERANCE of the target. The employee therefore sees exactly +netBonus, as the rules require.
 """
 
 from dataclasses import replace
@@ -20,8 +19,9 @@ from strauss.domain.models import Deductions, NetBreakdown, SalaryInput
 from strauss.domain.net import Scenario, compute_net, compute_net_amount
 from strauss.domain.tax import ZERO
 
-AGORA = Decimal("0.01")
+TOLERANCE = Decimal("0.000001")  # a millionth of a shekel
 MAX_DOUBLINGS = 20
+MAX_BISECTIONS = 200
 
 
 class GrossUpUnsolvable(Exception):
@@ -29,7 +29,7 @@ class GrossUpUnsolvable(Exception):
 
 
 def solve_gross_up(salary: SalaryInput, deductions: Deductions, scenario: Scenario, rules: Rules) -> Decimal:
-    """Smallest gross amount (in agorot) that raises net pay by rules.electric.net_bonus."""
+    """Gross amount that raises net pay by exactly rules.electric.net_bonus (within TOLERANCE)."""
     target = rules.electric.net_bonus
     if target <= ZERO:
         return ZERO
@@ -48,16 +48,17 @@ def solve_gross_up(salary: SalaryInput, deductions: Deductions, scenario: Scenar
     else:
         raise GrossUpUnsolvable(f"לא נמצא גילום שמביא {target} ₪ נטו (נבדק עד {upper} ₪ ברוטו)")
 
-    low, high = 0, int(upper / AGORA)  # in agorot; gain(high) >= target
-    while low < high:
-        middle = (low + high) // 2
-        if gain(middle * AGORA) >= target:
-            high = middle
+    low, high = ZERO, upper  # gain(low) < target <= gain(high)
+    for _ in range(MAX_BISECTIONS):
+        middle = (low + high) / 2
+        difference = gain(middle) - target
+        if abs(difference) <= TOLERANCE:
+            return middle
+        if difference < ZERO:
+            low = middle
         else:
-            low = middle + 1
-    while high > 0 and gain((high - 1) * AGORA) >= target:
-        high -= 1
-    return high * AGORA
+            high = middle
+    return high
 
 
 def compute_net_with_electric(

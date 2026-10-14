@@ -3,8 +3,9 @@
 The formula is the one verified 36/36 against the challenge's reference sheet (GUIDE.md part C,
 research/verify_reference.py). Every rate, limit and policy comes from the rules; nothing is hard-coded.
 
-Rounding (ARCHITECTURE.md section 3): each component is computed exactly, rounded half-up to agorot,
-and net is the rounded gross minus the rounded deductions - so the breakdown always adds up on screen.
+Rounding (rules.netMethod.rounding, published by the organizers): no rounding during the calculation -
+every component and the net are exact Decimals, so net = gross - deductions exactly. Rounding happens
+only for display: the API serializes money to agorot and headline nets are shown in whole shekels.
 """
 
 from dataclasses import dataclass
@@ -12,7 +13,6 @@ from decimal import Decimal
 
 from strauss.config.schema import Rules, SalaryComponent
 from strauss.domain.models import Deductions, NetBreakdown, SalaryInput
-from strauss.domain.money import round_money
 from strauss.domain.tax import ZERO, bracket_tax, pension_credit, two_tier
 
 HUNDRED = Decimal(100)
@@ -123,6 +123,5 @@ def _compute(
         "electric_gross_up": scenario.electric_gross_up,
         "maintenance": scenario.maintenance,
     }
-    rounded = {name: round_money(value) for name, value in parts.items()}
-    net = rounded["gross_cash"] - sum((rounded[name] for name in _DEDUCTIONS), ZERO)
-    return rounded, net
+    net = parts["gross_cash"] - sum((parts[name] for name in _DEDUCTIONS), ZERO)
+    return parts, net

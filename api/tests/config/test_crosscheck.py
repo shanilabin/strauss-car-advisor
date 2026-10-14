@@ -52,6 +52,18 @@ BROKEN = [
     pytest.param("catalog.json", _first({"regYear": 2019}), "not_in_tax_authority", id="wrong-reg-year"),
     pytest.param("catalog.json", _first({"valueOfUse": 9999}), "value_of_use_mismatch", id="vou-mismatch"),
     pytest.param("catalog.json", _first({"drive": "ELECTRIC"}), "drive_mismatch", id="drive-mismatch"),
+    pytest.param(
+        "rules.json",
+        lambda r: r["specialTracks"][0]["cars"].append("CAR-99"),
+        "unknown_track_car",
+        id="unknown-family-car",
+    ),
+    pytest.param(
+        "rules.json",
+        lambda r: r["specialTracks"][0]["cars"].append("CAR-01"),
+        "track_car_wrong_group",
+        id="family-car-wrong-group",
+    ),
 ]
 
 

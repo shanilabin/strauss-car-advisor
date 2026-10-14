@@ -43,6 +43,11 @@ class MessageOut(ApiModel):
     role: MessageRole
     text: str
     cards: list[Card] = Field(default_factory=list)
+    trace: list[TraceEvent] = Field(
+        default_factory=list,
+        description="Assistant messages: the agent actions of the turn that produced this reply "
+        "(shown under the message as 'show AI actions')",
+    )
     created_at: datetime
 
 

@@ -7,6 +7,7 @@ Read before any task: [ARCHITECTURE.md](ARCHITECTURE.md) (the contract) and [TAS
 - Developer B (frontend): `web/`
 - `web/lib/api/schema.d.ts` is generated (`pnpm gen:api`) - never edit by hand.
 - If a task needs a change outside your folder, stop and say so instead of making it.
+- UI work follows `docs/ui/STRAUSS_UI_FINAL_SPEC.md`; `docs/ui/README.md` maps every UI element to the API field it comes from.
 
 ## Non-negotiables
 - The LLM never computes numbers, and every number on screen is rendered from an engine DTO (never from bot text). All money math lives in `api/strauss/domain/` (pure, `Decimal`, no I/O).

@@ -26,6 +26,8 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy
       - run: uv run pytest -q
+      - name: API contract (openapi.json) is up to date
+        run: uv run python scripts/export_openapi.py --check
 
   web:
     name: web (lint · typecheck · build)

@@ -40,3 +40,7 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+filterwarnings = [
+    # starlette suggests httpx2 for TestClient; httpx is still fully supported
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]

@@ -1,6 +1,7 @@
-import { Clock, ListChecks, Scale } from "lucide-react";
+import { Clock, ListChecks } from "lucide-react";
 
-import { formatDelta, formatShekel } from "@/lib/format";
+import { ComparisonCard } from "@/components/comparison-card";
+import { formatDelta } from "@/lib/format";
 import type { components } from "@/lib/api/schema";
 
 type MessageCard = NonNullable<components["schemas"]["MessageOut"]["cards"]>[number];
@@ -12,7 +13,14 @@ type MessageCard = NonNullable<components["schemas"]["MessageOut"]["cards"]>[num
 export function MessageCardView({ card }: { card: MessageCard }) {
   switch (card.kind) {
     case "comparison":
-      return <ComparisonMessageCard card={card} />;
+      return (
+        <ComparisonCard
+          comparison={card.comparison}
+          optionId={card.comparison.best_option_id}
+          compact
+          className="mt-3"
+        />
+      );
     case "options":
       return <OptionsMessageCard card={card} />;
     case "missing":
@@ -22,59 +30,6 @@ export function MessageCardView({ card }: { card: MessageCard }) {
     default:
       return null;
   }
-}
-
-function ComparisonMessageCard({
-  card,
-}: {
-  card: components["schemas"]["ComparisonCard"];
-}) {
-  const results = card.comparison.results;
-  const bestId = card.comparison.best_option_id;
-  const best = results.find((r) => r.option.id === bestId) ?? results[0];
-  if (!best) {
-    return (
-      <div className="mt-3 border border-border bg-surface px-4 py-3 text-sm text-muted-foreground">
-        כרטיס השוואה — אין תוצאות להצגה
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-3 border border-border bg-surface px-4 py-3">
-      <p className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-        <Scale aria-hidden className="size-3.5" />
-        השוואה
-      </p>
-      <p className="mt-2 font-semibold">
-        <bdi>{best.option.label}</bdi>
-      </p>
-      {best.eligibility.eligible && best.delta != null ? (
-        <p className="mt-1 text-2xl font-black">
-          <bdi dir="ltr">{formatDelta(best.delta)}</bdi>
-          <span className="ms-2 text-sm font-semibold text-muted-foreground">הפרש נטו חודשי</span>
-        </p>
-      ) : (
-        <p className="mt-1 text-sm text-muted-foreground">{best.eligibility.reason}</p>
-      )}
-      {best.net_today != null && best.net_option != null && (
-        <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3 text-sm">
-          <div>
-            <dt className="text-xs text-muted-foreground">נטו היום</dt>
-            <dd className="font-bold">
-              <bdi dir="ltr">{formatShekel(best.net_today)}</bdi>
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">נטו בחלופה</dt>
-            <dd className="font-bold">
-              <bdi dir="ltr">{formatShekel(best.net_option)}</bdi>
-            </dd>
-          </div>
-        </dl>
-      )}
-    </div>
-  );
 }
 
 function OptionsMessageCard({ card }: { card: components["schemas"]["OptionsCard"] }) {

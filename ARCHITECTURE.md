@@ -233,13 +233,13 @@ POST /v1/conversations/{id}/messages {text}
 ### הכלים
 | כלי | קלט | פלט | הערה |
 |---|---|---|---|
-| `update_profile` | שדות חלקיים | פרופיל + missing | ולידציה ב-Pydantic (טווחים סבירים); ערך חשוד מחזיר שגיאה למודל; `revision += 1` |
+| `update_profile` | שדות חלקיים | נשמר + מה עוד חסר | ולידציה ב-Pydantic; עיסוק חייב להיות מהטבלה (אחרת ניסיון חוזר עם השם הקרוב) או מסומן במפורש "לא ברשימה" ← נציג; פנסיה ונקודות זיכוי נשמרים יחד |
 | `find_vehicle` | טקסט חופשי, שנת רישום? | עד 5 מועמדים עם מפתח מלא | חיפוש trigram; מבקש 6 ← אם חזרו 6, הבוט מבקש שם מדויק יותר במקום להציג רשימה חתוכה; כמה מועמדים ← הבוט שואל איזה |
-| `lookup_value_of_use` | VehicleKey | Vehicle + מקור | לא נמצא ← אומר במפורש, לא מנחש |
+| `set_current_car` | מפתח מלא (מתוצאת find_vehicle) + השתתפות? | נשמר / חסר | שווי השימוש נשלף מהמאגר לפי המפתח, אף פעם לא מהמודל; מפתח לא קיים ← ניסיון חוזר |
 | `list_options` | — | כל החלופות + זכאות + נטו | **נכשל אם הפרופיל חסר**, ומחזיר את רשימת החוסרים |
 | `check_eligibility` | option_id | Eligibility + סיבה | |
 | `compare` | option_ids[] | Comparison (נשמר) | **נכשל אם הפרופיל חסר** |
-| `ask_representative` | field, question | question_id | פותח שאלה עם `profile_revision`; השיחה ← `waiting_rep` |
+| `ask_representative` | field, question | נשלח | פותח שאלה עם `profile_revision`; השיחה ← `waiting_rep`. **שאלה עם שכר/נטו/סכומים נדחית** (הנציג לא רואה שכר); שאלה אחת לכל שדה בתור |
 
 ### מכונת מצבים של שיחה
 `collecting → ready → presented ⇄ (correction | change_option)` · כל מצב יכול לעבור ל-`waiting_rep`, ותשובת נציג מחזירה אותו לאן שהיה. התרשים יופיע ב-README.

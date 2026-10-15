@@ -2039,6 +2039,16 @@
               }
             },
             "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service unavailable"
           }
         },
         "summary": "Compare Stateless",
@@ -2133,6 +2143,16 @@
               }
             },
             "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service unavailable"
           }
         },
         "security": [
@@ -2211,6 +2231,16 @@
               }
             },
             "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service unavailable"
           }
         },
         "security": [
@@ -2299,6 +2329,16 @@
               }
             },
             "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service unavailable"
           }
         },
         "security": [
@@ -2387,6 +2427,16 @@
               }
             },
             "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service unavailable"
           }
         },
         "security": [
@@ -2465,6 +2515,16 @@
               }
             },
             "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service unavailable"
           }
         },
         "security": [
@@ -2553,6 +2613,16 @@
               }
             },
             "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service unavailable"
           }
         },
         "security": [
@@ -2669,6 +2739,16 @@
               }
             },
             "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service unavailable"
           }
         },
         "security": [
@@ -2757,6 +2837,16 @@
               }
             },
             "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service unavailable"
           }
         },
         "security": [
@@ -2772,7 +2862,7 @@
     },
     "/v1/vehicles/search": {
       "get": {
-        "description": "Up to 5 candidates, each with its full official key.",
+        "description": "Up to 5 candidates for the configured tax year, each with its full official key.",
         "operationId": "vehicles_search_vehicles",
         "parameters": [
           {
@@ -2861,6 +2951,16 @@
               }
             },
             "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service unavailable"
           }
         },
         "summary": "Search Vehicles",
@@ -2978,6 +3078,16 @@
               }
             },
             "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service unavailable"
           }
         },
         "summary": "Get Value Of Use",

@@ -260,3 +260,32 @@ def test_assistant_messages_carry_their_trace_after_reload() -> None:
     assistant = [m for m in state["messages"] if m["role"] == "assistant"]
     assert assistant and all(m["trace"] for m in assistant)
     assert all(m["trace"] == [] for m in state["messages"] if m["role"] == "user")
+
+
+def test_tang_and_atto3_share_codes_but_are_different_cars() -> None:
+    tang_key = ATTO_3_KEY.replace("vehicle_type_code=1", "vehicle_type_code=2")
+    tang = client.get(f"/v1/vehicles/value-of-use?{tang_key}").json()
+    assert tang["commercial_name"] == "TANG" and tang["value_of_use"] != 3130
+
+
+def test_search_filters_by_registration_year() -> None:
+    results = client.get("/v1/vehicles/search?q=corolla cross&reg_year=2022").json()
+    assert results and all(r["key"]["reg_year"] == 2022 for r in results)
+
+
+def test_data_service_failure_is_a_503_in_hebrew() -> None:
+    from strauss.adapters.supabase_rest import SupabaseError
+    from strauss.http.deps import get_value_of_use_repo
+
+    class Broken:
+        def get(self, key: object) -> None:
+            raise SupabaseError("connection refused")
+
+        def search(self, *args: object) -> list[object]:
+            raise SupabaseError("connection refused")
+
+    app.dependency_overrides[get_value_of_use_repo] = Broken
+    response = client.get(f"/v1/vehicles/value-of-use?{ATTO_3_KEY}")
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "data_unavailable"
+    assert "connection refused" not in response.text  # internals stay in the server log

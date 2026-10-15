@@ -4,6 +4,8 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from strauss.adapters.supabase_rest import API_URL
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=(".env", ".env.local"), extra="ignore")
@@ -20,7 +22,8 @@ class Settings(BaseSettings):
     def configured(self) -> dict[str, bool]:
         """Which integrations have credentials - never exposes the values themselves."""
         return {
-            "supabase": bool(self.supabase_url and self.supabase_secret_key),
+            # a dashboard link or a typo is "not configured", not healthy
+            "supabase": bool(API_URL.match(self.supabase_url) and self.supabase_secret_key),
             "gemini": bool(self.gemini_api_key),
             "openrouter": bool(self.openrouter_api_key),
             "groq": bool(self.groq_api_key),

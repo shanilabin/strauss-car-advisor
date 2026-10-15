@@ -1,22 +1,31 @@
 import createClient from "openapi-fetch";
 
-import { getSupabase } from "@/lib/supabase/client";
+import { getSupabase, type AuthArea } from "@/lib/supabase/client";
 
 import type { paths } from "./schema";
 
-/** Browser API client. baseUrl is same-origin; Next rewrites /api/* to the backend. */
-export const api = createClient<paths>({ baseUrl: "/api" });
+function createApiClient(area: AuthArea) {
+  const client = createClient<paths>({ baseUrl: "/api" });
 
-api.use({
-  async onRequest({ request }) {
-    const {
-      data: { session },
-    } = await getSupabase("employee").auth.getSession();
-    const token = session?.access_token;
-    if (!token) return request;
+  client.use({
+    async onRequest({ request }) {
+      const {
+        data: { session },
+      } = await getSupabase(area).auth.getSession();
+      const token = session?.access_token;
+      if (!token) return request;
 
-    const headers = new Headers(request.headers);
-    headers.set("Authorization", `Bearer ${token}`);
-    return new Request(request, { headers });
-  },
-});
+      const headers = new Headers(request.headers);
+      headers.set("Authorization", `Bearer ${token}`);
+      return new Request(request, { headers });
+    },
+  });
+
+  return client;
+}
+
+/** Browser API client for the employee area (anonymous JWT). */
+export const api = createApiClient("employee");
+
+/** Browser API client for the rep area (rep JWT from the separate storage key). */
+export const repApi = createApiClient("rep");

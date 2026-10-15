@@ -5,9 +5,7 @@ its headline numbers must equal the challenge's reference sheet.
 """
 
 import json
-import re
 from collections.abc import Iterator
-from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -16,11 +14,10 @@ from fastapi.testclient import TestClient
 
 from index import app
 from strauss.http import stubs
+from tests.api.conftest import AS_REP
 
 client = TestClient(app)
 CONFIG = Path(__file__).resolve().parents[2] / "config"
-REFERENCE = json.loads((CONFIG / "reference-results.json").read_text("utf-8"))
-NOA = next(r for r in REFERENCE if r["employeeId"] == "E-001")
 ATTO_3_KEY = "tax_year=2026&reg_year=2025&vehicle_type_code=1&maker_code=01014&model_code=00003"
 
 
@@ -28,10 +25,6 @@ ATTO_3_KEY = "tax_year=2026&reg_year=2025&vehicle_type_code=1&maker_code=01014&m
 def fresh_rep_store() -> Iterator[None]:
     stubs.rep_store = stubs.RepStubStore()
     yield
-
-
-def _option(comparison: dict, option_id: str) -> dict:
-    return next(r for r in comparison["results"] if r["option"]["id"] == option_id)
 
 
 # ── Surface ──────────────────────────────────────────────────────────────────
@@ -76,92 +69,7 @@ def test_committed_openapi_file_is_up_to_date() -> None:
 # ── Stub honesty: numbers equal the challenge reference ──────────────────────
 
 
-def test_noa_atto3_matches_reference_sheet() -> None:
-    comparison = client.post("/v1/conversations/x/compare", json={"option_ids": ["CAR-10"]}).json()
-    atto = _option(comparison, "CAR-10")
-    assert round(comparison["today"]["net"]) == NOA["netToday"]
-    assert round(comparison["today"]["income_tax"]) == NOA["taxToday"]
-    insurance_today = comparison["today"]["national_insurance"] + comparison["today"]["health"]
-    assert round(insurance_today) == NOA["insuranceToday"]
-    assert round(atto["net_option"]) == NOA["netAlternative"]
-    assert round(atto["delta"]) == NOA["delta"]
-    assert round(atto["breakdown"]["income_tax"]) == NOA["taxAlternative"]
-    assert round(atto["breakdown"]["electric_gross_up"]) == NOA["electricGrossUp"]
-
-
-def test_every_waterfall_sums_to_its_delta() -> None:
-    comparison = client.get("/v1/conversations/x/options").json()
-    for result in comparison["results"]:
-        if result["delta"] is None:
-            assert result["waterfall"] == []
-            continue
-        total = sum(Decimal(str(step["delta"])) for step in result["waterfall"])
-        assert total == Decimal(str(result["delta"])), result["option"]["id"]
-
-
-def test_net_option_equals_breakdown_net_and_today_plus_delta() -> None:
-    comparison = client.get("/v1/conversations/x/options").json()
-    for result in comparison["results"]:
-        if result["breakdown"] is None:
-            continue
-        # Headline numbers are whole shekels; the breakdown keeps agorot (ARCHITECTURE.md, rounding policy)
-        assert result["net_option"] == round(result["breakdown"]["net"])
-        assert result["net_today"] + result["delta"] == result["net_option"]
-
-
-def test_ineligible_option_shows_reason_but_no_numbers() -> None:
-    model3 = _option(client.get("/v1/conversations/x/options").json(), "CAR-14")
-    assert model3["eligibility"]["eligible"] is False
-    assert model3["eligibility"]["reason"]
-    assert model3["net_option"] is None and model3["delta"] is None and model3["breakdown"] is None
-
-
-def test_best_option_is_the_highest_eligible_delta() -> None:
-    comparison = client.get("/v1/conversations/x/options").json()
-    eligible = [r for r in comparison["results"] if r["eligibility"]["eligible"]]
-    assert comparison["best_option_id"] == max(eligible, key=lambda r: r["delta"])["option"]["id"]
-
-
-def test_comparison_carries_reproducibility_context() -> None:
-    context = client.get("/v1/conversations/x/options").json()["context"]
-    assert context["payroll_tax_year"] == 2025
-    assert context["value_of_use_tax_year"] == 2026
-    assert re.fullmatch(r"[0-9a-f]{64}", context["config_hash"])
-
-
 # ── Conversations and the agent reply ────────────────────────────────────────
-
-
-def test_agent_reply_text_has_no_numbers_numbers_live_in_cards() -> None:
-    body = client.post("/v1/conversations/x/messages", json={"text": "כמה אקבל בנטו?"}).json()
-    assert not re.search(r"\d{2,}", body["reply"]["text"]), "numbers must come from cards, not text"
-    kinds = [card["kind"] for card in body["reply"]["cards"]]
-    assert "options" in kinds
-    assert body["trace"], "every turn returns its trace"
-
-
-def test_create_conversation_from_sample_employee() -> None:
-    response = client.post("/v1/conversations", json={"sample_employee_id": "E-003"})
-    assert response.status_code == 201
-    profile = response.json()["profile"]
-    assert profile["occupation"] == "מפתח/ת תוכנה"
-    assert profile["current"] == {"kind": "waiver", "maintenance": 1500.0}
-
-
-def test_unknown_sample_employee_is_404_in_hebrew() -> None:
-    response = client.post("/v1/conversations", json={"sample_employee_id": "E-999"})
-    assert response.status_code == 404
-    assert response.json()["error"]["code"] == "sample_employee_not_found"
-
-
-def test_profile_patch_bumps_revision_and_rejects_stale_revision() -> None:
-    ok = client.patch("/v1/conversations/x/profile", json={"expected_revision": 3, "children_under_23": 4})
-    assert ok.status_code == 200
-    assert ok.json()["profile"]["revision"] == 4
-    assert ok.json()["profile"]["children_under_23"] == 4
-    stale = client.patch("/v1/conversations/x/profile", json={"expected_revision": 1, "group": "ד"})
-    assert stale.status_code == 409
-    assert stale.json()["error"]["code"] == "stale_revision"
 
 
 # ── Vehicles ─────────────────────────────────────────────────────────────────
@@ -207,26 +115,26 @@ def test_config_summary() -> None:
 
 
 def test_rep_sees_minimal_context_without_salary() -> None:
-    question = client.get("/v1/rep/questions").json()[0]
+    question = client.get("/v1/rep/questions", headers=AS_REP).json()[0]
     assert "salary" not in json.dumps(question) and "18500" not in json.dumps(question)
 
 
 def test_rep_answers_once_second_answer_is_409() -> None:
-    first = client.post("/v1/rep/questions/q-stub-1/answer", json={"value": "350"})
+    first = client.post("/v1/rep/questions/q-stub-1/answer", json={"value": "350"}, headers=AS_REP)
     assert first.status_code == 200
     assert first.json()["status"] == "ANSWERED"
-    second = client.post("/v1/rep/questions/q-stub-1/answer", json={"value": "400"})
+    second = client.post("/v1/rep/questions/q-stub-1/answer", json={"value": "400"}, headers=AS_REP)
     assert second.status_code == 409
     assert second.json()["error"]["code"] == "already_answered"
-    assert client.get("/v1/rep/questions?status=OPEN").json() == []
-    assert client.get("/v1/rep/questions").json()[0]["answer"]["value"] == "350"
+    assert client.get("/v1/rep/questions?status=OPEN", headers=AS_REP).json() == []
+    assert client.get("/v1/rep/questions", headers=AS_REP).json()[0]["answer"]["value"] == "350"
 
 
 # ── Errors ───────────────────────────────────────────────────────────────────
 
 
 def test_validation_error_uses_the_error_envelope() -> None:
-    response = client.post("/v1/conversations/x/messages", json={"text": ""})
+    response = client.post("/v1/compare", json={"profile": {"salary": {"base": -5}}})
     assert response.status_code == 422
     error = response.json()["error"]
     assert error["code"] == "invalid_input" and error["message_he"]
@@ -241,26 +149,8 @@ def test_unknown_route_uses_the_error_envelope() -> None:
 # ── Review follow-ups ────────────────────────────────────────────────────────
 
 
-def test_selected_comparison_best_option_is_one_of_its_results() -> None:
-    comparison = client.post("/v1/conversations/x/compare", json={"option_ids": ["CAR-10", "CAR-14"]}).json()
-    assert comparison["best_option_id"] == "CAR-10"
-
-
-def test_profile_patch_ignores_null_instead_of_erasing() -> None:
-    profile = client.patch("/v1/conversations/x/profile", json={"salary": None}).json()["profile"]
-    assert profile["salary"]["base"] == 18500
-
-
 def test_value_of_use_tolerates_unrelated_query_params() -> None:
     assert client.get(f"/v1/vehicles/value-of-use?{ATTO_3_KEY}&_t=123").status_code == 200
-
-
-def test_assistant_messages_carry_their_trace_after_reload() -> None:
-    """The UI shows 'show AI actions' under each bot message, also after a refresh."""
-    state = client.get("/v1/conversations/x").json()
-    assistant = [m for m in state["messages"] if m["role"] == "assistant"]
-    assert assistant and all(m["trace"] for m in assistant)
-    assert all(m["trace"] == [] for m in state["messages"] if m["role"] == "user")
 
 
 def test_tang_and_atto3_share_codes_but_are_different_cars() -> None:

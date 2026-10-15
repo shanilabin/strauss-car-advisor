@@ -10,16 +10,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from strauss.adapters.supabase_rest import SupabaseError
 from strauss.domain.compare import IncompleteProfile, UnknownOption
+from strauss.errors import ApiError
 from strauss.http.schemas import ErrorBody, ErrorResponse
 
-
-class ApiError(Exception):
-    def __init__(self, status: int, code: str, message_he: str, details: dict[str, Any] | None = None):
-        super().__init__(message_he)
-        self.status = status
-        self.code = code
-        self.message_he = message_he
-        self.details = details
+__all__ = ["ERROR_RESPONSES", "ApiError", "install_error_handlers"]
 
 
 def _respond(status: int, code: str, message_he: str, details: dict[str, Any] | None = None) -> JSONResponse:

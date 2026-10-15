@@ -24,7 +24,8 @@ def auth_headers(secret_key: str) -> dict[str, str]:
     return headers
 
 
-def rest_client(url: str, secret_key: str, *, timeout: float = 60.0, **kwargs: Any) -> httpx.Client:
+def validated_url(url: str, secret_key: str) -> str:
+    """The project's API URL, or a clear configuration error (never a request to the wrong host)."""
     if not url or not secret_key:
         raise SupabaseError("חסרים SUPABASE_URL או SUPABASE_SECRET_KEY (ב-api/.env.local או במשתני הסביבה)")
     if not API_URL.match(url):
@@ -33,8 +34,12 @@ def rest_client(url: str, secret_key: str, *, timeout: float = 60.0, **kwargs: A
             "למשל https://<project-ref>.supabase.co (לא קישור ל-dashboard). "
             "נמצאת ב-Supabase תחת Project Settings ← Data API ← Project URL"
         )
+    return url.rstrip("/")
+
+
+def rest_client(url: str, secret_key: str, *, timeout: float = 60.0, **kwargs: Any) -> httpx.Client:
     return httpx.Client(
-        base_url=f"{url.rstrip('/')}/rest/v1",
+        base_url=f"{validated_url(url, secret_key)}/rest/v1",
         headers=auth_headers(secret_key),
         timeout=timeout,
         **kwargs,

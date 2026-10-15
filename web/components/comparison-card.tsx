@@ -1,8 +1,11 @@
-import { ArrowDown, ArrowUp, Check, Clock, Minus } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Clock, Minus, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { WaterfallChart } from "@/components/waterfall-chart";
+import { WhyPopover } from "@/components/why-popover";
+import { findSourceByField } from "@/lib/api/resolve-source-value";
 import type { components } from "@/lib/api/schema";
 import { formatDelta, formatShekel } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -11,6 +14,7 @@ type Comparison = components["schemas"]["Comparison"];
 type OptionResult = components["schemas"]["OptionResult"];
 type ParticipationStatus = components["schemas"]["ParticipationStatus"];
 type Profile = components["schemas"]["Profile-Output"];
+type Source = components["schemas"]["Source"];
 
 export type ComparisonCardProps = {
   comparison: Comparison;
@@ -19,6 +23,8 @@ export type ComparisonCardProps = {
   className?: string;
   /** Tighter padding for embedding inside a chat message bubble. */
   compact?: boolean;
+  /** Return to the options gallery to pick another car and re-run compare. */
+  onChangeCar?: () => void;
 };
 
 function pickResult(comparison: Comparison, optionId?: string | null): OptionResult | null {
@@ -64,6 +70,28 @@ function Money({ amount }: { amount: number }) {
     <bdi dir="ltr" className="tabular-nums">
       {formatShekel(amount)}
     </bdi>
+  );
+}
+
+function Why({
+  sources,
+  field,
+  fieldValue,
+  fieldLabel,
+}: {
+  sources: Source[] | undefined;
+  field: string;
+  fieldValue?: number | null;
+  fieldLabel: string;
+}) {
+  const source = findSourceByField(sources, field);
+  if (!source) return null;
+  return (
+    <WhyPopover
+      source={source}
+      fieldValue={fieldValue}
+      fieldLabel={fieldLabel}
+    />
   );
 }
 
@@ -124,6 +152,7 @@ export function ComparisonCard({
   optionId,
   className,
   compact = false,
+  onChangeCar,
 }: ComparisonCardProps) {
   const result = pickResult(comparison, optionId);
 
@@ -190,6 +219,18 @@ export function ComparisonCard({
           {estimated && eligible && (
             <Badge variant="outline">משוערת</Badge>
           )}
+          {onChangeCar && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onChangeCar}
+              aria-label="החלף רכב — חזרה לגלריית האפשרויות"
+            >
+              <RefreshCw aria-hidden data-icon="inline-start" />
+              החלף רכב
+            </Button>
+          )}
         </div>
       </header>
 
@@ -198,9 +239,21 @@ export function ComparisonCard({
           <span className="inline-flex items-start gap-2">
             <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
             <span>{eligibility.reason}</span>
+            <Why
+              sources={result.sources}
+              field="eligibility"
+              fieldLabel="זכאות"
+            />
           </span>
         ) : (
-          <span className="text-muted-foreground">{eligibility.reason}</span>
+          <span className="inline-flex items-center gap-1 text-muted-foreground">
+            {eligibility.reason}
+            <Why
+              sources={result.sources}
+              field="eligibility"
+              fieldLabel="זכאות"
+            />
+          </span>
         )}
       </p>
 
@@ -233,7 +286,17 @@ export function ComparisonCard({
           {/* Delta first (dominant) */}
           <div className="mt-5">
             {result.delta != null ? (
-              <DeltaHero delta={result.delta} estimated={estimated} />
+              <div className="relative">
+                <DeltaHero delta={result.delta} estimated={estimated} />
+                <div className="absolute top-3 end-3">
+                  <Why
+                    sources={result.sources}
+                    field="delta"
+                    fieldValue={result.delta}
+                    fieldLabel="הפרש נטו"
+                  />
+                </div>
+              </div>
             ) : (
               <div className="border border-pending-border bg-pending-surface px-4 py-5">
                 <p className="text-sm font-semibold">הפרש נטו חודשי</p>
@@ -266,10 +329,22 @@ export function ComparisonCard({
             <tbody>
               <FieldRow label="עלות לחברה ותקציב הקבוצה">
                 {result.cost_to_company != null && result.group_budget != null ? (
-                  <span>
+                  <span className="inline-flex flex-wrap items-center gap-x-1">
                     <Money amount={result.cost_to_company} />
+                    <Why
+                      sources={result.sources}
+                      field="cost_to_company"
+                      fieldValue={result.cost_to_company}
+                      fieldLabel="עלות לחברה"
+                    />
                     <span className="text-muted-foreground"> מתוך תקציב </span>
                     <Money amount={result.group_budget} />
+                    <Why
+                      sources={result.sources}
+                      field="group_budget"
+                      fieldValue={result.group_budget}
+                      fieldLabel="תקציב הקבוצה"
+                    />
                   </span>
                 ) : (
                   <WaitingValue />
@@ -279,7 +354,15 @@ export function ComparisonCard({
               <FieldRow label="השתתפות העובד">
                 <span className="inline-flex flex-wrap items-center gap-2">
                   {result.participation != null ? (
-                    <Money amount={result.participation} />
+                    <span className="inline-flex items-center">
+                      <Money amount={result.participation} />
+                      <Why
+                        sources={result.sources}
+                        field="participation"
+                        fieldValue={result.participation}
+                        fieldLabel="השתתפות העובד"
+                      />
+                    </span>
                   ) : (
                     <WaitingValue />
                   )}
@@ -302,7 +385,15 @@ export function ComparisonCard({
                       →
                     </span>
                     <span className="sr-only">בחלופה </span>
-                    <Money amount={result.value_of_use} />
+                    <span className="inline-flex items-center">
+                      <Money amount={result.value_of_use} />
+                      <Why
+                        sources={result.sources}
+                        field="value_of_use"
+                        fieldValue={result.value_of_use}
+                        fieldLabel="שווי שימוש"
+                      />
+                    </span>
                   </span>
                 ) : (
                   <WaitingValue />
@@ -315,7 +406,15 @@ export function ComparisonCard({
 
               <FieldRow label="נטו משוער היום">
                 {result.net_today != null ? (
-                  <Money amount={result.net_today} />
+                  <span className="inline-flex items-center">
+                    <Money amount={result.net_today} />
+                    <Why
+                      sources={result.sources}
+                      field="net_today"
+                      fieldValue={result.net_today}
+                      fieldLabel="נטו היום"
+                    />
+                  </span>
                 ) : (
                   <WaitingValue />
                 )}
@@ -323,7 +422,15 @@ export function ComparisonCard({
 
               <FieldRow label="נטו משוער בחלופה">
                 {result.net_option != null ? (
-                  <Money amount={result.net_option} />
+                  <span className="inline-flex items-center">
+                    <Money amount={result.net_option} />
+                    <Why
+                      sources={result.sources}
+                      field="net_option"
+                      fieldValue={result.net_option}
+                      fieldLabel="נטו בחלופה"
+                    />
+                  </span>
                 ) : (
                   <WaitingValue />
                 )}
@@ -331,7 +438,15 @@ export function ComparisonCard({
 
               <FieldRow label="ההפרש" emphasize>
                 {result.delta != null ? (
-                  <DeltaInline delta={result.delta} />
+                  <span className="inline-flex items-center">
+                    <DeltaInline delta={result.delta} />
+                    <Why
+                      sources={result.sources}
+                      field="delta"
+                      fieldValue={result.delta}
+                      fieldLabel="ההפרש"
+                    />
+                  </span>
                 ) : (
                   <WaitingValue />
                 )}
@@ -439,19 +554,31 @@ function ElectricOrMaintenance({ result }: { result: OptionResult }) {
 
   if (result.electric_refund_net != null) {
     parts.push(
-      <span key="electric">
+      <span key="electric" className="inline-flex items-center">
         <bdi dir="ltr" className="tabular-nums">
           {formatDelta(result.electric_refund_net)}
         </bdi>
         {" נטו החזר חשמל"}
+        <Why
+          sources={result.sources}
+          field="electric_refund_net"
+          fieldValue={result.electric_refund_net}
+          fieldLabel="החזר חשמל"
+        />
       </span>,
     );
   }
 
   if (result.maintenance != null && result.maintenance !== 0) {
     parts.push(
-      <span key="maintenance">
+      <span key="maintenance" className="inline-flex items-center">
         אחזקת רכב <Money amount={result.maintenance} />
+        <Why
+          sources={result.sources}
+          field="maintenance"
+          fieldValue={result.maintenance}
+          fieldLabel="אחזקת רכב"
+        />
       </span>,
     );
   }
@@ -459,8 +586,14 @@ function ElectricOrMaintenance({ result }: { result: OptionResult }) {
   // Waiver / zero-maintenance explicit when DTO says maintenance is 0 and no electric.
   if (parts.length === 0 && result.maintenance === 0) {
     return (
-      <span>
+      <span className="inline-flex items-center">
         אחזקת רכב <Money amount={0} />
+        <Why
+          sources={result.sources}
+          field="maintenance"
+          fieldValue={0}
+          fieldLabel="אחזקת רכב"
+        />
       </span>
     );
   }

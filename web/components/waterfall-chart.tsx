@@ -16,12 +16,15 @@ import {
 import type { BarShapeProps } from "recharts";
 
 import { Button } from "@/components/ui/button";
+import { WhyPopover } from "@/components/why-popover";
+import { findSourceForWaterfallKey } from "@/lib/api/resolve-source-value";
 import type { components } from "@/lib/api/schema";
 import { formatDelta, formatShekel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type OptionResult = components["schemas"]["OptionResult"];
 type WaterfallStep = components["schemas"]["WaterfallStep"];
+type Source = components["schemas"]["Source"];
 
 export type WaterfallChartProps = {
   /** One OptionResult from Comparison.results — numbers come only from this DTO. */
@@ -265,6 +268,12 @@ export function WaterfallChart({ result, className, compact = false }: Waterfall
           />
           <span>הפרש </span>
           <bdi dir="ltr">{formatDelta(delta)}</bdi>
+          <WhyForField
+            sources={result.sources}
+            field="delta"
+            fieldValue={delta}
+            fieldLabel="הפרש במפל"
+          />
         </p>
       </header>
 
@@ -392,6 +401,7 @@ export function WaterfallChart({ result, className, compact = false }: Waterfall
             netToday={netToday}
             netOption={netOption}
             delta={delta}
+            sources={result.sources}
           />
         </div>
       </div>
@@ -405,12 +415,14 @@ function OrderedBreakdownTable({
   netToday,
   netOption,
   delta,
+  sources,
 }: {
   id: string;
   steps: WaterfallStep[];
   netToday: number;
   netOption: number;
   delta: number;
+  sources: Source[] | undefined;
 }) {
   return (
     <table
@@ -443,7 +455,15 @@ function OrderedBreakdownTable({
             היום
           </th>
           <td className="py-2 pe-2 tabular-nums">
-            <bdi dir="ltr">{formatShekel(netToday)}</bdi>
+            <span className="inline-flex items-center">
+              <bdi dir="ltr">{formatShekel(netToday)}</bdi>
+              <WhyForField
+                sources={sources}
+                field="net_today"
+                fieldValue={netToday}
+                fieldLabel="נטו היום"
+              />
+            </span>
           </td>
           <td className="py-2 text-muted-foreground">בסיס</td>
           <td className="py-2 ps-2 tabular-nums">
@@ -453,6 +473,7 @@ function OrderedBreakdownTable({
         {steps.map((step) => {
           const direction =
             step.delta > 0 ? "עלייה" : step.delta < 0 ? "ירידה" : "ללא שינוי";
+          const stepSource = findSourceForWaterfallKey(sources, step.key);
           return (
             <tr key={step.key} className="border-b border-border">
               <th scope="row" className="py-2 pe-2 text-start font-medium">
@@ -472,6 +493,13 @@ function OrderedBreakdownTable({
                     }
                   />
                   <bdi dir="ltr">{formatDelta(step.delta)}</bdi>
+                  {stepSource && (
+                    <WhyPopover
+                      source={stepSource}
+                      fieldValue={step.delta}
+                      fieldLabel={step.label}
+                    />
+                  )}
                 </span>
               </td>
               <td className="py-2">{direction}</td>
@@ -486,7 +514,15 @@ function OrderedBreakdownTable({
             חלופה
           </th>
           <td className="py-2 pe-2 tabular-nums">
-            <bdi dir="ltr">{formatShekel(netOption)}</bdi>
+            <span className="inline-flex items-center">
+              <bdi dir="ltr">{formatShekel(netOption)}</bdi>
+              <WhyForField
+                sources={sources}
+                field="net_option"
+                fieldValue={netOption}
+                fieldLabel="נטו בחלופה"
+              />
+            </span>
           </td>
           <td className="py-2 text-muted-foreground">סיום</td>
           <td className="py-2 ps-2 tabular-nums">
@@ -513,10 +549,40 @@ function OrderedBreakdownTable({
               <span className="font-medium text-foreground">
                 {delta > 0 ? "יותר" : delta < 0 ? "פחות" : "בלי שינוי"}
               </span>
+              <WhyForField
+                sources={sources}
+                field="delta"
+                fieldValue={delta}
+                fieldLabel="הפרש"
+              />
             </span>
           </td>
         </tr>
       </tbody>
     </table>
+  );
+}
+
+function WhyForField({
+  sources,
+  field,
+  fieldValue,
+  fieldLabel,
+}: {
+  sources: Source[] | undefined;
+  field: string;
+  fieldValue?: number | null;
+  fieldLabel: string;
+}) {
+  const source =
+    findSourceForWaterfallKey(sources, field) ??
+    sources?.find((s) => s.field === field);
+  if (!source) return null;
+  return (
+    <WhyPopover
+      source={source}
+      fieldValue={fieldValue}
+      fieldLabel={fieldLabel}
+    />
   );
 }

@@ -1,0 +1,163 @@
+"use client";
+
+import { SendHorizontal } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+
+import { MessageCardView } from "@/components/chat/message-cards";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { components } from "@/lib/api/schema";
+
+export type MessageOut = components["schemas"]["MessageOut"];
+
+type ChatPanelProps = {
+  messages: MessageOut[];
+  quickReplies: string[];
+  thinking: boolean;
+  disabled?: boolean;
+  narrow?: boolean;
+  errorMessage?: string | null;
+  onSend: (text: string) => void;
+  className?: string;
+};
+
+export function ChatPanel({
+  messages,
+  quickReplies,
+  thinking,
+  disabled = false,
+  narrow = false,
+  errorMessage,
+  onSend,
+  className,
+}: ChatPanelProps) {
+  const [draft, setDraft] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, thinking]);
+
+  function submit(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || thinking || disabled) return;
+    onSend(trimmed);
+    setDraft("");
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submit(draft);
+  }
+
+  return (
+    <section
+      aria-label="השיחה עם היועץ"
+      className={cn("flex min-h-0 flex-col border border-border bg-surface", className)}
+    >
+      <header className="flex shrink-0 items-center border-b border-border px-4 py-3">
+        <h2 className={cn("font-semibold", narrow ? "text-sm" : "text-base")}>השיחה עם היועץ</h2>
+      </header>
+
+      <div
+        ref={listRef}
+        aria-live="polite"
+        aria-relevant="additions"
+        className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4"
+      >
+        {messages.length === 0 && !thinking && (
+          <p className="text-sm text-muted-foreground">כתבו הודעה כדי להתחיל את השיחה.</p>
+        )}
+
+        {messages.map((message) => (
+          <article
+            key={message.id}
+            className={cn(
+              "flex flex-col gap-1",
+              message.role === "user" && "border-s-2 border-cobalt ps-3",
+              message.role === "system_event" && "text-sm text-muted-foreground",
+            )}
+          >
+            <p className="text-xs font-bold text-muted-foreground">
+              {roleLabel(message.role)}
+            </p>
+            <p className={cn("whitespace-pre-wrap", narrow ? "text-sm" : "text-base")}>
+              {message.text}
+            </p>
+            {message.role === "assistant" &&
+              message.cards?.map((card, index) => (
+                <MessageCardView key={`${message.id}-${card.kind}-${index}`} card={card} />
+              ))}
+          </article>
+        ))}
+
+        {thinking && (
+          <p className="text-sm font-medium text-muted-foreground" aria-busy="true">
+            חושב…
+          </p>
+        )}
+      </div>
+
+      {errorMessage && (
+        <p role="alert" className="border-t border-error-border bg-error-surface px-4 py-2 text-sm text-error">
+          {errorMessage}
+        </p>
+      )}
+
+      {quickReplies.length > 0 && !thinking && (
+        <div className="flex shrink-0 flex-wrap gap-2 border-t border-border px-4 py-3">
+          {quickReplies.map((reply) => (
+            <button
+              key={reply}
+              type="button"
+              disabled={disabled || thinking}
+              onClick={() => submit(reply)}
+              className="min-h-11 border border-border bg-surface px-3 py-2 text-sm font-semibold hover:border-primary hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+            >
+              {reply}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <form
+        onSubmit={handleSubmit}
+        className="flex shrink-0 items-stretch gap-2 border-t border-border p-3"
+      >
+        <label className="sr-only" htmlFor="chat-input">
+          כתיבת הודעה
+        </label>
+        <input
+          id="chat-input"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          disabled={disabled || thinking}
+          placeholder="כתיבת הודעה…"
+          autoComplete="off"
+          className="min-h-11 min-w-0 flex-1 border border-input bg-background px-3 text-base outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
+        />
+        <Button
+          type="submit"
+          size="icon"
+          disabled={disabled || thinking || draft.trim().length === 0}
+          aria-label="שליחת הודעה"
+        >
+          <SendHorizontal aria-hidden className="size-4 rtl:rotate-180" />
+        </Button>
+      </form>
+    </section>
+  );
+}
+
+function roleLabel(role: MessageOut["role"]): string {
+  switch (role) {
+    case "user":
+      return "את/ה";
+    case "assistant":
+      return "יועץ הרכב";
+    case "system_event":
+      return "מערכת";
+  }
+}

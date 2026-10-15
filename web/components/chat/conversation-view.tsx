@@ -5,17 +5,19 @@ import { useState } from "react";
 
 import { BottomSheet } from "@/components/chat/bottom-sheet";
 import { ChatPanel, type MessageOut } from "@/components/chat/chat-panel";
-import { PlaceholderSlot } from "@/components/chat/placeholder-slot";
 import { VehicleList } from "@/components/chat/vehicle-list";
 import { ComparisonCard } from "@/components/comparison-card";
+import { OptionsMap } from "@/components/options-map";
 import { ProfileCard } from "@/components/profile-card";
 import { Topbar } from "@/components/topbar";
 import { layoutPhaseFromStatus, stepFromStatus } from "@/lib/api/conversation-status";
+import { CompareError, useCompare } from "@/lib/api/use-compare";
 import {
   ConversationFetchError,
   useConversation,
   type ConversationState,
 } from "@/lib/api/use-conversation";
+import { OptionsFetchError, useOptions } from "@/lib/api/use-options";
 import { SendMessageError, useSendMessage } from "@/lib/api/use-send-message";
 import { cn } from "@/lib/utils";
 
@@ -26,21 +28,40 @@ type ConversationViewProps = {
 export function ConversationView({ conversationId }: ConversationViewProps) {
   const conversation = useConversation(conversationId);
   const sendMessage = useSendMessage(conversationId);
+  const compare = useCompare(conversationId);
 
   // Remount via key={id} on the page resets this state when the conversation changes.
   const [localMessages, setLocalMessages] = useState<MessageOut[]>([]);
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [userSelectedId, setUserSelectedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  /**
+   * GET /options saves a comparison and moves status to PRESENTED.
+   * Keep the Options gallery until the employee picks a card (POST /compare).
+   */
+  const [browsingOptions, setBrowsingOptions] = useState(false);
+  const [seenReady, setSeenReady] = useState(false);
 
   const data = conversation.data;
   const status = data?.status;
   const step = status ? stepFromStatus(status) : null;
   const phase = status ? layoutPhaseFromStatus(status) : "collecting";
 
+  // Adjust state during render when status becomes READY (avoids setState-in-effect).
+  if (status === "READY" && !seenReady) {
+    setSeenReady(true);
+    setBrowsingOptions(true);
+  }
+
+  const showOptionsGallery = browsingOptions || phase === "options";
+  const displayPhase = showOptionsGallery ? "options" : phase;
+
+  const optionsQuery = useOptions(conversationId, showOptionsGallery);
+
   const serverMessages = data?.messages ?? [];
   const messages = [...serverMessages, ...localMessages];
   const comparison = data?.latest_comparison ?? null;
+  const galleryComparison = optionsQuery.data ?? comparison;
   const results = comparison?.results ?? [];
   const selectedOptionId =
     userSelectedId && results.some((r) => r.option.id === userSelectedId)
@@ -73,11 +94,30 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     });
   }
 
+  function handleSelectOption(optionId: string) {
+    compare.mutate(
+      { option_ids: [optionId] },
+      {
+        onSuccess: () => {
+          setUserSelectedId(optionId);
+          setBrowsingOptions(false);
+        },
+      },
+    );
+  }
+
   const sendError =
     sendMessage.error instanceof SendMessageError
       ? sendMessage.error.message
       : sendMessage.error
         ? "שליחת ההודעה נכשלה. נסו שוב."
+        : null;
+
+  const compareError =
+    compare.error instanceof CompareError
+      ? compare.error.message
+      : compare.error
+        ? "טעינת ההשוואה נכשלה. נסו שוב."
         : null;
 
   if (conversation.isPending && !data) {
@@ -109,7 +149,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     );
   }
 
-  const sideTitle = sideSheetTitle(phase);
+  const sideTitle = sideSheetTitle(displayPhase);
   const waitingRep = data.status === "WAITING_REP";
 
   return (
@@ -123,7 +163,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
       >
         {/* Desktop phase layouts */}
         <div className="hidden min-h-0 flex-1 lg:flex lg:flex-col">
-          {phase === "collecting" && (
+          {displayPhase === "collecting" && (
             <CollectingDesktop
               conversationId={conversationId}
               profile={data.profile}
@@ -133,18 +173,25 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               thinking={sendMessage.isPending}
               errorMessage={sendError}
               onSend={handleSend}
+              onSelectOption={handleSelectOption}
             />
           )}
-          {phase === "options" && (
+          {displayPhase === "options" && (
             <OptionsDesktop
               messages={messages}
               quickReplies={quickReplies}
               thinking={sendMessage.isPending}
               errorMessage={sendError}
               onSend={handleSend}
+              onSelectOption={handleSelectOption}
+              galleryComparison={galleryComparison}
+              optionsPending={optionsQuery.isPending && !galleryComparison}
+              optionsError={optionsQuery.error}
+              selectingId={compare.isPending ? (compare.variables?.option_ids[0] ?? null) : null}
+              compareError={compareError}
             />
           )}
-          {phase === "comparison" && (
+          {displayPhase === "comparison" && (
             comparison ? (
               <ComparisonDesktop
                 messages={messages}
@@ -152,6 +199,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
                 thinking={sendMessage.isPending}
                 errorMessage={sendError}
                 onSend={handleSend}
+                onSelectOption={handleSelectOption}
                 comparison={comparison}
                 selectedOptionId={selectedOptionId}
                 onSelect={setUserSelectedId}
@@ -174,6 +222,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             thinking={sendMessage.isPending}
             errorMessage={sendError}
             onSend={handleSend}
+            onSelectOption={handleSelectOption}
             className="min-h-0 flex-1 border-0 border-b"
           />
           <div className="flex shrink-0 gap-2 border-t border-border bg-surface px-3 py-2">
@@ -188,11 +237,17 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
           </div>
           <BottomSheet open={sheetOpen} title={sideTitle} onClose={() => setSheetOpen(false)}>
             <MobileSideContent
-              phase={phase}
+              phase={displayPhase}
               data={data}
               comparison={comparison}
+              galleryComparison={galleryComparison}
+              optionsPending={optionsQuery.isPending && !galleryComparison}
+              optionsError={optionsQuery.error}
+              selectingId={compare.isPending ? (compare.variables?.option_ids[0] ?? null) : null}
+              compareError={compareError}
               selectedOptionId={selectedOptionId}
               onSelect={setUserSelectedId}
+              onSelectOption={handleSelectOption}
               waitingRep={waitingRep}
             />
           </BottomSheet>
@@ -211,6 +266,7 @@ function CollectingDesktop({
   thinking,
   errorMessage,
   onSend,
+  onSelectOption,
 }: {
   conversationId: string;
   profile: ConversationState["profile"];
@@ -220,6 +276,7 @@ function CollectingDesktop({
   thinking: boolean;
   errorMessage: string | null;
   onSend: (text: string) => void;
+  onSelectOption: (optionId: string) => void;
 }) {
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(280px,400px)] gap-0 p-4 lg:gap-4 lg:p-6">
@@ -229,6 +286,7 @@ function CollectingDesktop({
         thinking={thinking}
         errorMessage={errorMessage}
         onSend={onSend}
+        onSelectOption={onSelectOption}
         className="min-h-0"
       />
       <ProfileCard
@@ -247,12 +305,24 @@ function OptionsDesktop({
   thinking,
   errorMessage,
   onSend,
+  onSelectOption,
+  galleryComparison,
+  optionsPending,
+  optionsError,
+  selectingId,
+  compareError,
 }: {
   messages: MessageOut[];
   quickReplies: string[];
   thinking: boolean;
   errorMessage: string | null;
   onSend: (text: string) => void;
+  onSelectOption: (optionId: string) => void;
+  galleryComparison: ConversationState["latest_comparison"];
+  optionsPending: boolean;
+  optionsError: Error | null;
+  selectingId: string | null;
+  compareError: string | null;
 }) {
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)] gap-4 p-6">
@@ -262,12 +332,17 @@ function OptionsDesktop({
         thinking={thinking}
         errorMessage={errorMessage}
         onSend={onSend}
+        onSelectOption={onSelectOption}
         narrow
         className="min-h-0"
       />
-      <PlaceholderSlot
-        label="מפת אפשרויות"
-        hint="כאן תופיע גלריית החלופות (משימה B3.2)."
+      <OptionsGalleryPanel
+        galleryComparison={galleryComparison}
+        optionsPending={optionsPending}
+        optionsError={optionsError}
+        selectingId={selectingId}
+        compareError={compareError}
+        onSelectOption={onSelectOption}
         className="min-h-0"
       />
     </div>
@@ -280,6 +355,7 @@ function ComparisonDesktop({
   thinking,
   errorMessage,
   onSend,
+  onSelectOption,
   comparison,
   selectedOptionId,
   onSelect,
@@ -291,6 +367,7 @@ function ComparisonDesktop({
   thinking: boolean;
   errorMessage: string | null;
   onSend: (text: string) => void;
+  onSelectOption: (optionId: string) => void;
   comparison: NonNullable<ConversationState["latest_comparison"]>;
   selectedOptionId: string | null;
   onSelect: (id: string) => void;
@@ -332,6 +409,7 @@ function ComparisonDesktop({
         thinking={thinking}
         errorMessage={errorMessage}
         onSend={onSend}
+        onSelectOption={onSelectOption}
         narrow
         className="w-[280px] shrink-0 self-stretch"
       />
@@ -343,15 +421,27 @@ function MobileSideContent({
   phase,
   data,
   comparison,
+  galleryComparison,
+  optionsPending,
+  optionsError,
+  selectingId,
+  compareError,
   selectedOptionId,
   onSelect,
+  onSelectOption,
   waitingRep,
 }: {
   phase: ReturnType<typeof layoutPhaseFromStatus>;
   data: ConversationState;
   comparison: ConversationState["latest_comparison"];
+  galleryComparison: ConversationState["latest_comparison"];
+  optionsPending: boolean;
+  optionsError: Error | null;
+  selectingId: string | null;
+  compareError: string | null;
   selectedOptionId: string | null;
   onSelect: (id: string) => void;
+  onSelectOption: (optionId: string) => void;
   waitingRep: boolean;
 }) {
   if (phase === "collecting") {
@@ -366,19 +456,20 @@ function MobileSideContent({
 
   if (phase === "options") {
     return (
-      <PlaceholderSlot
-        label="מפת אפשרויות"
-        hint="כאן תופיע גלריית החלופות (משימה B3.2)."
+      <OptionsGalleryPanel
+        galleryComparison={galleryComparison}
+        optionsPending={optionsPending}
+        optionsError={optionsError}
+        selectingId={selectingId}
+        compareError={compareError}
+        onSelectOption={onSelectOption}
       />
     );
   }
 
   if (!comparison) {
     return (
-      <PlaceholderSlot
-        label="כרטיס השוואה"
-        hint="אין השוואה מהשרת עדיין."
-      />
+      <p className="px-1 py-6 text-sm text-muted-foreground">אין השוואה מהשרת עדיין.</p>
     );
   }
 
@@ -402,6 +493,76 @@ function MobileSideContent({
         fluid
       />
       <ComparisonCard comparison={comparison} optionId={selectedOptionId} />
+    </div>
+  );
+}
+
+function OptionsGalleryPanel({
+  galleryComparison,
+  optionsPending,
+  optionsError,
+  selectingId,
+  compareError,
+  onSelectOption,
+  className,
+}: {
+  galleryComparison: ConversationState["latest_comparison"];
+  optionsPending: boolean;
+  optionsError: Error | null;
+  selectingId: string | null;
+  compareError: string | null;
+  onSelectOption: (optionId: string) => void;
+  className?: string;
+}) {
+  if (optionsPending) {
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-center border border-border bg-surface p-8 text-sm text-muted-foreground",
+          className,
+        )}
+        aria-busy="true"
+      >
+        טוען אפשרויות…
+      </div>
+    );
+  }
+
+  if (optionsError || !galleryComparison) {
+    const message =
+      optionsError instanceof OptionsFetchError
+        ? optionsError.message
+        : optionsError
+          ? "טעינת האפשרויות נכשלה. נסו שוב."
+          : "אין אפשרויות מהשרת עדיין.";
+    return (
+      <div
+        className={cn(
+          "flex flex-col justify-center gap-2 border border-border bg-surface p-8",
+          className,
+        )}
+      >
+        <p role="alert" className="text-sm text-error">
+          {message}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("flex min-h-0 flex-col gap-2", className)}>
+      {compareError && (
+        <p role="alert" className="border border-error-border bg-error-surface px-4 py-2 text-sm text-error">
+          {compareError}
+        </p>
+      )}
+      <OptionsMap
+        results={galleryComparison.results}
+        bestOptionId={galleryComparison.best_option_id}
+        onSelect={onSelectOption}
+        selectingId={selectingId}
+        className="min-h-0 flex-1"
+      />
     </div>
   );
 }

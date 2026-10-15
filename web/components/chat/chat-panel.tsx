@@ -18,6 +18,8 @@ type ChatPanelProps = {
   narrow?: boolean;
   errorMessage?: string | null;
   onSend: (text: string) => void;
+  /** When set, options cards in messages can open a comparison. */
+  onSelectOption?: (optionId: string) => void;
   className?: string;
 };
 
@@ -29,6 +31,7 @@ export function ChatPanel({
   narrow = false,
   errorMessage,
   onSend,
+  onSelectOption,
   className,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
@@ -88,7 +91,11 @@ export function ChatPanel({
             </p>
             {message.role === "assistant" &&
               message.cards?.map((card, index) => (
-                <MessageCardView key={`${message.id}-${card.kind}-${index}`} card={card} />
+                <MessageCardView
+                  key={`${message.id}-${card.kind}-${index}`}
+                  card={card}
+                  onSelectOption={onSelectOption}
+                />
               ))}
           </article>
         ))}

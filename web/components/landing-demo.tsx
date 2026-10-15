@@ -2,7 +2,7 @@ import { FlaskConical, Zap } from "lucide-react";
 import type { CSSProperties } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { formatShekels, formatSignedShekels } from "@/lib/format";
+import { formatDelta, formatShekel } from "@/lib/format";
 import { LANDING_DEMO_SAMPLE as sample } from "@/lib/landing-demo-sample";
 
 const enterAt = (index: number) => ({ "--enter-index": index }) as CSSProperties;
@@ -28,7 +28,7 @@ export function LandingDemo() {
         <div className="bg-cobalt px-5 py-6 text-white lg:px-8 lg:py-8">
           <p className="text-sm font-semibold">השינוי בנטו החודשי</p>
           <p className="mt-1 text-5xl leading-tight font-black sm:text-6xl">
-            <bdi dir="ltr">{formatSignedShekels(sample.delta)}</bdi>
+            <bdi dir="ltr">{formatDelta(sample.delta)}</bdi>
           </p>
           <p className="mt-1 font-medium">יותר בנטו בכל חודש</p>
         </div>
@@ -37,13 +37,13 @@ export function LandingDemo() {
           <div className="border-e border-border px-5 py-4">
             <dt className="text-xs text-muted-foreground">נטו היום</dt>
             <dd className="mt-1 text-xl font-extrabold lg:text-2xl">
-              <bdi dir="ltr">{formatShekels(sample.netToday)}</bdi>
+              <bdi dir="ltr">{formatShekel(sample.netToday)}</bdi>
             </dd>
           </div>
           <div className="px-5 py-4">
             <dt className="text-xs text-muted-foreground">נטו בחלופה</dt>
             <dd className="mt-1 text-xl font-extrabold lg:text-2xl">
-              <bdi dir="ltr">{formatShekels(sample.netOption)}</bdi>
+              <bdi dir="ltr">{formatShekel(sample.netOption)}</bdi>
             </dd>
           </div>
         </dl>

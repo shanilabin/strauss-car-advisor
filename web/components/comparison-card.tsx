@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Check, Clock, Minus } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { WaterfallChart } from "@/components/waterfall-chart";
 import type { components } from "@/lib/api/schema";
 import { formatDelta, formatShekel } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -337,6 +338,10 @@ export function ComparisonCard({
               </FieldRow>
             </tbody>
           </table>
+
+          <div className="mt-5">
+            <WaterfallChart result={result} compact={compact} />
+          </div>
         </>
       )}
 

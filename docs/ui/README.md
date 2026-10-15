@@ -57,6 +57,7 @@
 | "הכי משתלם" | `Comparison.best_option_id` | ✅ |
 | כרטיסים בצ'אט | `MessageOut.cards[]`: `comparison` · `options` · `missing` · `rep_pending` | ✅ |
 | תשובות מהירות | `AgentReply.quick_replies` | ✅ |
+| מספר ילדים (מסלול משפחתי) | `Profile.children_under_23`. **שם השדה היסטורי**: גיל הסף בתווית/בשאלה נלקח מ-`/v1/config` (`specialTracks[].requires.childMaxAge`), לא נכתב בקוד | ✅ |
 | **"הצג פעולות AI" בתוך הודעה** | **`MessageOut.trace[]`** (`kind`, `name`, `data`, `at`) בכל הודעת בוט, גם אחרי רענון | ✅ **נוסף עכשיו** בעקבות המפרט |
 | תשובת נציג + תאריך תוקף | `POST /v1/rep/questions/{id}/answer` עם `value`, `effective_from` | ✅ |
 | מסך נציג בלי שכר | `RepQuestionOut.context` מכיל רק עיסוק, קבוצה, רכב נוכחי ומבוקש | ✅ |

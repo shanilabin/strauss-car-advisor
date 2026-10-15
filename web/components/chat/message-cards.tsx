@@ -1,16 +1,21 @@
-import { Clock, ListChecks } from "lucide-react";
+import { Clock } from "lucide-react";
 
 import { ComparisonCard } from "@/components/comparison-card";
-import { formatDelta } from "@/lib/format";
+import { OptionsMap } from "@/components/options-map";
 import type { components } from "@/lib/api/schema";
 
 type MessageCard = NonNullable<components["schemas"]["MessageOut"]["cards"]>[number];
+
+type MessageCardViewProps = {
+  card: MessageCard;
+  onSelectOption?: (optionId: string) => void;
+};
 
 /**
  * Registry keyed by card.kind. Unknown kinds render nothing.
  * Numbers come only from the card DTO — never parsed from bot text.
  */
-export function MessageCardView({ card }: { card: MessageCard }) {
+export function MessageCardView({ card, onSelectOption }: MessageCardViewProps) {
   switch (card.kind) {
     case "comparison":
       return (
@@ -22,7 +27,15 @@ export function MessageCardView({ card }: { card: MessageCard }) {
         />
       );
     case "options":
-      return <OptionsMessageCard card={card} />;
+      return (
+        <OptionsMap
+          results={card.comparison.results}
+          bestOptionId={card.comparison.best_option_id}
+          onSelect={onSelectOption}
+          compact
+          className="mt-3"
+        />
+      );
     case "missing":
       return <MissingMessageCard card={card} />;
     case "rep_pending":
@@ -30,37 +43,6 @@ export function MessageCardView({ card }: { card: MessageCard }) {
     default:
       return null;
   }
-}
-
-function OptionsMessageCard({ card }: { card: components["schemas"]["OptionsCard"] }) {
-  const results = card.comparison.results;
-  const eligible = results.filter((r) => r.eligibility.eligible);
-
-  return (
-    <div className="mt-3 border border-border bg-surface px-4 py-3">
-      <p className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-        <ListChecks aria-hidden className="size-3.5" />
-        אפשרויות
-      </p>
-      <ul className="mt-2 flex flex-col gap-2">
-        {eligible.slice(0, 3).map((r) => (
-          <li key={r.option.id} className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="min-w-0 font-medium">
-              <bdi>{r.option.label}</bdi>
-            </span>
-            {r.delta != null ? (
-              <span className="shrink-0 font-bold">
-                <bdi dir="ltr">{formatDelta(r.delta)}</bdi>
-              </span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      {results.length > 3 && (
-        <p className="mt-2 text-xs text-muted-foreground">ועוד {results.length - 3} חלופות במפה</p>
-      )}
-    </div>
-  );
 }
 
 function MissingMessageCard({ card }: { card: components["schemas"]["MissingCard"] }) {

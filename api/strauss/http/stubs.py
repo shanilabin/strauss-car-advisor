@@ -16,9 +16,8 @@ from typing import Any
 
 from strauss import ENGINE_VERSION
 from strauss.agent.schemas import AgentReply, ComparisonCard, OptionsCard, RepPendingCard, TraceEvent
-from strauss.config.loader import config_hash, load_bundle, load_rules, load_sample_employees
+from strauss.config.loader import config_hash, load_rules
 from strauss.config.models import CatalogCar
-from strauss.config.samples import to_profile
 from strauss.domain.models import (
     CalculationContext,
     Comparison,
@@ -34,7 +33,6 @@ from strauss.http.schemas import (
     ConversationStatus,
     MessageOut,
     MessageRole,
-    ProfilePatch,
     RepAnswer,
     RepAnswerRequest,
     RepQuestionOut,
@@ -160,37 +158,6 @@ def conversation(conversation_id: str) -> ConversationState:
         open_questions=[_rep_question(conversation_id)],
         latest_comparison=comparison,
     )
-
-
-def _sample_profile(employee_id: str) -> Profile:
-    emp = next((e for e in load_sample_employees() if e.id == employee_id), None)
-    if emp is None:
-        raise ApiError(404, "sample_employee_not_found", "העובד לדוגמה לא נמצא", {"id": employee_id})
-    return to_profile(emp, load_bundle())
-
-
-def create_conversation(sample_employee_id: str | None) -> ConversationState:
-    return ConversationState(
-        id=str(uuid.uuid4()),
-        status=ConversationStatus.COLLECTING,
-        profile=_sample_profile(sample_employee_id) if sample_employee_id else Profile(),
-    )
-
-
-def patch_profile(conversation_id: str, patch: ProfilePatch) -> ConversationState:
-    state = conversation(conversation_id)
-    if patch.expected_revision is not None and patch.expected_revision != state.profile.revision:
-        raise ApiError(
-            409,
-            "stale_revision",
-            "הפרופיל השתנה בינתיים. טענו מחדש ונסו שוב",
-            {"expected": patch.expected_revision, "actual": state.profile.revision},
-        )
-    changes = patch.model_dump(exclude_unset=True, exclude_none=True, exclude={"expected_revision"})
-    updated = state.profile.model_copy(
-        update={**{k: getattr(patch, k) for k in changes}, "revision": state.profile.revision + 1}
-    )
-    return state.model_copy(update={"profile": updated})
 
 
 def agent_turn(conversation_id: str, text: str) -> tuple[AgentReply, list[TraceEvent], ConversationState]:

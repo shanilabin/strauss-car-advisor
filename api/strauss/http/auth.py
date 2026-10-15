@@ -1,28 +1,39 @@
-"""Authentication dependency.
+"""Authentication: every protected endpoint gets the verified Supabase user, or the request is refused (401).
 
-Contract stage (A2.1): the bearer scheme is declared so the OpenAPI contract and the generated client
-already send the Supabase JWT, but the token is not verified yet. Task A3.4 verifies it (signature,
-expiry), resolves the user and role, and enforces conversation ownership on every endpoint.
+The browser sends its Supabase access token (anonymous sign-in for employees, email/password for reps).
+The token is verified by Supabase Auth (see adapters/supabase_auth.py); ownership of a conversation is
+checked by the service layer on every call.
 """
 
-from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from strauss.errors import ApiError
+from strauss.http.deps import AuthVerifierDep
+from strauss.ports.repositories import AuthUser
+
 bearer = HTTPBearer(auto_error=False, description="Supabase access token (anonymous or rep)")
 
 
-@dataclass(frozen=True)
-class Caller:
-    token: str | None
-
-
-def current_caller(
+def current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
-) -> Caller:
-    return Caller(token=credentials.credentials if credentials else None)
+    verifier: AuthVerifierDep,
+) -> AuthUser:
+    if credentials is None:
+        raise ApiError(401, "not_authenticated", "נדרשת התחברות")
+    user = verifier.verify(credentials.credentials)
+    if user is None:
+        raise ApiError(401, "invalid_token", "פג תוקף ההתחברות. רעננו את הדף")
+    return user
 
 
-CallerDep = Annotated[Caller, Depends(current_caller)]
+def current_rep(user: Annotated[AuthUser, Depends(current_user)]) -> AuthUser:
+    if user.role != "rep":
+        raise ApiError(403, "rep_only", "המסך הזה מיועד לנציגי התחבורה בלבד")
+    return user
+
+
+UserDep = Annotated[AuthUser, Depends(current_user)]
+RepDep = Annotated[AuthUser, Depends(current_rep)]

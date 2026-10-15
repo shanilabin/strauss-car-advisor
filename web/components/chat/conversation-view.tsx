@@ -7,6 +7,7 @@ import { BottomSheet } from "@/components/chat/bottom-sheet";
 import { ChatPanel, type MessageOut } from "@/components/chat/chat-panel";
 import { PlaceholderSlot } from "@/components/chat/placeholder-slot";
 import { VehicleList } from "@/components/chat/vehicle-list";
+import { ProfileCard } from "@/components/profile-card";
 import { Topbar } from "@/components/topbar";
 import { layoutPhaseFromStatus, stepFromStatus } from "@/lib/api/conversation-status";
 import {
@@ -123,6 +124,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
         <div className="hidden min-h-0 flex-1 lg:flex lg:flex-col">
           {phase === "collecting" && (
             <CollectingDesktop
+              conversationId={conversationId}
+              profile={data.profile}
+              missing={data.missing}
               messages={messages}
               quickReplies={quickReplies}
               thinking={sendMessage.isPending}
@@ -192,12 +196,18 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
 }
 
 function CollectingDesktop({
+  conversationId,
+  profile,
+  missing,
   messages,
   quickReplies,
   thinking,
   errorMessage,
   onSend,
 }: {
+  conversationId: string;
+  profile: ConversationState["profile"];
+  missing: ConversationState["missing"];
   messages: MessageOut[];
   quickReplies: string[];
   thinking: boolean;
@@ -214,9 +224,10 @@ function CollectingDesktop({
         onSend={onSend}
         className="min-h-0"
       />
-      <PlaceholderSlot
-        label="פרופיל עובד"
-        hint="כאן יופיע כרטיס הפרופיל (משימה B2.3)."
+      <ProfileCard
+        conversationId={conversationId}
+        profile={profile}
+        missing={missing}
         className="min-h-0"
       />
     </div>
@@ -339,9 +350,10 @@ function MobileSideContent({
 }) {
   if (phase === "collecting") {
     return (
-      <PlaceholderSlot
-        label="פרופיל עובד"
-        hint="כאן יופיע כרטיס הפרופיל (משימה B2.3)."
+      <ProfileCard
+        conversationId={data.id}
+        profile={data.profile}
+        missing={data.missing}
       />
     );
   }

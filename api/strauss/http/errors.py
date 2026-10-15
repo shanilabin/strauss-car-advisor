@@ -1,5 +1,6 @@
 """One error shape for every failure: {"error": {"code", "message_he", "details"}}."""
 
+import logging
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -7,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from strauss.adapters.supabase_rest import SupabaseError
 from strauss.http.schemas import ErrorBody, ErrorResponse
 
 
@@ -38,6 +40,15 @@ async def _validation_error(_: Request, exc: Exception) -> JSONResponse:
     return _respond(422, "invalid_input", "חלק מהנתונים שנשלחו לא תקינים", {"fields": fields})
 
 
+logger = logging.getLogger("strauss.http")
+
+
+async def _data_unavailable(request: Request, exc: Exception) -> JSONResponse:
+    # The detail goes to the server log (Vercel function logs); the client gets a stable message.
+    logger.error("data service failure on %s %s: %s", request.method, request.url.path, exc)
+    return _respond(503, "data_unavailable", "שירות הנתונים לא זמין כרגע. נסו שוב בעוד רגע")
+
+
 _HTTP_MESSAGES = {404: "לא נמצא", 405: "פעולה לא נתמכת", 401: "נדרשת התחברות", 403: "אין הרשאה"}
 
 
@@ -51,6 +62,7 @@ def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ApiError, _api_error)
     app.add_exception_handler(RequestValidationError, _validation_error)
     app.add_exception_handler(StarletteHTTPException, _http_error)
+    app.add_exception_handler(SupabaseError, _data_unavailable)
 
 
 # Documented on every route so the generated client knows the error shape
@@ -61,5 +73,6 @@ ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
         404: "Not found",
         409: "Conflict (stale revision, already answered)",
         422: "Invalid input",
+        503: "Data service unavailable",
     }.items()
 }

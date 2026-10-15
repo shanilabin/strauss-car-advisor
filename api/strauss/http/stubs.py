@@ -67,7 +67,7 @@ def calculation_context() -> CalculationContext:
     )
 
 
-# ── Vehicles (real catalog data, no Tax Authority DB yet) ────────────────────
+# ── Vehicles (catalog cars for sample profiles) ──────────────────────────────
 
 
 def catalog_vehicle(car: CatalogCar) -> Vehicle:
@@ -86,23 +86,6 @@ def catalog_vehicle(car: CatalogCar) -> Vehicle:
         list_price=car.list_price,
         value_of_use=car.value_of_use,
     )
-
-
-def search_vehicles(query: str, reg_year: int | None) -> list[Vehicle]:
-    needle = query.strip().casefold()
-    return [
-        catalog_vehicle(car)
-        for car in load_catalog()
-        if needle in car.commercial_name.casefold() and (reg_year is None or car.reg_year == reg_year)
-    ][:5]
-
-
-def value_of_use(key: VehicleKey) -> Vehicle:
-    for car in load_catalog():
-        vehicle = catalog_vehicle(car)
-        if vehicle.key == key:
-            return vehicle
-    raise ApiError(404, "vehicle_not_found", "הרכב לא נמצא במאגר שווי השימוש לפי המפתח שנמסר")
 
 
 # ── Comparisons ──────────────────────────────────────────────────────────────

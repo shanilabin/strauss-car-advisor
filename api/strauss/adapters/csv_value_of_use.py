@@ -21,3 +21,18 @@ class CsvValueOfUseRepo:
 
     def get(self, key: VehicleKey) -> Vehicle | None:
         return self._vehicles.get(key)
+
+    def search(self, query: str, tax_year: int, reg_year: int | None, limit: int) -> list[Vehicle]:
+        """Same contract as the Supabase repo: case-insensitive 'contains' on commercial or maker name."""
+        needle = " ".join(query.split()).casefold()
+        if len(needle) < 2:
+            return []
+        matches = [
+            v
+            for v in self._vehicles.values()
+            if v.key.tax_year == tax_year
+            and (reg_year is None or v.key.reg_year == reg_year)
+            and (needle in v.commercial_name.casefold() or needle in v.maker_name.casefold())
+        ]
+        matches.sort(key=lambda v: (v.commercial_name, -v.key.reg_year))
+        return matches[:limit]

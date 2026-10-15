@@ -1,6 +1,7 @@
 "use client";
 
 import { PanelRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { BottomSheet } from "@/components/chat/bottom-sheet";
@@ -11,6 +12,7 @@ import { OptionsMap } from "@/components/options-map";
 import { ProfileCard } from "@/components/profile-card";
 import { Topbar } from "@/components/topbar";
 import { layoutPhaseFromStatus, stepFromStatus } from "@/lib/api/conversation-status";
+import { isFormModeFallback } from "@/lib/api/form-mode";
 import { CompareError, useCompare } from "@/lib/api/use-compare";
 import {
   ConversationFetchError,
@@ -26,6 +28,7 @@ type ConversationViewProps = {
 };
 
 export function ConversationView({ conversationId }: ConversationViewProps) {
+  const router = useRouter();
   const conversation = useConversation(conversationId);
   const sendMessage = useSendMessage(conversationId);
   const compare = useCompare(conversationId);
@@ -90,6 +93,11 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
           },
         ]);
         setQuickReplies(turn.reply.quick_replies ?? []);
+      },
+      onError: (error) => {
+        if (isFormModeFallback(error)) {
+          router.push("/form");
+        }
       },
     });
   }

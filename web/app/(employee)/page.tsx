@@ -34,7 +34,7 @@ export default function Home() {
               בואו נתחיל
               <ArrowLeft aria-hidden data-icon="inline-end" />
             </Link>
-            <Link href="/c/new" className={buttonVariants({ size: "lg", variant: "outline" })}>
+            <Link href="/form" className={buttonVariants({ size: "lg", variant: "outline" })}>
               <Users aria-hidden data-icon="inline-start" />
               נסו עם עובד לדוגמה
             </Link>

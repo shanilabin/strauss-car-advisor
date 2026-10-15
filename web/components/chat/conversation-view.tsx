@@ -106,6 +106,10 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     );
   }
 
+  function handleChangeCar() {
+    setBrowsingOptions(true);
+  }
+
   const sendError =
     sendMessage.error instanceof SendMessageError
       ? sendMessage.error.message
@@ -188,6 +192,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               optionsPending={optionsQuery.isPending && !galleryComparison}
               optionsError={optionsQuery.error}
               selectingId={compare.isPending ? (compare.variables?.option_ids[0] ?? null) : null}
+              selectedId={userSelectedId}
               compareError={compareError}
             />
           )}
@@ -203,6 +208,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
                 comparison={comparison}
                 selectedOptionId={selectedOptionId}
                 onSelect={setUserSelectedId}
+                onChangeCar={handleChangeCar}
                 waitingRep={waitingRep}
                 openQuestions={data.open_questions ?? []}
               />
@@ -246,8 +252,10 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               selectingId={compare.isPending ? (compare.variables?.option_ids[0] ?? null) : null}
               compareError={compareError}
               selectedOptionId={selectedOptionId}
+              previousSelectedId={userSelectedId}
               onSelect={setUserSelectedId}
               onSelectOption={handleSelectOption}
+              onChangeCar={handleChangeCar}
               waitingRep={waitingRep}
             />
           </BottomSheet>
@@ -310,6 +318,7 @@ function OptionsDesktop({
   optionsPending,
   optionsError,
   selectingId,
+  selectedId,
   compareError,
 }: {
   messages: MessageOut[];
@@ -322,6 +331,7 @@ function OptionsDesktop({
   optionsPending: boolean;
   optionsError: Error | null;
   selectingId: string | null;
+  selectedId: string | null;
   compareError: string | null;
 }) {
   return (
@@ -341,6 +351,7 @@ function OptionsDesktop({
         optionsPending={optionsPending}
         optionsError={optionsError}
         selectingId={selectingId}
+        selectedId={selectedId}
         compareError={compareError}
         onSelectOption={onSelectOption}
         className="min-h-0"
@@ -359,6 +370,7 @@ function ComparisonDesktop({
   comparison,
   selectedOptionId,
   onSelect,
+  onChangeCar,
   waitingRep,
   openQuestions,
 }: {
@@ -371,6 +383,7 @@ function ComparisonDesktop({
   comparison: NonNullable<ConversationState["latest_comparison"]>;
   selectedOptionId: string | null;
   onSelect: (id: string) => void;
+  onChangeCar: () => void;
   waitingRep: boolean;
   openQuestions: NonNullable<ConversationState["open_questions"]>;
 }) {
@@ -400,6 +413,7 @@ function ComparisonDesktop({
         <ComparisonCard
           comparison={comparison}
           optionId={selectedOptionId}
+          onChangeCar={onChangeCar}
           className="min-h-0 flex-1"
         />
       </div>
@@ -427,8 +441,10 @@ function MobileSideContent({
   selectingId,
   compareError,
   selectedOptionId,
+  previousSelectedId,
   onSelect,
   onSelectOption,
+  onChangeCar,
   waitingRep,
 }: {
   phase: ReturnType<typeof layoutPhaseFromStatus>;
@@ -440,8 +456,10 @@ function MobileSideContent({
   selectingId: string | null;
   compareError: string | null;
   selectedOptionId: string | null;
+  previousSelectedId: string | null;
   onSelect: (id: string) => void;
   onSelectOption: (optionId: string) => void;
+  onChangeCar: () => void;
   waitingRep: boolean;
 }) {
   if (phase === "collecting") {
@@ -461,6 +479,7 @@ function MobileSideContent({
         optionsPending={optionsPending}
         optionsError={optionsError}
         selectingId={selectingId}
+        selectedId={previousSelectedId}
         compareError={compareError}
         onSelectOption={onSelectOption}
       />
@@ -492,7 +511,11 @@ function MobileSideContent({
         onSelect={onSelect}
         fluid
       />
-      <ComparisonCard comparison={comparison} optionId={selectedOptionId} />
+      <ComparisonCard
+        comparison={comparison}
+        optionId={selectedOptionId}
+        onChangeCar={onChangeCar}
+      />
     </div>
   );
 }
@@ -502,6 +525,7 @@ function OptionsGalleryPanel({
   optionsPending,
   optionsError,
   selectingId,
+  selectedId = null,
   compareError,
   onSelectOption,
   className,
@@ -510,6 +534,7 @@ function OptionsGalleryPanel({
   optionsPending: boolean;
   optionsError: Error | null;
   selectingId: string | null;
+  selectedId?: string | null;
   compareError: string | null;
   onSelectOption: (optionId: string) => void;
   className?: string;
@@ -551,6 +576,16 @@ function OptionsGalleryPanel({
 
   return (
     <div className={cn("flex min-h-0 flex-col gap-2", className)}>
+      {selectedId && (
+        <p className="text-sm text-muted-foreground" role="status">
+          בחרו רכב אחר להשוואה מחדש. הבחירה הקודמת נשמרת עד שתבחרו.
+        </p>
+      )}
+      {selectingId && (
+        <p className="border border-border bg-surface-raised px-4 py-2 text-sm text-muted-foreground" aria-live="polite">
+          מחשבים השוואה…
+        </p>
+      )}
       {compareError && (
         <p role="alert" className="border border-error-border bg-error-surface px-4 py-2 text-sm text-error">
           {compareError}
@@ -560,6 +595,7 @@ function OptionsGalleryPanel({
         results={galleryComparison.results}
         bestOptionId={galleryComparison.best_option_id}
         onSelect={onSelectOption}
+        selectedId={selectedId}
         selectingId={selectingId}
         className="min-h-0 flex-1"
       />

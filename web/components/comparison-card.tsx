@@ -1,7 +1,8 @@
-import { ArrowDown, ArrowUp, Check, Clock, Minus } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Clock, Minus, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { WaterfallChart } from "@/components/waterfall-chart";
 import { WhyPopover } from "@/components/why-popover";
 import { findSourceByField } from "@/lib/api/resolve-source-value";
@@ -22,6 +23,8 @@ export type ComparisonCardProps = {
   className?: string;
   /** Tighter padding for embedding inside a chat message bubble. */
   compact?: boolean;
+  /** Return to the options gallery to pick another car and re-run compare. */
+  onChangeCar?: () => void;
 };
 
 function pickResult(comparison: Comparison, optionId?: string | null): OptionResult | null {
@@ -149,6 +152,7 @@ export function ComparisonCard({
   optionId,
   className,
   compact = false,
+  onChangeCar,
 }: ComparisonCardProps) {
   const result = pickResult(comparison, optionId);
 
@@ -214,6 +218,18 @@ export function ComparisonCard({
           )}
           {estimated && eligible && (
             <Badge variant="outline">משוערת</Badge>
+          )}
+          {onChangeCar && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onChangeCar}
+              aria-label="החלף רכב — חזרה לגלריית האפשרויות"
+            >
+              <RefreshCw aria-hidden data-icon="inline-start" />
+              החלף רכב
+            </Button>
           )}
         </div>
       </header>

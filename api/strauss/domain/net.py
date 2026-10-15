@@ -22,8 +22,9 @@ HUNDRED = Decimal(100)
 class Scenario:
     """What changes between today and an alternative. Salary and deductions stay the same.
 
-    A scenario is either a car (value of use, participation, track share, electric refund) or a waiver
-    (maintenance) - never both.
+    A real scenario (today, or an option) is either a car (value of use, participation, track share,
+    electric refund) or a waiver (maintenance) - never both; ensure_real() checks that. The waterfall's
+    intermediate steps change one factor at a time, so they are allowed to mix.
     """
 
     value_of_use: Decimal = ZERO
@@ -42,9 +43,12 @@ class Scenario:
         )
         if any(amount < ZERO for amount in amounts):
             raise ValueError("סכומי תרחיש לא יכולים להיות שליליים")
+
+    def ensure_real(self) -> "Scenario":
         car_parts = (self.value_of_use, self.participation, self.track_employee_share, self.electric_gross_up)
         if self.maintenance > ZERO and any(part > ZERO for part in car_parts):
             raise ValueError("תרחיש לא יכול לכלול גם רכב וגם אחזקת רכב")
+        return self
 
 
 def _components(salary: SalaryInput, names: list[SalaryComponent]) -> Decimal:

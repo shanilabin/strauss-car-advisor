@@ -1153,6 +1153,14 @@
             ],
             "title": "Children Under 23"
           },
+          "confirmed_participation": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Participation the transport rep confirmed, per catalog car id (overrides the default)",
+            "title": "Confirmed Participation",
+            "type": "object"
+          },
           "current": {
             "anyOf": [
               {
@@ -1247,6 +1255,14 @@
               }
             ],
             "title": "Children Under 23"
+          },
+          "confirmed_participation": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "Participation the transport rep confirmed, per catalog car id (overrides the default)",
+            "title": "Confirmed Participation",
+            "type": "object"
           },
           "current": {
             "anyOf": [
@@ -1977,7 +1993,7 @@
     },
     "/v1/compare": {
       "post": {
-        "description": "Stateless comparison for a full profile - used by form mode and tests. Nothing is stored.",
+        "description": "Stateless comparison for a full profile - the real engine; used by form mode and tests. Nothing is\nstored. An incomplete profile returns 422 'incomplete_profile' with the questions to ask.\n\nThe client's profile is not trusted for facts it can't know: today's car is re-read from the Tax\nAuthority data by its key, and rep confirmations are ignored (only the rep flow can set them).",
         "operationId": "compare_compare_stateless",
         "requestBody": {
           "content": {

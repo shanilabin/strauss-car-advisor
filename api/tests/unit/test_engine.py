@@ -205,6 +205,6 @@ def test_a_preset_refund_is_not_stacked() -> None:
 
 def test_a_scenario_cannot_mix_car_and_waiver() -> None:
     with pytest.raises(ValueError, match="גם רכב וגם אחזקת רכב"):
-        Scenario(value_of_use=D(4070), maintenance=D(2000))
+        Scenario(value_of_use=D(4070), maintenance=D(2000)).ensure_real()
     with pytest.raises(ValueError, match="שליליים"):
         Scenario(participation=D(-1))

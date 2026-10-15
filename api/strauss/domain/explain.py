@@ -39,3 +39,45 @@ def shekels(amount: Decimal) -> str:
 
 def reason(code: str, **params: str | int | float) -> str:
     return REASONS[code].format(**params)
+
+
+# ── Comparison: two plain lines per option ───────────────────────────────────
+
+MINUS = "−"  # a real minus sign, so "-1,938" never reads as a hyphen
+
+
+def signed_shekels(amount: Decimal) -> str:
+    whole = int(amount.to_integral_value())
+    if whole > 0:
+        return f"+{whole:,}"
+    if whole < 0:
+        return f"{MINUS}{abs(whole):,}"
+    return "0"
+
+
+def value_of_use_line(today: Decimal, option: Decimal) -> str:
+    """Line 1: the tax driver - what happens to the value of use added to taxable income."""
+    if today > 0 and option == 0:
+        return f"בלי רכב לא נוסף לשכר שלך שווי שימוש של {shekels(today)} ₪, ולכן המס יורד."
+    if today == 0 and option > 0:
+        return f"לרכב נוסף לשכר החייב במס שווי שימוש של {shekels(option)} ₪, ולכן המס עולה."
+    if option < today:
+        return f"שווי השימוש יורד מ-{shekels(today)} ל-{shekels(option)} ₪ בחודש, ולכן המס שלך יורד."
+    if option > today:
+        return f"שווי השימוש עולה מ-{shekels(today)} ל-{shekels(option)} ₪ בחודש, ולכן המס שלך עולה."
+    return f"שווי השימוש לא משתנה ({shekels(today)} ₪ בחודש)."
+
+
+def other_factors_line(parts: list[str], delta: Decimal) -> str:
+    """Line 2: everything else that moves net pay, then the total."""
+    total = f"ביחד: {signed_shekels(delta)} ₪ בחודש."
+    return f"בנוסף {', '.join(parts)}. {total}" if parts else total
+
+
+def participation_change(today: Decimal, option: Decimal) -> str | None:
+    if option == today:
+        return None
+    if option == 0:
+        return f"לא משלמים השתתפות ({shekels(today)} ₪ היום)"
+    direction = "עולה" if option > today else "יורדת"
+    return f"ההשתתפות {direction} מ-{shekels(today)} ל-{shekels(option)} ₪"

@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from strauss.adapters.supabase_rest import SupabaseError
+from strauss.domain.compare import IncompleteProfile, UnknownOption
 from strauss.http.schemas import ErrorBody, ErrorResponse
 
 
@@ -49,6 +50,16 @@ async def _data_unavailable(request: Request, exc: Exception) -> JSONResponse:
     return _respond(503, "data_unavailable", "שירות הנתונים לא זמין כרגע. נסו שוב בעוד רגע")
 
 
+async def _incomplete_profile(_: Request, exc: Exception) -> JSONResponse:
+    assert isinstance(exc, IncompleteProfile)
+    missing = [m.model_dump(mode="json") for m in exc.missing]
+    return _respond(422, "incomplete_profile", "חסרים פרטים כדי לחשב את ההשוואה", {"missing": missing})
+
+
+async def _unknown_option(_: Request, exc: Exception) -> JSONResponse:
+    return _respond(404, "option_not_found", "חלק מהחלופות שנבחרו לא קיימות", {"option_ids": str(exc)})
+
+
 _HTTP_MESSAGES = {404: "לא נמצא", 405: "פעולה לא נתמכת", 401: "נדרשת התחברות", 403: "אין הרשאה"}
 
 
@@ -63,6 +74,8 @@ def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, _validation_error)
     app.add_exception_handler(StarletteHTTPException, _http_error)
     app.add_exception_handler(SupabaseError, _data_unavailable)
+    app.add_exception_handler(IncompleteProfile, _incomplete_profile)
+    app.add_exception_handler(UnknownOption, _unknown_option)
 
 
 # Documented on every route so the generated client knows the error shape

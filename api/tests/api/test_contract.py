@@ -9,6 +9,7 @@ import re
 from collections.abc import Iterator
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -289,3 +290,45 @@ def test_data_service_failure_is_a_503_in_hebrew() -> None:
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "data_unavailable"
     assert "connection refused" not in response.text  # internals stay in the server log
+
+
+# ── Stateless compare runs the real engine ──────────────────────────────────
+
+
+def _noa_profile() -> dict[str, Any]:
+    from strauss.config.loader import load_bundle, load_sample_employees
+    from strauss.config.samples import to_profile
+
+    noa = next(e for e in load_sample_employees() if e.id == "E-001")
+    return to_profile(noa, load_bundle()).model_dump(mode="json")
+
+
+def test_stateless_compare_is_the_real_engine() -> None:
+    response = client.post("/v1/compare", json={"profile": _noa_profile(), "option_ids": ["CAR-10"]})
+    assert response.status_code == 200
+    atto = response.json()["results"][0]
+    assert (atto["net_today"], atto["net_option"], atto["delta"]) == (11032, 11693, 661)
+
+
+def test_stateless_compare_with_missing_data_says_what_to_ask() -> None:
+    response = client.post("/v1/compare", json={"profile": {"occupation": "מנהל/ת מוצר"}})
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "incomplete_profile"
+    assert [m["field"] for m in error["details"]["missing"]] == ["salary.base", "deductions", "current"]
+
+
+def test_stateless_compare_unknown_option_is_404() -> None:
+    response = client.post("/v1/compare", json={"profile": _noa_profile(), "option_ids": ["CAR-99"]})
+    assert response.status_code == 404
+
+
+def test_stateless_compare_rereads_todays_car_and_ignores_client_confirmations() -> None:
+    tampered = _noa_profile()
+    tampered["current"]["vehicle"]["value_of_use"] = 1  # client claims a tiny value of use
+    tampered["confirmed_participation"] = {"CAR-10": 0}  # and a rep confirmation it can't have
+    body = client.post("/v1/compare", json={"profile": tampered, "option_ids": ["CAR-10"]}).json()
+    atto = body["results"][0]
+    assert body["today"]["value_of_use"] == 4070  # official Tax Authority value
+    assert atto["net_today"] == 11032
+    assert atto["participation_status"] == "DEFAULT_PENDING" and atto["participation"] == 300

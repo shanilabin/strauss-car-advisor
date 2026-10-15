@@ -16,19 +16,17 @@ from typing import Any
 
 from strauss import ENGINE_VERSION
 from strauss.agent.schemas import AgentReply, ComparisonCard, OptionsCard, RepPendingCard, TraceEvent
-from strauss.config.loader import config_hash, load_catalog, load_rules, load_sample_employees
-from strauss.config.models import CatalogCar, SampleCurrentCar
+from strauss.config.loader import config_hash, load_bundle, load_rules, load_sample_employees
+from strauss.config.models import CatalogCar
+from strauss.config.samples import to_profile
 from strauss.domain.models import (
     CalculationContext,
-    CarArrangement,
     Comparison,
     NetBreakdown,
     OptionResult,
-    ParticipationStatus,
     Profile,
     Vehicle,
     VehicleKey,
-    WaiverArrangement,
 )
 from strauss.http.errors import ApiError
 from strauss.http.schemas import (
@@ -168,25 +166,7 @@ def _sample_profile(employee_id: str) -> Profile:
     emp = next((e for e in load_sample_employees() if e.id == employee_id), None)
     if emp is None:
         raise ApiError(404, "sample_employee_not_found", "העובד לדוגמה לא נמצא", {"id": employee_id})
-    current: CarArrangement | WaiverArrangement
-    if isinstance(emp.current, SampleCurrentCar):
-        car = next(c for c in load_catalog() if c.id == emp.current.catalog_id)
-        current = CarArrangement(
-            vehicle=catalog_vehicle(car),
-            catalog_id=car.id,
-            participation=emp.current.participation,
-            participation_status=ParticipationStatus.CONFIRMED,
-        )
-    else:
-        current = WaiverArrangement(maintenance=emp.current.maintenance)
-    return Profile(
-        occupation=emp.occupation,
-        group=emp.group,
-        salary=emp.salary,
-        deductions=emp.deductions.to_domain(),
-        children_under_23=emp.children_under_23,
-        current=current,
-    )
+    return to_profile(emp, load_bundle())
 
 
 def create_conversation(sample_employee_id: str | None) -> ConversationState:

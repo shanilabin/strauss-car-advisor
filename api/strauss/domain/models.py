@@ -94,6 +94,10 @@ class Profile(DomainModel):
     deductions: Deductions | None = None
     children_under_23: int | None = Field(default=None, ge=0, le=30)
     current: Arrangement | None = None
+    confirmed_participation: dict[str, Money] = Field(
+        default_factory=dict,
+        description="Participation the transport rep confirmed, per catalog car id (overrides the default)",
+    )
 
 
 # ── Options and results ──────────────────────────────────────────────────────

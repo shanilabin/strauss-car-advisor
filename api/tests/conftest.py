@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 from collections.abc import Callable
 from functools import lru_cache
@@ -6,11 +7,18 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from hypothesis import HealthCheck, settings
 
 from strauss.adapters.csv_value_of_use import CsvValueOfUseRepo
 from strauss.config.loader import CONFIG_DIR, load_rules
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Property tests: deterministic in CI (same examples every run), exploring locally. No deadline - a
+# gross-up bisection is fast but not "200 ms on a cold CI runner" fast.
+settings.register_profile("ci", derandomize=True, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+settings.register_profile("dev", deadline=None, suppress_health_check=[HealthCheck.too_slow])
+settings.load_profile("ci" if os.environ.get("CI") else "dev")
 TAX_AUTHORITY_CSV = REPO_ROOT / "data" / "source" / "value-of-use-2026.csv"
 
 

@@ -7,6 +7,7 @@ import { BottomSheet } from "@/components/chat/bottom-sheet";
 import { ChatPanel, type MessageOut } from "@/components/chat/chat-panel";
 import { PlaceholderSlot } from "@/components/chat/placeholder-slot";
 import { VehicleList } from "@/components/chat/vehicle-list";
+import { ComparisonCard } from "@/components/comparison-card";
 import { ProfileCard } from "@/components/profile-card";
 import { Topbar } from "@/components/topbar";
 import { layoutPhaseFromStatus, stepFromStatus } from "@/lib/api/conversation-status";
@@ -144,18 +145,24 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             />
           )}
           {phase === "comparison" && (
-            <ComparisonDesktop
-              messages={messages}
-              quickReplies={quickReplies}
-              thinking={sendMessage.isPending}
-              errorMessage={sendError}
-              onSend={handleSend}
-              results={results}
-              selectedOptionId={selectedOptionId}
-              onSelect={setUserSelectedId}
-              waitingRep={waitingRep}
-              openQuestions={data.open_questions ?? []}
-            />
+            comparison ? (
+              <ComparisonDesktop
+                messages={messages}
+                quickReplies={quickReplies}
+                thinking={sendMessage.isPending}
+                errorMessage={sendError}
+                onSend={handleSend}
+                comparison={comparison}
+                selectedOptionId={selectedOptionId}
+                onSelect={setUserSelectedId}
+                waitingRep={waitingRep}
+                openQuestions={data.open_questions ?? []}
+              />
+            ) : (
+              <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
+                אין השוואה מהשרת עדיין.
+              </div>
+            )
           )}
         </div>
 
@@ -183,7 +190,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             <MobileSideContent
               phase={phase}
               data={data}
-              results={results}
+              comparison={comparison}
               selectedOptionId={selectedOptionId}
               onSelect={setUserSelectedId}
               waitingRep={waitingRep}
@@ -273,7 +280,7 @@ function ComparisonDesktop({
   thinking,
   errorMessage,
   onSend,
-  results,
+  comparison,
   selectedOptionId,
   onSelect,
   waitingRep,
@@ -284,7 +291,7 @@ function ComparisonDesktop({
   thinking: boolean;
   errorMessage: string | null;
   onSend: (text: string) => void;
-  results: NonNullable<ConversationState["latest_comparison"]>["results"];
+  comparison: NonNullable<ConversationState["latest_comparison"]>;
   selectedOptionId: string | null;
   onSelect: (id: string) => void;
   waitingRep: boolean;
@@ -293,11 +300,10 @@ function ComparisonDesktop({
   return (
     <div className="flex min-h-0 flex-1 gap-4 p-6">
       {/* RTL: visual order is chat (end/left) · comparison · vehicles (start/right).
-          In DOM we place chat first so logical start in RTL is the right-side vehicles last…
           Spec: vehicles on the right, comparison center, chat on the left.
           In RTL flex row: first item is on the right. So order: vehicles, comparison, chat. */}
       <VehicleList
-        results={results}
+        results={comparison.results}
         selectedId={selectedOptionId}
         onSelect={onSelect}
         className="shrink-0 self-stretch"
@@ -314,10 +320,10 @@ function ComparisonDesktop({
             )}
           </div>
         )}
-        <PlaceholderSlot
-          label="כרטיס השוואה"
-          hint="כאן תופיע ההשוואה המלאה (משימה B3.1)."
-          className="min-h-64 flex-1"
+        <ComparisonCard
+          comparison={comparison}
+          optionId={selectedOptionId}
+          className="min-h-0 flex-1"
         />
       </div>
       <ChatPanel
@@ -336,14 +342,14 @@ function ComparisonDesktop({
 function MobileSideContent({
   phase,
   data,
-  results,
+  comparison,
   selectedOptionId,
   onSelect,
   waitingRep,
 }: {
   phase: ReturnType<typeof layoutPhaseFromStatus>;
   data: ConversationState;
-  results: NonNullable<ConversationState["latest_comparison"]>["results"];
+  comparison: ConversationState["latest_comparison"];
   selectedOptionId: string | null;
   onSelect: (id: string) => void;
   waitingRep: boolean;
@@ -367,6 +373,15 @@ function MobileSideContent({
     );
   }
 
+  if (!comparison) {
+    return (
+      <PlaceholderSlot
+        label="כרטיס השוואה"
+        hint="אין השוואה מהשרת עדיין."
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4 pb-4">
       {waitingRep && (
@@ -381,15 +396,12 @@ function MobileSideContent({
         </div>
       )}
       <VehicleList
-        results={results}
+        results={comparison.results}
         selectedId={selectedOptionId}
         onSelect={onSelect}
         fluid
       />
-      <PlaceholderSlot
-        label="כרטיס השוואה"
-        hint="כאן תופיע ההשוואה המלאה (משימה B3.1)."
-      />
+      <ComparisonCard comparison={comparison} optionId={selectedOptionId} />
     </div>
   );
 }

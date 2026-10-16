@@ -45,6 +45,23 @@ def stale_revision(expected: int, actual: int) -> ApiError:
     )
 
 
+def question_out(row: dict[str, Any]) -> RepQuestionOut:
+    """A rep_questions row as the API shows it (the answer's time is the row's resolved_at)."""
+    answer = row.get("answer")
+    return RepQuestionOut.model_validate(
+        {
+            "id": row["id"],
+            "conversation_id": row["conversation_id"],
+            "field": row["field"],
+            "question": row["question"],
+            "context": row.get("context") or {},
+            "status": row["status"],
+            "answer": {**answer, "answered_at": row["resolved_at"]} if answer else None,
+            "created_at": row["created_at"],
+        }
+    )
+
+
 def status_for(profile: Profile, open_questions: int, presented: bool = False) -> ConversationStatus:
     if open_questions:
         return ConversationStatus.WAITING_REP
@@ -124,7 +141,7 @@ class ConversationService:
             profile=record.profile,
             missing=missing_fields(record.profile),
             messages=[self._message(row) for row in self._repo.messages(record.id)],
-            open_questions=[self._question(row) for row in questions],
+            open_questions=[question_out(row) for row in questions],
             latest_comparison=self._repo.latest_comparison(record.id),
         )
 
@@ -155,19 +172,4 @@ class ConversationService:
             cards=CARDS.validate_python(payload.get("cards", [])),
             trace=TRACE.validate_python(payload.get("trace", [])),
             created_at=datetime.fromisoformat(row["created_at"]),
-        )
-
-    @staticmethod
-    def _question(row: dict[str, Any]) -> RepQuestionOut:
-        return RepQuestionOut.model_validate(
-            {
-                "id": row["id"],
-                "conversation_id": row["conversation_id"],
-                "field": row["field"],
-                "question": row["question"],
-                "context": row.get("context") or {},
-                "status": row["status"],
-                "answer": row.get("answer"),
-                "created_at": row["created_at"],
-            }
         )

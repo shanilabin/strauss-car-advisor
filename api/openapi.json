@@ -2679,7 +2679,7 @@
     },
     "/v1/rep/questions": {
       "get": {
-        "description": "The rep's queue (send status=OPEN): each question with the minimum context needed to answer it.",
+        "description": "The rep's queue (send status=OPEN), newest first: each question with the minimum context needed to\nanswer it - occupation, group, the cars involved. Never salary, never the chat.",
         "operationId": "rep_list_questions",
         "parameters": [
           {
@@ -2780,7 +2780,7 @@
     },
     "/v1/rep/questions/{question_id}/answer": {
       "post": {
-        "description": "Answer once. A second answer to the same question returns 409; the conversation resumes once.",
+        "description": "Answer once (atomic): a second answer returns 409 'already_answered'. A participation is an amount\n(\"350\"), an occupation is a name from the table - anything else is 422 'invalid_answer'. The answer is\napplied to that field of the employee's profile, and the conversation gets the updated comparison.",
         "operationId": "rep_answer_question",
         "parameters": [
           {

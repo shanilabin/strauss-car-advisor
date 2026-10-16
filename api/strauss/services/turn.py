@@ -30,6 +30,7 @@ from strauss.agent.guard import mask_ids
 from strauss.agent.models_chain import AgentUnavailable
 from strauss.agent.schemas import ComparisonCard, OptionsCard, RepPendingCard
 from strauss.config.bundle import ConfigBundle
+from strauss.domain.models import Profile
 from strauss.errors import ApiError
 from strauss.http.schemas import ConversationStatus, MessageRole, TurnResponse
 from strauss.ports.repositories import AuthUser, ConversationRecord, ConversationRepo, ValueOfUseRepo
@@ -38,6 +39,7 @@ from strauss.services.conversations import ConversationService, stale_revision, 
 logger = logging.getLogger("strauss.agent")
 
 HISTORY_MESSAGES = 12
+SAVE_ATTEMPTS = 3
 LIMITS = UsageLimits(request_limit=12)  # a runaway tool loop ends here instead of burning the free quota
 # Low thinking keeps a turn in seconds; the timeout hands a stuck provider over to the next in the chain.
 SETTINGS = ModelSettings(temperature=0.2, thinking="low", timeout=30)
@@ -168,15 +170,40 @@ class TurnService:
         return result.output
 
     def _save_profile(self, record: ConversationRecord, deps: AgentDeps) -> ConversationRecord:
-        """What the agent learned, saved with compare-and-set on the revision."""
+        """What the agent learned, saved with compare-and-set on the revision.
+
+        If the profile changed while the agent was thinking (a rep answer, a correction in another tab),
+        the agent's fields are merged onto the new profile - unless the same field changed on both sides,
+        which is a real conflict (409)."""
         if not deps.turn.profile_changed:
             return record
-        revision = record.profile.revision
-        updated = deps.profile.model_copy(update={"revision": revision + 1})
-        saved = self._repo.update_profile(record.id, updated, record.status, expected_revision=revision)
-        if saved is None:  # the profile was corrected in another tab while the agent was thinking
-            raise stale_revision(revision, revision + 1)
-        return saved
+        original = record.profile
+        changed = {
+            name
+            for name in Profile.model_fields
+            if name != "revision" and getattr(deps.profile, name) != getattr(original, name)
+        }
+        current: ConversationRecord | None = record
+        for _ in range(SAVE_ATTEMPTS):
+            if current is None:
+                break
+            base = current.profile
+            if any(getattr(base, name) != getattr(original, name) for name in changed):
+                break  # the same field was changed elsewhere - don't overwrite it
+            merged = base.model_copy(
+                update={
+                    **{name: getattr(deps.profile, name) for name in changed},
+                    "revision": base.revision + 1,
+                }
+            )
+            saved = self._repo.update_profile(
+                record.id, merged, current.status, expected_revision=base.revision
+            )
+            if saved is not None:
+                return saved
+            current = self._repo.get(record.id)
+        actual = current.profile.revision if current else original.revision
+        raise stale_revision(original.revision, actual)
 
     def _ask_rep(self, record: ConversationRecord, deps: AgentDeps) -> list[dict[str, Any]]:
         """Opens the questions the agent asked (one open question per field) and returns all open ones."""

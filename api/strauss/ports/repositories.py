@@ -72,6 +72,18 @@ class ConversationRepo(Protocol):
         """Opens a rep question. None if one is already open for this field (one open question per field)."""
         ...
 
+    def get_question(self, question_id: str) -> dict[str, Any] | None: ...
+
+    def list_questions(self, status: str | None) -> list[dict[str, Any]]:
+        """The rep's queue across every conversation, newest first."""
+        ...
+
+    def answer_question(
+        self, question_id: str, answer: dict[str, Any], answered_by: str
+    ) -> dict[str, Any] | None:
+        """Atomic OPEN -> ANSWERED. None if it was already answered (only the first answer wins)."""
+        ...
+
     def latest_comparison(self, conversation_id: str) -> Comparison | None: ...
 
     def save_comparison(

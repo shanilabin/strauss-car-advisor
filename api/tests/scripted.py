@@ -17,10 +17,13 @@ def say(text: str, *quick_replies: str) -> tuple[str, dict[str, Any]]:
     return ("final_result", {"text": text, "quick_replies": list(quick_replies)})
 
 
-def scripted(*steps: Step) -> FunctionModel:
+def scripted(*steps: Step, seen: list[list[ModelMessage]] | None = None) -> FunctionModel:
+    """seen, if given, collects the messages the model received at each step."""
     queue: Iterator[Step] = iter(steps)
 
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        if seen is not None:
+            seen.append(list(messages))
         step = next(queue)
         if callable(step):
             return step(messages)

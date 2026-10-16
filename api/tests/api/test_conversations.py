@@ -203,18 +203,6 @@ def test_completing_the_profile_moves_from_collecting_to_ready() -> None:
     assert Decimal(str(patched["profile"]["salary"]["base"])) == Decimal(18500)
 
 
-# ── Messages (agent arrives in A4) ───────────────────────────────────────────
-
-
-def test_a_message_turn_returns_words_cards_and_the_real_state() -> None:
-    conversation_id = start()["id"]
-    body = client.post(
-        f"/v1/conversations/{conversation_id}/messages", json={"text": "כמה אקבל בנטו?"}, headers=AS_NOA
-    ).json()
-    assert body["state"]["id"] == conversation_id
-    assert body["reply"]["cards"] and body["trace"]
-
-
 def test_a_malformed_conversation_id_is_simply_not_found() -> None:
     response = client.get("/v1/conversations/not-a-uuid", headers=AS_NOA)
     assert response.status_code == 404

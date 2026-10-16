@@ -1,43 +1,16 @@
-"""Contract stubs (task A2.1).
+"""Rep stub (task A2.1) - the last piece still served from a fixture; replaced by the real rep flow in A4.4.
 
-Every endpoint returns realistic, schema-valid data so the frontend can be built in parallel.
-The calculation results are a fixed fixture (stub_data.json); the catalog, occupations, sample
-employees and config summary are read from the real config bundle. Each piece is replaced by the
-real implementation in later tasks (A2.4, A3.4, A4.x) without changing the contract.
+The store keeps answers in memory, so it already behaves like the real atomic OPEN -> ANSWERED transition.
 """
 
 import json
-import uuid
 from datetime import UTC, datetime
-from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from strauss import ENGINE_VERSION
-from strauss.agent.schemas import AgentReply, ComparisonCard, OptionsCard, RepPendingCard, TraceEvent
-from strauss.config.loader import config_hash, load_rules
-from strauss.config.models import CatalogCar
-from strauss.domain.models import (
-    CalculationContext,
-    Comparison,
-    NetBreakdown,
-    OptionResult,
-    Profile,
-    Vehicle,
-    VehicleKey,
-)
 from strauss.http.errors import ApiError
-from strauss.http.schemas import (
-    ConversationState,
-    ConversationStatus,
-    MessageOut,
-    MessageRole,
-    RepAnswer,
-    RepAnswerRequest,
-    RepQuestionOut,
-    RepQuestionStatus,
-)
+from strauss.http.schemas import RepAnswer, RepAnswerRequest, RepQuestionOut, RepQuestionStatus
 
 STUB_FILE = Path(__file__).with_name("stub_data.json")
 
@@ -48,158 +21,11 @@ def _data() -> dict[str, Any]:
     return data
 
 
-def _now() -> datetime:
-    return datetime.now(UTC)
-
-
-def calculation_context() -> CalculationContext:
-    rules = load_rules()
-    return CalculationContext(
-        payroll_tax_year=rules.net_method.tax_year,
-        value_of_use_tax_year=rules.value_of_use.tax_year,
-        config_version=rules.version,
-        config_hash=config_hash(),
-        engine_version=ENGINE_VERSION,
-    )
-
-
-# ── Vehicles (catalog cars for sample profiles) ──────────────────────────────
-
-
-def catalog_vehicle(car: CatalogCar) -> Vehicle:
-    return Vehicle(
-        key=VehicleKey(
-            tax_year=load_rules().value_of_use.tax_year,
-            reg_year=car.reg_year,
-            vehicle_type_code=car.vehicle_type_code,
-            maker_code=car.maker_code,
-            model_code=car.model_code,
-        ),
-        maker_name=car.maker_name,
-        commercial_name=car.commercial_name,
-        model_desc=car.model_desc,
-        drive=car.drive,
-        list_price=car.list_price,
-        value_of_use=car.value_of_use,
-    )
-
-
-# ── Comparisons ──────────────────────────────────────────────────────────────
-
-
-def _best_option_id(results: list[OptionResult]) -> str | None:
-    eligible = [r for r in results if r.eligibility.eligible and r.delta is not None]
-    best = max(eligible, key=lambda r: r.delta or Decimal(0), default=None)
-    return best.option.id if best else None
-
-
-@lru_cache
-def profile() -> Profile:
-    return Profile.model_validate(_data()["profile"])
-
-
-@lru_cache
-def options_comparison() -> Comparison:
-    results = [OptionResult.model_validate(r) for r in _data()["results"]]
-    return Comparison(
-        id="cmp-stub-options",
-        context=calculation_context(),
-        profile_snapshot=profile(),
-        today=NetBreakdown.model_validate(_data()["today"]),
-        results=results,
-        best_option_id=_best_option_id(results),
-    )
-
-
-def compare(option_ids: list[str] | None) -> Comparison:
-    full = options_comparison()
-    if option_ids is None:
-        return full
-    known = {r.option.id for r in full.results}
-    unknown = [i for i in option_ids if i not in known]
-    if unknown:
-        raise ApiError(404, "option_not_found", "חלק מהחלופות שנבחרו לא קיימות", {"option_ids": unknown})
-    chosen = [r for r in full.results if r.option.id in option_ids]
-    return full.model_copy(
-        update={"id": "cmp-stub-selected", "results": chosen, "best_option_id": _best_option_id(chosen)}
-    )
-
-
-# ── Conversations ────────────────────────────────────────────────────────────
-
-
-def _messages(comparison: Comparison) -> list[MessageOut]:
-    messages = [MessageOut.model_validate(m) for m in _data()["messages"]]
-    at = messages[-1].created_at
-    trace = [
-        TraceEvent(kind="tool_call", name="compare", data={"option_ids": ["CAR-10"]}, at=at),
-        TraceEvent(kind="tool_result", name="compare", data={"results": 1}, at=at),
-        TraceEvent(
-            kind="tool_call", name="ask_representative", data={"field": "participation:CAR-10"}, at=at
-        ),
-        TraceEvent(kind="guard", name="number_guard", data={"passed": True}, at=at),
-    ]
-    reply = messages[-1].model_copy(update={"cards": [ComparisonCard(comparison=comparison)], "trace": trace})
-    return [*messages[:-1], reply]
-
-
 def _rep_question(conversation_id: str) -> RepQuestionOut:
     return RepQuestionOut.model_validate({**_data()["rep_question"], "conversation_id": conversation_id})
 
 
-def conversation(conversation_id: str) -> ConversationState:
-    comparison = compare(["CAR-10"])
-    return ConversationState(
-        id=conversation_id,
-        status=ConversationStatus.WAITING_REP,
-        profile=profile(),
-        missing=[],
-        messages=_messages(comparison),
-        open_questions=[_rep_question(conversation_id)],
-        latest_comparison=comparison,
-    )
-
-
-def agent_turn(conversation_id: str, text: str) -> tuple[AgentReply, list[TraceEvent], ConversationState]:
-    state = conversation(conversation_id)
-    question = state.open_questions[0]
-    reply = AgentReply(
-        text=(
-            "הנה כל החלופות שאת זכאית להן, מהמשתלמת ביותר. "
-            "את ההשתתפות ב-ATTO 3 עוד לא אישר נציג התחבורה, ושאלתי אותו."
-        ),
-        quick_replies=["השווה ל-ATTO 3", "מה אם אוותר על הרכב?", "תקנו את השכר שלי"],
-        cards=[
-            OptionsCard(comparison=options_comparison()),
-            RepPendingCard(question_id=question.id, field=question.field, question=question.question),
-        ],
-    )
-    now = _now()
-    trace = [
-        TraceEvent(kind="tool_call", name="list_options", data={}, at=now),
-        TraceEvent(kind="tool_result", name="list_options", data={"options": 3, "eligible": 2}, at=now),
-        TraceEvent(kind="tool_call", name="ask_representative", data={"field": question.field}, at=now),
-        TraceEvent(kind="guard", name="number_guard", data={"passed": True}, at=now),
-    ]
-    user_message = MessageOut(id=str(uuid.uuid4()), role=MessageRole.USER, text=text, created_at=now)
-    bot_message = MessageOut(
-        id=str(uuid.uuid4()),
-        role=MessageRole.ASSISTANT,
-        text=reply.text,
-        cards=reply.cards,
-        trace=trace,
-        created_at=now,
-    )
-    state = state.model_copy(update={"messages": [*state.messages, user_message, bot_message]})
-    return reply, trace, state
-
-
-# ── Rep ──────────────────────────────────────────────────────────────────────
-
-
 class RepStubStore:
-    """In-memory answers, so the stub already behaves like the real atomic OPEN -> ANSWERED transition."""
-
     def __init__(self) -> None:
         self._answers: dict[str, RepAnswer] = {}
 
@@ -214,7 +40,7 @@ class RepStubStore:
         if question_id in self._answers:
             raise ApiError(409, "already_answered", "השאלה כבר נענתה")
         self._answers[question_id] = RepAnswer(
-            value=request.value, effective_from=request.effective_from, answered_at=_now()
+            value=request.value, effective_from=request.effective_from, answered_at=datetime.now(UTC)
         )
         return self._with_answer(question)
 

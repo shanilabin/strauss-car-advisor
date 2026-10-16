@@ -1,9 +1,8 @@
 from fastapi import APIRouter
 
 from strauss.domain.models import Comparison
-from strauss.http import stubs
 from strauss.http.auth import UserDep
-from strauss.http.deps import ConversationServiceDep
+from strauss.http.deps import ConversationServiceDep, TurnServiceDep
 from strauss.http.errors import ERROR_RESPONSES
 from strauss.http.schemas import (
     CompareRequest,
@@ -35,16 +34,12 @@ def get_conversation(
 
 @router.post("/{conversation_id}/messages")
 def send_message(
-    conversation_id: str, body: SendMessageRequest, user: UserDep, service: ConversationServiceDep
+    conversation_id: str, body: SendMessageRequest, user: UserDep, service: TurnServiceDep
 ) -> TurnResponse:
-    """One agent turn. The reply text is words only; numbers arrive inside cards.
-
-    The agent arrives in task A4: until then the reply and trace are a fixed sample, while the state is
-    the real conversation (ownership is already enforced).
-    """
-    state = service.get(user, conversation_id)
-    reply, trace, _ = stubs.agent_turn(conversation_id, body.text)
-    return TurnResponse(reply=reply, trace=trace, state=state)
+    """One agent turn. The reply text is words only; numbers arrive inside cards built by the engine.
+    9-digit ID numbers are masked before the model or the database sees them. When no model can answer:
+    503 'agent_unavailable' with details.mode = "form" (nothing is saved) - the UI switches to the form."""
+    return service.send(user, conversation_id, body.text)
 
 
 @router.patch("/{conversation_id}/profile")

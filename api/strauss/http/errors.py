@@ -80,6 +80,6 @@ ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
         404: "Not found",
         409: "Conflict (stale revision, already answered)",
         422: "Invalid input",
-        503: "Data service unavailable",
+        503: "Data service or chat model unavailable (details.mode = form)",
     }.items()
 }

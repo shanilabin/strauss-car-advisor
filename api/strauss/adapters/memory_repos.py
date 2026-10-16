@@ -45,18 +45,31 @@ class MemoryConversationRepo:
     def messages(self, conversation_id: str) -> list[dict[str, Any]]:
         return list(self.message_rows.get(conversation_id, []))
 
-    def add_message(self, conversation_id: str, role: str, content: str, payload: dict[str, Any]) -> None:
-        row = {
-            "id": str(uuid.uuid4()),
-            "role": role,
-            "content": content,
-            "payload": payload,
-            "created_at": datetime.now(UTC).isoformat(),
-        }
-        self.message_rows.setdefault(conversation_id, []).append(row)
+    def add_messages(self, conversation_id: str, rows: list[dict[str, Any]]) -> None:
+        saved = self.message_rows.setdefault(conversation_id, [])
+        saved.extend({"id": str(uuid.uuid4()), **row} for row in rows)
 
     def open_questions(self, conversation_id: str) -> list[dict[str, Any]]:
         return [q for q in self.question_rows.get(conversation_id, []) if q["status"] == "OPEN"]
+
+    def open_question(
+        self, conversation_id: str, field: str, question: str, context: dict[str, str], profile_revision: int
+    ) -> dict[str, Any] | None:
+        if any(q["field"] == field for q in self.open_questions(conversation_id)):
+            return None
+        row = {
+            "id": str(uuid.uuid4()),
+            "conversation_id": conversation_id,
+            "field": field,
+            "question": question,
+            "context": context,
+            "profile_revision": profile_revision,
+            "status": "OPEN",
+            "answer": None,
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        self.question_rows.setdefault(conversation_id, []).append(row)
+        return row
 
     def latest_comparison(self, conversation_id: str) -> Comparison | None:
         saved = self.comparisons.get(conversation_id)

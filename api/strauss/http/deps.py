@@ -1,18 +1,22 @@
 """Dependencies the routers receive. Tests override these with in-memory or CSV implementations."""
 
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated
 
 import httpx
 from fastapi import Depends
+from pydantic_ai.models import Model
 
 from strauss.adapters.supabase_auth import SupabaseAuthVerifier
 from strauss.adapters.supabase_conversations import SupabaseConversationRepo
 from strauss.adapters.supabase_rest import rest_client, validated_url
 from strauss.adapters.supabase_value_of_use import SupabaseValueOfUseRepo
+from strauss.agent.models_chain import build_model
 from strauss.config.loader import load_bundle, load_rules
 from strauss.ports.repositories import AuthVerifier, ConversationRepo, ValueOfUseRepo
 from strauss.services.conversations import ConversationService
+from strauss.services.turn import TurnService
 from strauss.settings import get_settings
 
 
@@ -53,3 +57,25 @@ def get_conversation_service(repo: ConversationRepoDep, value_of_use: ValueOfUse
 
 
 ConversationServiceDep = Annotated[ConversationService, Depends(get_conversation_service)]
+
+
+@lru_cache
+def agent_model() -> Model:
+    """The model chain, built on first use. No keys -> AgentUnavailable -> the turn answers 503 form mode."""
+    return build_model(get_settings())
+
+
+def get_agent_model() -> Callable[[], Model]:
+    return agent_model
+
+
+def get_turn_service(
+    conversations: ConversationServiceDep,
+    repo: ConversationRepoDep,
+    value_of_use: ValueOfUseDep,
+    model: Annotated[Callable[[], Model], Depends(get_agent_model)],
+) -> TurnService:
+    return TurnService(conversations, repo, value_of_use, load_bundle(), model)
+
+
+TurnServiceDep = Annotated[TurnService, Depends(get_turn_service)]

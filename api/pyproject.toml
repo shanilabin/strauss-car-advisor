@@ -7,6 +7,7 @@ dependencies = [
     "fastapi>=0.115",
     "httpx>=0.28",
     "pydantic>=2.9",
+    "pydantic-ai-slim[google,openai]>=1.0",
     "pydantic-settings>=2.6",
 ]
 
@@ -44,4 +45,6 @@ pythonpath = ["."]
 filterwarnings = [
     # starlette suggests httpx2 for TestClient; httpx is still fully supported
     "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+    # pydantic-graph (inside pydantic-ai) asks asyncio for an event loop the deprecated way in run_sync
+    "ignore:There is no current event loop:DeprecationWarning",
 ]

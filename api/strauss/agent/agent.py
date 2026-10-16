@@ -10,10 +10,11 @@ from functools import lru_cache
 from pathlib import Path
 
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, ModelRetry, RunContext
 from pydantic_ai.models import Model
 
 from strauss.agent.deps import AgentDeps
+from strauss.agent.guard import FALLBACK_WITH_CARDS, FALLBACK_WITHOUT_CARDS, invented, tool_results
 from strauss.agent.schemas import AgentReply
 from strauss.agent.tools import TOOLS
 from strauss.domain.missing import missing_fields
@@ -72,6 +73,25 @@ def build_agent(model: Model | None = None) -> Agent[AgentDeps, ReplyDraft]:
     @agent.instructions
     def conversation_state(ctx: RunContext[AgentDeps]) -> str:
         return state_block(ctx.deps)
+
+    @agent.output_validator
+    def number_guard(ctx: RunContext[AgentDeps], draft: ReplyDraft) -> ReplyDraft:
+        turn = ctx.deps.turn
+        allowed = tool_results(ctx.messages) + "\n" + state_block(ctx.deps)
+        bad = invented(" ".join([draft.text, *draft.quick_replies]), allowed)
+        if not bad:
+            turn.event("guard", "number_guard", {"passed": True})
+            return draft
+        if turn.guard_retries == 0:
+            turn.guard_retries += 1
+            turn.event("guard", "number_guard", {"passed": False, "action": "retry", "numbers": bad})
+            raise ModelRetry(
+                f"Your reply contains numbers that no tool returned: {bad}. Rewrite it in words only - "
+                "the cards on screen show every amount."
+            )
+        turn.event("guard", "number_guard", {"passed": False, "action": "template", "numbers": bad})
+        text = FALLBACK_WITH_CARDS if turn.cards else FALLBACK_WITHOUT_CARDS
+        return ReplyDraft(text=text)
 
     return agent
 

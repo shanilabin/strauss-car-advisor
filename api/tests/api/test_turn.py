@@ -1,0 +1,186 @@
+"""A conversation turn through the API (A4.2): the agent runs on the stored state with a scripted model,
+and everything it did is saved - profile, comparisons, both messages with cards and trace."""
+
+from typing import Any
+
+from fastapi.testclient import TestClient
+from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, ToolCallPart, UserPromptPart
+
+from index import app
+from strauss.adapters.memory_repos import MemoryConversationRepo
+from strauss.agent.guard import ID_MASK
+from strauss.agent.models_chain import AgentUnavailable
+from strauss.services.turn import STUCK_REPLY
+from tests.api.conftest import AS_NOA, AS_OTHER, ModelSlot
+from tests.scripted import say, scripted
+
+client = TestClient(app)
+
+
+def start(sample: str | None = "E-001") -> str:
+    body = {"sample_employee_id": sample} if sample else {}
+    response = client.post("/v1/conversations", json=body, headers=AS_NOA)
+    assert response.status_code == 201, response.text
+    conversation_id: str = response.json()["id"]
+    return conversation_id
+
+
+def send(conversation_id: str, text: str) -> Any:
+    return client.post(f"/v1/conversations/{conversation_id}/messages", json={"text": text}, headers=AS_NOA)
+
+
+def prompts(messages: list[ModelMessage]) -> list[str]:
+    return [
+        str(part.content)
+        for message in messages
+        if isinstance(message, ModelRequest)
+        for part in message.parts
+        if isinstance(part, UserPromptPart)
+    ]
+
+
+def test_noa_asks_about_the_electric_car_and_gets_the_engines_numbers(model: ModelSlot) -> None:
+    conversation_id = start()
+    model.factory = lambda: scripted(
+        ("compare", {"option_ids": ["CAR-10"]}), say("הנטו שלך עולה במעבר ל-ATTO 3.", "מה עם ויתור?")
+    )
+    response = send(conversation_id, "כמה אקבל בנטו אם אעבור ל-ATTO 3?")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    (card,) = body["reply"]["cards"]
+    assert card["kind"] == "comparison" and card["comparison"]["results"][0]["delta"] == 661
+    assert [e["kind"] for e in body["trace"]] == ["tool_call", "tool_result", "guard", "model"]
+
+    state = body["state"]
+    assert state["status"] == "PRESENTED"
+    assert state["latest_comparison"]["id"] == card["comparison"]["id"]  # saved for audit
+    user, bot = state["messages"]
+    assert (user["role"], bot["role"]) == ("user", "assistant")
+    assert bot["cards"] == body["reply"]["cards"] and bot["trace"] == body["trace"]
+
+    reloaded = client.get(f"/v1/conversations/{conversation_id}", headers=AS_NOA).json()
+    assert reloaded["messages"] == state["messages"]  # after a refresh, the same conversation
+
+
+def test_what_the_agent_learns_is_saved_with_a_new_revision(model: ModelSlot) -> None:
+    conversation_id = start(sample=None)
+    model.factory = lambda: scripted(
+        ("update_profile", {"occupation": "מנהל/ת מוצר", "base_salary": 18500}),
+        say("תודה! כמה אחוז מהשכר יורד לפנסיה?"),
+    )
+    state = send(conversation_id, "אני מנהלת מוצר, מרוויחה 18,500").json()["state"]
+    assert state["profile"]["occupation"] == "מנהל/ת מוצר" and state["profile"]["revision"] == 1
+    assert state["status"] == "COLLECTING"
+    assert "salary.base" not in {m["field"] for m in state["missing"]}
+
+
+def test_the_model_gets_the_recent_conversation_and_a_masked_id(model: ModelSlot) -> None:
+    conversation_id = start()
+    seen: list[list[ModelMessage]] = []
+
+    def capture(messages: list[ModelMessage]) -> ModelResponse:
+        seen.append(messages)
+        return ModelResponse(parts=[ToolCallPart("final_result", {"text": "בסדר"})])
+
+    model.factory = lambda: scripted(say("שלום!"))
+    send(conversation_id, "שלום")
+    model.factory = lambda: scripted(capture)
+    state = send(conversation_id, "תעודת הזהות שלי 123456789").json()["state"]
+
+    assert prompts(seen[0]) == ["שלום", f"תעודת הזהות שלי {ID_MASK}"]
+    assert state["messages"][2]["text"] == f"תעודת הזהות שלי {ID_MASK}"  # never stored either
+
+
+def test_no_model_means_form_mode_and_nothing_is_saved(
+    model: ModelSlot, conversations: MemoryConversationRepo
+) -> None:
+    conversation_id = start()
+
+    def no_keys() -> Any:
+        raise AgentUnavailable("no keys")
+
+    model.factory = no_keys
+    response = send(conversation_id, "שלום")
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "agent_unavailable"
+    assert response.json()["error"]["details"] == {"mode": "form"}
+    assert conversations.messages(conversation_id) == []
+
+
+def test_a_failing_provider_means_form_mode(model: ModelSlot) -> None:
+    conversation_id = start()
+
+    def rate_limited(messages: list[ModelMessage]) -> ModelResponse:
+        raise ModelHTTPError(429, "gemini-3.8-flash", "quota")
+
+    model.factory = lambda: scripted(rate_limited)
+    response = send(conversation_id, "שלום")
+    assert response.status_code == 503 and response.json()["error"]["details"] == {"mode": "form"}
+
+
+def test_a_profile_corrected_meanwhile_is_not_overwritten(
+    model: ModelSlot, conversations: MemoryConversationRepo
+) -> None:
+    conversation_id = start()
+
+    def corrected_in_another_tab(messages: list[ModelMessage]) -> ModelResponse:
+        response = client.patch(
+            f"/v1/conversations/{conversation_id}/profile", json={"children_under_23": 3}, headers=AS_NOA
+        )
+        assert response.status_code == 200
+        return ModelResponse(parts=[ToolCallPart("update_profile", {"children_under_23": 1})])
+
+    model.factory = lambda: scripted(corrected_in_another_tab, say("עודכן"))
+    response = send(conversation_id, "יש לי ילד אחד")
+    assert response.status_code == 409 and response.json()["error"]["code"] == "stale_revision"
+    record = conversations.get(conversation_id)
+    assert record is not None and record.profile.children_under_23 == 3
+    assert conversations.messages(conversation_id) == []
+
+
+def test_someone_elses_conversation_is_not_found_before_any_model_runs(model: ModelSlot) -> None:
+    conversation_id = start()
+    response = client.post(
+        f"/v1/conversations/{conversation_id}/messages", json={"text": "שלום"}, headers=AS_OTHER
+    )
+    assert response.status_code == 404
+    assert model.calls == 0
+
+
+def test_a_rep_question_is_opened_once_and_the_conversation_waits_for_the_rep(
+    model: ModelSlot, conversations: MemoryConversationRepo
+) -> None:
+    conversation_id = start()
+    model.factory = lambda: scripted(
+        ("compare", {"option_ids": ["CAR-10"]}),
+        ("ask_representative", {"field": "participation:CAR-10"}),
+        say("שאלתי את נציג התחבורה על ההשתתפות."),
+    )
+    body = send(conversation_id, "מה עם ATTO 3?").json()
+    assert [c["kind"] for c in body["reply"]["cards"]] == ["comparison", "rep_pending"]
+    (question,) = body["state"]["open_questions"]
+    assert question["field"] == "participation:CAR-10" and "ATTO 3" in question["question"]
+    assert body["state"]["status"] == "WAITING_REP"
+
+    model.factory = lambda: scripted(
+        ("ask_representative", {"field": "participation:CAR-10"}), say("כבר שאלתי, מחכים לתשובה.")
+    )
+    again = send(conversation_id, "תשאל שוב").json()
+    assert len(again["state"]["open_questions"]) == 1  # one open question per field
+
+
+def test_a_model_that_gets_stuck_still_answers_and_keeps_what_it_learned(model: ModelSlot) -> None:
+    conversation_id = start(sample=None)
+    model.factory = lambda: scripted(
+        ("update_profile", {"occupation": "מנהל/ת מוצר"}),
+        ("ask_representative", {"field": "salary"}),
+        ("ask_representative", {"field": "salary"}),
+        ("ask_representative", {"field": "salary"}),
+    )
+    response = send(conversation_id, "אני מנהלת מוצר")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["reply"]["text"] == STUCK_REPLY
+    assert body["state"]["profile"]["occupation"] == "מנהל/ת מוצר"
+    assert body["trace"][-1]["name"] == "stuck"

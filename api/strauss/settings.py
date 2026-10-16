@@ -16,7 +16,12 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     openrouter_api_key: str = ""
     groq_api_key: str = ""
-    llm_chain: str = "google-gla:gemini-2.5-flash"
+    # Gemini's free quota is per model (about 20 requests a day), so several are chained before Groq
+    llm_chain: str = (
+        "google:gemini-3.6-flash,google:gemini-3.8-flash,google:gemini-3.5-flash,"
+        "google:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b,"
+        "openrouter:meta-llama/llama-3.3-70b-instruct:free"
+    )
 
     @property
     def configured(self) -> dict[str, bool]:

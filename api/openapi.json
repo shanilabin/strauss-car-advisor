@@ -2064,7 +2064,7 @@
                 }
               }
             },
-            "description": "Data service unavailable"
+            "description": "Data service or chat model unavailable (details.mode = form)"
           }
         },
         "summary": "Compare Stateless",
@@ -2168,7 +2168,7 @@
                 }
               }
             },
-            "description": "Data service unavailable"
+            "description": "Data service or chat model unavailable (details.mode = form)"
           }
         },
         "security": [
@@ -2256,7 +2256,7 @@
                 }
               }
             },
-            "description": "Data service unavailable"
+            "description": "Data service or chat model unavailable (details.mode = form)"
           }
         },
         "security": [
@@ -2354,7 +2354,7 @@
                 }
               }
             },
-            "description": "Data service unavailable"
+            "description": "Data service or chat model unavailable (details.mode = form)"
           }
         },
         "security": [
@@ -2370,7 +2370,7 @@
     },
     "/v1/conversations/{conversation_id}/messages": {
       "post": {
-        "description": "One agent turn. The reply text is words only; numbers arrive inside cards.\n\nThe agent arrives in task A4: until then the reply and trace are a fixed sample, while the state is\nthe real conversation (ownership is already enforced).",
+        "description": "One agent turn. The reply text is words only; numbers arrive inside cards built by the engine.\n9-digit ID numbers are masked before the model or the database sees them. When no model can answer:\n503 'agent_unavailable' with details.mode = \"form\" (nothing is saved) - the UI switches to the form.",
         "operationId": "conversations_send_message",
         "parameters": [
           {
@@ -2452,7 +2452,7 @@
                 }
               }
             },
-            "description": "Data service unavailable"
+            "description": "Data service or chat model unavailable (details.mode = form)"
           }
         },
         "security": [
@@ -2540,7 +2540,7 @@
                 }
               }
             },
-            "description": "Data service unavailable"
+            "description": "Data service or chat model unavailable (details.mode = form)"
           }
         },
         "security": [
@@ -2638,7 +2638,7 @@
                 }
               }
             },
-            "description": "Data service unavailable"
+            "description": "Data service or chat model unavailable (details.mode = form)"
           }
         },
         "security": [
@@ -2764,7 +2764,7 @@
                 }
               }
             },
-            "description": "Data service unavailable"
+            "description": "Data service or chat model unavailable (details.mode = form)"
           }
         },
         "security": [
@@ -2862,7 +2862,7 @@
                 }
               }
             },
-            "description": "Data service unavailable"
+            "description": "Data service or chat model unavailable (details.mode = form)"
           }
         },
         "security": [
@@ -2976,7 +2976,7 @@
                 }
               }
             },
-            "description": "Data service unavailable"
+            "description": "Data service or chat model unavailable (details.mode = form)"
           }
         },
         "summary": "Search Vehicles",
@@ -3103,7 +3103,7 @@
                 }
               }
             },
-            "description": "Data service unavailable"
+            "description": "Data service or chat model unavailable (details.mode = form)"
           }
         },
         "summary": "Get Value Of Use",

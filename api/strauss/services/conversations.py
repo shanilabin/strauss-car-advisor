@@ -36,6 +36,15 @@ def not_found() -> ApiError:
     return ApiError(404, "conversation_not_found", "השיחה לא נמצאה")
 
 
+def stale_revision(expected: int, actual: int) -> ApiError:
+    return ApiError(
+        409,
+        "stale_revision",
+        "הפרופיל השתנה בינתיים. טענו מחדש ונסו שוב",
+        {"expected": expected, "actual": actual},
+    )
+
+
 def status_for(profile: Profile, open_questions: int, presented: bool = False) -> ConversationStatus:
     if open_questions:
         return ConversationStatus.WAITING_REP
@@ -83,7 +92,7 @@ class ConversationService:
         record = self.owned(user, conversation_id)
         current = record.profile
         if patch.expected_revision is not None and patch.expected_revision != current.revision:
-            raise self._stale(patch.expected_revision, current.revision)
+            raise stale_revision(patch.expected_revision, current.revision)
         sent = patch.model_dump(exclude_unset=True, exclude_none=True, exclude={"expected_revision"})
         changes: dict[str, Any] = {name: getattr(patch, name) for name in sent}
         if isinstance(changes.get("current"), CarArrangement):
@@ -93,7 +102,7 @@ class ConversationService:
         status = status_for(updated, len(questions))
         saved = self._repo.update_profile(record.id, updated, status, expected_revision=current.revision)
         if saved is None:  # someone else changed the profile between our read and our write
-            raise self._stale(current.revision, current.revision + 1)
+            raise stale_revision(current.revision, current.revision + 1)
         return self.state(saved, questions)
 
     def options(self, user: AuthUser, conversation_id: str) -> Comparison:
@@ -135,15 +144,6 @@ class ConversationService:
         if official is None:
             raise ApiError(404, "vehicle_not_found", "הרכב לא נמצא במאגר שווי השימוש לפי המפתח שנמסר")
         return arrangement.model_copy(update={"vehicle": official})
-
-    @staticmethod
-    def _stale(expected: int, actual: int) -> ApiError:
-        return ApiError(
-            409,
-            "stale_revision",
-            "הפרופיל השתנה בינתיים. טענו מחדש ונסו שוב",
-            {"expected": expected, "actual": actual},
-        )
 
     @staticmethod
     def _message(row: dict[str, Any]) -> MessageOut:

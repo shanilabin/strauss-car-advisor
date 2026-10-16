@@ -9,6 +9,7 @@ from strauss.domain.models import Comparison, Profile
 from strauss.ports.repositories import ConversationRecord
 
 RETURN_ROW = {"Prefer": "return=representation"}
+UNIQUE_VIOLATION = 409  # PostgREST maps Postgres 23505 to 409 Conflict
 
 
 def _record(row: dict[str, Any]) -> ConversationRecord:
@@ -75,6 +76,13 @@ class SupabaseConversationRepo:
         rows: list[dict[str, Any]] = response.json()
         return rows
 
+    def add_messages(self, conversation_id: str, rows: list[dict[str, Any]]) -> None:
+        # One request for the turn's messages; created_at comes from the API so their order is explicit.
+        response = self._client.post(
+            "/messages", json=[{**row, "conversation_id": conversation_id} for row in rows]
+        )
+        raise_for_status(response)
+
     def open_questions(self, conversation_id: str) -> list[dict[str, Any]]:
         response = self._client.get(
             "/rep_questions",
@@ -83,6 +91,26 @@ class SupabaseConversationRepo:
         raise_for_status(response)
         rows: list[dict[str, Any]] = response.json()
         return rows
+
+    def open_question(
+        self, conversation_id: str, field: str, question: str, context: dict[str, str], profile_revision: int
+    ) -> dict[str, Any] | None:
+        response = self._client.post(
+            "/rep_questions",
+            json={
+                "conversation_id": conversation_id,
+                "field": field,
+                "question": question,
+                "context": context,
+                "profile_revision": profile_revision,
+            },
+            headers=RETURN_ROW,
+        )
+        if response.status_code == UNIQUE_VIOLATION:  # rep_questions_one_open_per_field
+            return None
+        raise_for_status(response)
+        row: dict[str, Any] = response.json()[0]
+        return row
 
     def latest_comparison(self, conversation_id: str) -> Comparison | None:
         response = self._client.get(

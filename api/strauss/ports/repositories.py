@@ -60,7 +60,17 @@ class ConversationRepo(Protocol):
         """Rows: id, role, content, payload, created_at - oldest first."""
         ...
 
+    def add_messages(self, conversation_id: str, rows: list[dict[str, Any]]) -> None:
+        """Rows: role, content, payload, created_at - written together, in order."""
+        ...
+
     def open_questions(self, conversation_id: str) -> list[dict[str, Any]]: ...
+
+    def open_question(
+        self, conversation_id: str, field: str, question: str, context: dict[str, str], profile_revision: int
+    ) -> dict[str, Any] | None:
+        """Opens a rep question. None if one is already open for this field (one open question per field)."""
+        ...
 
     def latest_comparison(self, conversation_id: str) -> Comparison | None: ...
 

@@ -26,6 +26,7 @@ class TurnLog:
     trace: list[TraceEvent] = field(default_factory=list)
     rep_requests: list[RepRequest] = field(default_factory=list)
     profile_changed: bool = False
+    guard_retries: int = 0
 
     def event(
         self, kind: Literal["tool_call", "tool_result", "guard", "model"], name: str, data: dict[str, Any]

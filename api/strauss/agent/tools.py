@@ -7,7 +7,6 @@ an eligibility reason) and vehicle candidates carry years and codes - those come
 
 import difflib
 import functools
-import re
 from collections.abc import Callable
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -20,7 +19,7 @@ from strauss.agent.schemas import ComparisonCard, MissingCard, OptionsCard
 from strauss.domain.compare import IncompleteProfile, UnknownOption
 from strauss.domain.compare import compare as run_compare
 from strauss.domain.eligibility import check_eligibility as run_eligibility
-from strauss.domain.missing import missing_fields
+from strauss.domain.missing import missing_fields, rep_question
 from strauss.domain.models import (
     CarArrangement,
     Comparison,
@@ -30,19 +29,20 @@ from strauss.domain.models import (
     ParticipationStatus,
     Profile,
     SalaryInput,
+    Vehicle,
     VehicleKey,
     WaiverArrangement,
 )
 from strauss.domain.options import build_options
 
 SEARCH_LIMIT = 5
+SEARCH_POOL = 200  # variants looked through to find the catalog's or the payslip's one
 # Personal amounts are saved, not displayed: the 'show AI actions' timeline is visible on screen.
 REDACTED = "(נשמר)"
 PERSONAL_ARGS = frozenset(
     {"base_salary", "commissions", "bonus", "pension_pct", "study_fund_pct", "credit_points",
      "current_participation", "participation"}
 )  # fmt: skip
-SALARY_TALK = re.compile(r"\d[\d,]{3,}|שכר|ברוטו|נטו|פנסיה|השתלמות|נקודות זיכוי")
 DRIVE_HE = {
     Drive.PETROL: "בנזין",
     Drive.HYBRID: "היברידי",
@@ -213,17 +213,53 @@ def update_profile(
 
 
 @traced
-def find_vehicle(ctx: RunContext[AgentDeps], query: str, reg_year: int | None = None) -> dict[str, Any]:
+def find_vehicle(
+    ctx: RunContext[AgentDeps],
+    query: str,
+    reg_year: int | None = None,
+    payslip_value_of_use: float | None = None,
+) -> dict[str, Any]:
     """Find the employee's current car in the Tax Authority data by name (and registration year if known).
 
+    One model name often has many variants with different values. Company cars come from the company
+    catalog, so a variant that is in the catalog is returned first. Otherwise the 'שווי שימוש' line on the
+    employee's payslip pins down the exact variant.
+
     Args:
-        query: Commercial or maker name, e.g. "corolla cross" or "טויוטה".
+        query: The model name as in the Tax Authority data: commercial names are in English ("corolla
+            cross", "atto 3"), maker names in Hebrew ("טויוטה"). Translate Hebrew model names to English.
         reg_year: Registration year, if the employee said it.
+        payslip_value_of_use: The monthly value of use printed on the employee's payslip, if they gave it.
     """
-    tax_year = ctx.deps.bundle.rules.value_of_use.tax_year
-    found = ctx.deps.value_of_use.search(query, tax_year, reg_year, SEARCH_LIMIT + 1)
+    deps = ctx.deps
+    tax_year = deps.bundle.rules.value_of_use.tax_year
+    found = deps.value_of_use.search(query, tax_year, reg_year, SEARCH_POOL)
+    if not found:
+        return {
+            "candidates": [],
+            "hint": "nothing found - try the English model name, or the maker in Hebrew",
+        }
+    in_catalog = _catalog_matches(deps, query, reg_year)  # looked up directly, not within the pool
+    hint = "show the candidates in words (no codes) and save the chosen one with set_current_car"
+    if payslip_value_of_use is not None:
+        payslip = _decimal(payslip_value_of_use, "payslip_value_of_use")
+        found = [v for v in found if v.value_of_use == payslip]
+        if not found:
+            return {
+                "candidates": [],
+                "hint": "no variant has that value of use - check the payslip line, the year and the name",
+            }
+    elif in_catalog:
+        found = in_catalog
+        hint = "in the company catalog, so most likely the employee's car - confirm with them, then save"
     if len(found) > SEARCH_LIMIT:
-        return {"too_many": True, "hint": "ask for a more specific model name or the registration year"}
+        names = sorted({v.commercial_name for v in found})
+        return {
+            "too_many": True,
+            "names": names[:8],
+            "hint": "several names: ask which one. One name with many variants: ask for the value of use "
+            "(שווי שימוש) printed on the payslip and search again with payslip_value_of_use",
+        }
     return {
         "candidates": [
             {
@@ -235,8 +271,31 @@ def find_vehicle(ctx: RunContext[AgentDeps], query: str, reg_year: int | None = 
             }
             for v in found
         ],
-        "hint": "show the candidates in words (no codes) and save the chosen one with set_current_car",
+        "hint": hint,
     }
+
+
+def _catalog_matches(deps: AgentDeps, query: str, reg_year: int | None) -> list[Vehicle]:
+    """Catalog cars matching the search the way the repository does, re-read from the data by full key."""
+    needle = " ".join(query.split()).casefold()
+    tax_year = deps.bundle.rules.value_of_use.tax_year
+    found: list[Vehicle] = []
+    for car in deps.bundle.catalog:
+        if reg_year is not None and car.reg_year != reg_year:
+            continue
+        if needle not in car.commercial_name.casefold() and needle not in car.maker_name.casefold():
+            continue
+        key = VehicleKey(
+            tax_year=tax_year,
+            reg_year=car.reg_year,
+            vehicle_type_code=car.vehicle_type_code,
+            maker_code=car.maker_code,
+            model_code=car.model_code,
+        )
+        vehicle = deps.value_of_use.get(key)
+        if vehicle is not None:
+            found.append(vehicle)
+    return found
 
 
 @traced
@@ -309,10 +368,12 @@ def _describe(result: OptionResult) -> dict[str, Any]:
     if result.delta is None:
         item["status"] = "waiting for data"
         item["missing"] = [m.question for m in result.missing]
+        item["ask_rep_field"] = [m.field for m in result.missing if m.ask == "rep"]
         return item
     item["net_change"] = "up" if result.delta > 0 else "down" if result.delta < 0 else "no change"
     if result.participation_status == ParticipationStatus.DEFAULT_PENDING:
         item["participation"] = "default - waiting for the transport rep to confirm"
+        item["ask_rep_field"] = f"participation:{result.option.id}"
     return item
 
 
@@ -321,7 +382,11 @@ def _run(deps: AgentDeps, option_ids: list[str] | None) -> Comparison | dict[str
         return run_compare(deps.profile, deps.bundle, option_ids)
     except IncompleteProfile as missing:
         deps.turn.cards.append(MissingCard(missing=missing.missing))
-        return {"incomplete": True, "ask": [m.question for m in missing.missing if m.ask == "employee"]}
+        return {
+            "incomplete": True,
+            "ask": [m.question for m in missing.missing if m.ask == "employee"],
+            "ask_rep_field": [m.field for m in missing.missing if m.ask == "rep"],
+        }
     except UnknownOption as unknown:
         raise ModelRetry(f"unknown option ids: {unknown} - use ids from list_options") from unknown
 
@@ -369,32 +434,55 @@ def check_eligibility(ctx: RunContext[AgentDeps], option_id: str) -> dict[str, A
 
 
 @traced
-def ask_representative(ctx: RunContext[AgentDeps], field: str, question: str) -> dict[str, Any]:
-    """Send a question to the transport rep - for facts only the company knows (a new car's participation,
-    an occupation that is not in the list). Tell the employee you asked; the answer arrives later.
+def ask_representative(ctx: RunContext[AgentDeps], field: str) -> dict[str, Any]:
+    """Ask the transport rep for a fact only the company knows. Use the field a tool gave you in
+    'ask_rep_field' (e.g. "participation:CAR-10"), or "occupation" for an occupation that isn't in the list.
+    Tell the employee you asked; the answer arrives later.
 
     Args:
-        field: What is missing, e.g. "participation:CAR-10" or "occupation".
-        question: The question for the rep, in Hebrew, without salary details.
+        field: Which fact is missing.
     """
-    if SALARY_TALK.search(question):
+    deps = ctx.deps
+    question = _rep_question(field, deps)
+    if question is None:
         raise ModelRetry(
-            "the rep must not see the employee's salary, deductions or net - ask only about the company "
-            "fact (e.g. the car's participation), without amounts"
+            f"'{field}' is not something the rep is asked about - use an 'ask_rep_field' a tool returned, "
+            "or 'occupation' for an occupation that is not in the list"
         )
-    if any(r.field == field for r in ctx.deps.turn.rep_requests):
+    if any(r.field == field for r in deps.turn.rep_requests):
         return {"sent": False, "already_asked": True}
-    profile = ctx.deps.profile
+    profile = deps.profile
     context = {"occupation": profile.occupation or "", "group": profile.group or ""}
     if isinstance(profile.current, CarArrangement):
         context["current_car"] = (
             f"{profile.current.vehicle.commercial_name} ({profile.current.vehicle.key.reg_year})"
         )
-    ctx.deps.turn.rep_requests.append(RepRequest(field=field, question=question, context=context))
+    deps.turn.rep_requests.append(RepRequest(field=field, question=question, context=context))
     return {
         "sent": True,
         "tell_employee": "the transport rep was asked; the comparison updates when they answer",
     }
+
+
+def _rep_question(field: str, deps: AgentDeps) -> str | None:
+    """The rep's question comes from a fixed template, never from the model - so it can't carry salary."""
+    profile = deps.profile
+    if field.startswith("participation:"):
+        # Only for an option the employee may take whose participation the company hasn't confirmed yet
+        try:
+            (result,) = run_compare(profile, deps.bundle, [field.removeprefix("participation:")]).results
+        except (IncompleteProfile, UnknownOption):
+            return None
+        pending = result.participation_status == ParticipationStatus.DEFAULT_PENDING or any(
+            m.field == field for m in result.missing
+        )
+        if not (result.eligibility.eligible and pending):
+            return None
+        return rep_question(field, "participation", car=result.option.label).question
+    listed = {o.name for o in deps.bundle.occupations}
+    if field == "occupation" and profile.occupation and profile.occupation not in listed:
+        return rep_question(field, "occupation.confirm", occupation=profile.occupation).question
+    return None
 
 
 TOOLS = (

@@ -443,16 +443,19 @@ def ask_representative(ctx: RunContext[AgentDeps], field: str) -> dict[str, Any]
         field: Which fact is missing.
     """
     deps = ctx.deps
-    question = _rep_question(field, deps)
-    if question is None:
+    asked = _rep_question(field, deps)
+    if asked is None:
         raise ModelRetry(
             f"'{field}' is not something the rep is asked about - use an 'ask_rep_field' a tool returned, "
             "or 'occupation' for an occupation that is not in the list"
         )
     if any(r.field == field for r in deps.turn.rep_requests):
         return {"sent": False, "already_asked": True}
+    question, requested_car = asked
     profile = deps.profile
     context = {"occupation": profile.occupation or "", "group": profile.group or ""}
+    if requested_car:
+        context["requested_car"] = requested_car
     if isinstance(profile.current, CarArrangement):
         context["current_car"] = (
             f"{profile.current.vehicle.commercial_name} ({profile.current.vehicle.key.reg_year})"
@@ -464,8 +467,9 @@ def ask_representative(ctx: RunContext[AgentDeps], field: str) -> dict[str, Any]
     }
 
 
-def _rep_question(field: str, deps: AgentDeps) -> str | None:
-    """The rep's question comes from a fixed template, never from the model - so it can't carry salary."""
+def _rep_question(field: str, deps: AgentDeps) -> tuple[str, str | None] | None:
+    """(question, the car it is about) from a fixed template, never from the model - so it can't carry
+    salary. None if the rep has nothing to answer for this field."""
     profile = deps.profile
     if field.startswith("participation:"):
         # Only for an option the employee may take whose participation the company hasn't confirmed yet
@@ -478,10 +482,10 @@ def _rep_question(field: str, deps: AgentDeps) -> str | None:
         )
         if not (result.eligibility.eligible and pending):
             return None
-        return rep_question(field, "participation", car=result.option.label).question
+        return rep_question(field, "participation", car=result.option.label).question, result.option.label
     listed = {o.name for o in deps.bundle.occupations}
     if field == "occupation" and profile.occupation and profile.occupation not in listed:
-        return rep_question(field, "occupation.confirm", occupation=profile.occupation).question
+        return rep_question(field, "occupation.confirm", occupation=profile.occupation).question, None
     return None
 
 

@@ -16,6 +16,7 @@ from strauss.agent.models_chain import build_model
 from strauss.config.loader import load_bundle, load_rules
 from strauss.ports.repositories import AuthVerifier, ConversationRepo, ValueOfUseRepo
 from strauss.services.conversations import ConversationService
+from strauss.services.rep import RepService
 from strauss.services.turn import TurnService
 from strauss.settings import get_settings
 
@@ -79,3 +80,10 @@ def get_turn_service(
 
 
 TurnServiceDep = Annotated[TurnService, Depends(get_turn_service)]
+
+
+def get_rep_service(repo: ConversationRepoDep) -> RepService:
+    return RepService(repo, load_bundle())
+
+
+RepServiceDep = Annotated[RepService, Depends(get_rep_service)]

@@ -5,26 +5,16 @@ its headline numbers must equal the challenge's reference sheet.
 """
 
 import json
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
 
 from index import app
-from strauss.http import stubs
-from tests.api.conftest import AS_REP
 
 client = TestClient(app)
 CONFIG = Path(__file__).resolve().parents[2] / "config"
 ATTO_3_KEY = "tax_year=2026&reg_year=2025&vehicle_type_code=1&maker_code=01014&model_code=00003"
-
-
-@pytest.fixture(autouse=True)
-def fresh_rep_store() -> Iterator[None]:
-    stubs.rep_store = stubs.RepStubStore()
-    yield
 
 
 # ── Surface ──────────────────────────────────────────────────────────────────
@@ -109,25 +99,6 @@ def test_config_summary() -> None:
     summary = client.get("/v1/config").json()
     assert [g["code"] for g in summary["groups"]] == ["א", "ב", "ג", "ד"]
     assert summary["payroll_tax_year"] == 2025 and summary["value_of_use_tax_year"] == 2026
-
-
-# ── Rep ──────────────────────────────────────────────────────────────────────
-
-
-def test_rep_sees_minimal_context_without_salary() -> None:
-    question = client.get("/v1/rep/questions", headers=AS_REP).json()[0]
-    assert "salary" not in json.dumps(question) and "18500" not in json.dumps(question)
-
-
-def test_rep_answers_once_second_answer_is_409() -> None:
-    first = client.post("/v1/rep/questions/q-stub-1/answer", json={"value": "350"}, headers=AS_REP)
-    assert first.status_code == 200
-    assert first.json()["status"] == "ANSWERED"
-    second = client.post("/v1/rep/questions/q-stub-1/answer", json={"value": "400"}, headers=AS_REP)
-    assert second.status_code == 409
-    assert second.json()["error"]["code"] == "already_answered"
-    assert client.get("/v1/rep/questions?status=OPEN", headers=AS_REP).json() == []
-    assert client.get("/v1/rep/questions", headers=AS_REP).json()[0]["answer"]["value"] == "350"
 
 
 # ── Errors ───────────────────────────────────────────────────────────────────

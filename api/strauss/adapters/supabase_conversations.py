@@ -1,5 +1,6 @@
 """ConversationRepo backed by Supabase (secret key, server-side only - ownership is checked by the API)."""
 
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -9,6 +10,7 @@ from strauss.domain.models import Comparison, Profile
 from strauss.ports.repositories import ConversationRecord
 
 RETURN_ROW = {"Prefer": "return=representation"}
+QUEUE_LIMIT = 200
 UNIQUE_VIOLATION = 409  # PostgREST maps Postgres 23505 to 409 Conflict
 
 
@@ -111,6 +113,40 @@ class SupabaseConversationRepo:
         raise_for_status(response)
         row: dict[str, Any] = response.json()[0]
         return row
+
+    def get_question(self, question_id: str) -> dict[str, Any] | None:
+        response = self._client.get("/rep_questions", params={"id": f"eq.{question_id}", "select": "*"})
+        raise_for_status(response)
+        rows = response.json()
+        return rows[0] if rows else None
+
+    def list_questions(self, status: str | None) -> list[dict[str, Any]]:
+        params = {"select": "*", "order": "created_at.desc", "limit": str(QUEUE_LIMIT)}
+        if status is not None:
+            params["status"] = f"eq.{status}"
+        response = self._client.get("/rep_questions", params=params)
+        raise_for_status(response)
+        rows: list[dict[str, Any]] = response.json()
+        return rows
+
+    def answer_question(
+        self, question_id: str, answer: dict[str, Any], answered_by: str
+    ) -> dict[str, Any] | None:
+        # UPDATE ... WHERE id = $1 AND status = 'OPEN' RETURNING * - a second answer matches no row
+        response = self._client.patch(
+            "/rep_questions",
+            params={"id": f"eq.{question_id}", "status": "eq.OPEN"},
+            json={
+                "status": "ANSWERED",
+                "answer": answer,
+                "answered_by": answered_by,
+                "resolved_at": datetime.now(UTC).isoformat(),
+            },
+            headers=RETURN_ROW,
+        )
+        raise_for_status(response)
+        rows = response.json()
+        return rows[0] if rows else None
 
     def latest_comparison(self, conversation_id: str) -> Comparison | None:
         response = self._client.get(

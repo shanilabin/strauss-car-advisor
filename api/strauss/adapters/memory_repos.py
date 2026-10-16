@@ -71,6 +71,25 @@ class MemoryConversationRepo:
         self.question_rows.setdefault(conversation_id, []).append(row)
         return row
 
+    def get_question(self, question_id: str) -> dict[str, Any] | None:
+        return next((q for rows in self.question_rows.values() for q in rows if q["id"] == question_id), None)
+
+    def list_questions(self, status: str | None) -> list[dict[str, Any]]:
+        rows = [
+            q for qs in self.question_rows.values() for q in qs if status is None or q["status"] == status
+        ]
+        return sorted(rows, key=lambda q: q["created_at"], reverse=True)
+
+    def answer_question(
+        self, question_id: str, answer: dict[str, Any], answered_by: str
+    ) -> dict[str, Any] | None:
+        row = self.get_question(question_id)
+        if row is None or row["status"] != "OPEN":
+            return None
+        resolved = {"resolved_at": datetime.now(UTC).isoformat(), "answered_by": answered_by}
+        row.update(status="ANSWERED", answer=answer, **resolved)
+        return dict(row)
+
     def latest_comparison(self, conversation_id: str) -> Comparison | None:
         saved = self.comparisons.get(conversation_id)
         return saved[-1][1] if saved else None

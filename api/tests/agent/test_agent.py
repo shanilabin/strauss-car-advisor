@@ -266,11 +266,13 @@ def test_the_rep_is_asked_only_about_known_fields_and_once() -> None:
     assert [r.field for r in deps.turn.rep_requests] == ["participation:CAR-10"]
 
 
-def test_a_pending_participation_tells_the_model_which_field_to_ask() -> None:
+def test_comparing_a_car_with_a_default_participation_asks_the_rep_by_itself() -> None:
     deps = deps_for(to_profile(next(e for e in load_sample_employees() if e.id == "E-001"), BUNDLE))
-    result = run(deps, ("compare", {"option_ids": ["CAR-10"]}), FINAL)
-    (atto,) = tool_returns(result)[0].content["results"]
-    assert atto["ask_rep_field"] == "participation:CAR-10"
+    result = run(deps, ("compare", {"option_ids": ["CAR-10", "waiver"]}), FINAL)
+    by_id = {item["id"]: item for item in tool_returns(result)[0].content["results"]}
+    atto, waiver = by_id["CAR-10"], by_id["waiver"]
+    assert "rep was asked" in atto["participation"] and "participation" not in waiver
+    assert [r.field for r in deps.turn.rep_requests] == ["participation:CAR-10"]  # only the car compared
 
 
 def test_personal_amounts_are_redacted_in_the_trace() -> None:

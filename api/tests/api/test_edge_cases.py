@@ -210,12 +210,11 @@ def test_7_an_unconfirmed_participation_is_flagged_and_the_rep_is_asked(model: M
         model,
         conversation_id,
         "ATTO 3?",
-        ("compare", {"option_ids": ["CAR-10"]}),
-        ("ask_representative", {"field": "participation:CAR-10"}),
+        ("compare", {"option_ids": ["CAR-10"]}),  # asks the rep by itself - no extra model request
         say("ההשתתפות ב-ATTO 3 עוד לא אושרה, ולכן זו הערכה. שאלתי את נציג התחבורה."),
     )
     (atto,) = returned[0]["results"]
-    assert atto["participation"].startswith("default") and atto["ask_rep_field"] == "participation:CAR-10"
+    assert "rep was asked" in atto["participation"]
     assert results(body)["CAR-10"]["participation_status"] == "DEFAULT_PENDING"
     assert [c["kind"] for c in body["reply"]["cards"]] == ["comparison", "rep_pending"]
     assert body["state"]["status"] == "WAITING_REP"

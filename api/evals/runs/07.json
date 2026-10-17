@@ -1,0 +1,97 @@
+{
+ "number": 7,
+ "name": "נועה מאפס: כל הפרטים בעברית חופשית",
+ "kind": "conversation",
+ "ran_at": "2026-10-17T20:15+00:00",
+ "chain": "google:gemini-3.6-flash,google:gemini-3.8-flash,google:gemini-3.5-flash,google:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b,openrouter:meta-llama/llama-3.3-70b-instruct:free",
+ "prompt_sha": "af05ecb9",
+ "checks": {
+  "answered": true,
+  "understood": true,
+  "card CAR-10": true,
+  "delta CAR-10": true,
+  "rep only when needed": true,
+  "asked the rep": true,
+  "asked once": true,
+  "no guessing": true,
+  "efficient": true
+ },
+ "rep_fields": [
+  "participation:CAR-10"
+ ],
+ "stats": {
+  "turns": 5,
+  "requests": 11,
+  "requests_per_turn": [
+   1,
+   2,
+   2,
+   4,
+   2
+  ],
+  "tokens": 54941,
+  "seconds": [
+   6.1,
+   5.9,
+   5.9,
+   17.6,
+   20.8
+  ],
+  "models": [
+   "gemini-3.5-flash-lite"
+  ],
+  "guard_retries": 0
+ },
+ "turns": [
+  {
+   "text": "היי, אני שוקלת לעבור לרכב חשמלי. כדאי לי?",
+   "reply": "בשמחה! כדי שאוכל לבדוק מה הכי משתלם עבורך מבחינת הנטו, לספר לי מה התפקיד שלך בחברה ומה שכר הבסיס החודשי שלך?",
+   "error": null,
+   "tools": [],
+   "cards": []
+  },
+  {
+   "text": "אני מנהלת מוצר, שכר בסיס 18,500, אין עמלות ובונוסים",
+   "reply": "מעולה, תודה! כדי שאוכל לחשב את ההשפעה המדויקת על הנטו, אשמח לדעת כמה אחוז מהשכר יורד לך לפנסיה, כמה לקרן השתלמות, וכמה נקודות זיכוי יש לך? בנוסף, איזה רכב חברה יש לך היום (יצרן, דגם ושנת רישום) או שאת מקבלת אחזקה?",
+   "error": null,
+   "tools": [
+    "update_profile"
+   ],
+   "cards": []
+  },
+  {
+   "text": "6% פנסיה, 2.5% קרן השתלמות, 2.75 נקודות זיכוי, 2 ילדים",
+   "reply": "תודה רבה! נשאר רק דבר אחרון: איזה רכב חברה יש לך היום (יצרן, דגם ושנת רישום), או האם את מקבלת אחזקה במקום רכב?",
+   "error": null,
+   "tools": [
+    "update_profile"
+   ],
+   "cards": []
+  },
+  {
+   "text": "יש לי טויוטה קורולה קרוס 2025, משלמת 300 ש״ח השתתפות",
+   "reply": "שמרתי את נתוני הרכב שלך. האפשרויות וההשפעה על הנטו מוצגות כעת בכרטיס שעל המסך, כולל דגמים חשמליים שיכולים להתאים לך. תרצי שנשווה דגם חשמלי מסוים?",
+   "error": null,
+   "tools": [
+    "find_vehicle",
+    "set_current_car",
+    "list_options"
+   ],
+   "cards": [
+    "options"
+   ]
+  },
+  {
+   "text": "תשווה לי ל-ATTO 3",
+   "reply": "השוויתי עבורך את המעבר ל-ATTO 3 מול הרכב הנוכחי שלך. נציג התחבורה נשאל לגבי דמי ההשתתפות המעודכנים, והתוצאות המלאות מוצגות בכרטיס שעל המסך.",
+   "error": null,
+   "tools": [
+    "compare"
+   ],
+   "cards": [
+    "comparison",
+    "rep_pending"
+   ]
+  }
+ ]
+}

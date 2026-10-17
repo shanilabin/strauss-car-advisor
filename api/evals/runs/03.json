@@ -1,0 +1,50 @@
+{
+ "number": 3,
+ "name": "E-003 רחל פרידמן: שאלת האתגר",
+ "kind": "conversation",
+ "ran_at": "2026-10-17T20:12+00:00",
+ "chain": "google:gemini-3.6-flash,google:gemini-3.8-flash,google:gemini-3.5-flash,google:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b,openrouter:meta-llama/llama-3.3-70b-instruct:free",
+ "prompt_sha": "af05ecb9",
+ "checks": {
+  "answered": true,
+  "card CAR-06": true,
+  "delta CAR-06": true,
+  "rep only when needed": true,
+  "asked the rep": true,
+  "asked once": true,
+  "no guessing": true,
+  "efficient": true
+ },
+ "rep_fields": [
+  "participation:CAR-06"
+ ],
+ "stats": {
+  "turns": 1,
+  "requests": 2,
+  "requests_per_turn": [
+   2
+  ],
+  "tokens": 9253,
+  "seconds": [
+   7.8
+  ],
+  "models": [
+   "gemini-3.5-flash-lite"
+  ],
+  "guard_retries": 0
+ },
+ "turns": [
+  {
+   "text": "היום אני מקבלת אחזקת רכב. אם אקח MG4 חשמלי - כמה אפסיד או ארוויח בנטו?",
+   "reply": "ההשוואה בין דמי האחזקה שאת מקבלת כיום לבין מעבר ל-MG4 מוצגת בכרטיס שעל המסך. לגבי ההשתתפות החודשית ברכב, פניתי לנציג התחבורה כדי לוודא את הסכום המדויק, כך שהנתונים המלאים לפניך.",
+   "error": null,
+   "tools": [
+    "compare"
+   ],
+   "cards": [
+    "comparison",
+    "rep_pending"
+   ]
+  }
+ ]
+}

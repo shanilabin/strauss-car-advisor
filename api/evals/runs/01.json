@@ -1,0 +1,50 @@
+{
+ "number": 1,
+ "name": "E-001 נועה לוי: שאלת האתגר",
+ "kind": "conversation",
+ "ran_at": "2026-10-17T20:12+00:00",
+ "chain": "google:gemini-3.6-flash,google:gemini-3.8-flash,google:gemini-3.5-flash,google:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b,openrouter:meta-llama/llama-3.3-70b-instruct:free",
+ "prompt_sha": "af05ecb9",
+ "checks": {
+  "answered": true,
+  "card CAR-10": true,
+  "delta CAR-10": true,
+  "rep only when needed": true,
+  "asked the rep": true,
+  "asked once": true,
+  "no guessing": true,
+  "efficient": true
+ },
+ "rep_fields": [
+  "participation:CAR-10"
+ ],
+ "stats": {
+  "turns": 1,
+  "requests": 2,
+  "requests_per_turn": [
+   2
+  ],
+  "tokens": 9075,
+  "seconds": [
+   9.1
+  ],
+  "models": [
+   "gemini-3.5-flash-lite"
+  ],
+  "guard_retries": 0
+ },
+ "turns": [
+  {
+   "text": "אם אעבור מהקורולה קרוס ל-BYD Atto 3 החשמלי - כמה זה ישנה לי בנטו?",
+   "reply": "השוואתי עבורך את המעבר ל-BYD Atto 3. שים לב שהשתתפות העובד ברכב החדש עדיין מוגדרת כברירת מחדל, ופניתי לנציג התחבורה כדי לוודא את הנתונים המדויקים. תוכל לראות את מלוא הפרטים וההשפעה על הנטו בכרטיס שעל המסך.",
+   "error": null,
+   "tools": [
+    "compare"
+   ],
+   "cards": [
+    "comparison",
+    "rep_pending"
+   ]
+  }
+ ]
+}

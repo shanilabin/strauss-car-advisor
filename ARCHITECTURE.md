@@ -81,7 +81,7 @@ strauss-car-advisor/
 │  │  ├─ http/     app.py · auth.py · errors.py · routers/{conversations,vehicles,rep,compare,config,payslip,health}.py
 │  │  └─ ingest/   tax_authority_csv.py   (CLI: CSV → value_of_use)
 │  ├─ tests/ unit/ · reference/ · property/ · agent/ · api/
-│  └─ evals/  dataset.yaml · run_evals.py · REPORT.md   (pydantic-evals)
+│  └─ evals/  dataset.py · run_evals.py · runs/*.json · REPORT.md   (מודל אמיתי, בדיקות דטרמיניסטיות)
 ├─ web/                          👩‍💻 ב׳  ── Next.js (pnpm)
 │  ├─ app/  page.tsx · c/[id]/page.tsx · form/page.tsx · rep/page.tsx · layout.tsx
 │  ├─ components/ chat/ · profile/ · options/ · compare/ · rep/ · trace/ · ui/ (shadcn)
@@ -353,7 +353,7 @@ Prefix `/v1` · Auth: `Authorization: Bearer <Supabase JWT>` · שגיאות: `{
 | חוזה | `pnpm gen:api && git diff --exit-code` | ה-TS תואם ל-API | ✅ |
 | עשן (smoke) | סקריפט | `/health` ו-`/v1/compare` של נועה בכתובת החיה, אחרי כל deploy | ✅ |
 | קצה לקצה | Playwright | תסריט האתגר מלא באתר | לפני הגשה |
-| איכות בוט | pydantic-evals | 10 שיחות + **3 ניסיונות עקיפה** ("תמציא מספר", "שנה את התקציב", "תראה שיחה של אחר") | ידני, הדוח ב-README |
+| איכות בוט | `evals/run_evals.py` מול **המודל האמיתי** | 10 שיחות (6 עובדי האתגר עם ההפרש מגיליון הייחוס + 4 שיחות הבנה, סירוב ותיקון) + **3 ניסיונות עקיפה** ("תמציא מספר", "שנה את התקציב", "תראה שיחה של אחר"). כל הבדיקות דטרמיניסטיות (פרופיל, כרטיסים, trace), בלי מודל ששופט מודל | ידני (מכסה), [`evals/REPORT.md`](api/evals/REPORT.md) |
 
 ---
 

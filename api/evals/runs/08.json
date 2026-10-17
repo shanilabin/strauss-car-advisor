@@ -1,0 +1,46 @@
+{
+ "number": 8,
+ "name": "נציג מכירות שטח רוצה לוותר: רכב חובה",
+ "kind": "conversation",
+ "ran_at": "2026-10-17T20:15+00:00",
+ "chain": "google:gemini-3.6-flash,google:gemini-3.8-flash,google:gemini-3.5-flash,google:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b,openrouter:meta-llama/llama-3.3-70b-instruct:free",
+ "prompt_sha": "af05ecb9",
+ "checks": {
+  "answered": true,
+  "looked up waiver": true,
+  "refused waiver": true,
+  "rep only when needed": true,
+  "asked once": true,
+  "no guessing": true,
+  "efficient": true
+ },
+ "rep_fields": [],
+ "stats": {
+  "turns": 1,
+  "requests": 2,
+  "requests_per_turn": [
+   2
+  ],
+  "tokens": 9455,
+  "seconds": [
+   8.9
+  ],
+  "models": [
+   "gemini-3.5-flash-lite"
+  ],
+  "guard_retries": 0
+ },
+ "turns": [
+  {
+   "text": "אני רוצה לוותר על הרכב ולקבל אחזקה במקום. אפשר?",
+   "reply": "בתפקיד שלך כנציג או נציגת מכירות שטח, רכב החברה הוא חלק בלתי נפרד מהתפקיד ולכן אי אפשר לוותר עליו. אפשר כמובן להמשיך עם הרכב הנוחי או להציץ בדגמים אחרים שמתאימים לקבוצה שלך. מה תרצה לעשות?",
+   "error": null,
+   "tools": [
+    "compare"
+   ],
+   "cards": [
+    "comparison"
+   ]
+  }
+ ]
+}

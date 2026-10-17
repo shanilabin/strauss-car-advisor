@@ -1,0 +1,44 @@
+{
+ "number": 9,
+ "name": "קבוצה ג מבקשת טסלה: מעל הקבוצה",
+ "kind": "conversation",
+ "ran_at": "2026-10-17T20:15+00:00",
+ "chain": "google:gemini-3.6-flash,google:gemini-3.8-flash,google:gemini-3.5-flash,google:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b,openrouter:meta-llama/llama-3.3-70b-instruct:free",
+ "prompt_sha": "af05ecb9",
+ "checks": {
+  "answered": true,
+  "looked up CAR-14": true,
+  "refused CAR-14": true,
+  "rep only when needed": true,
+  "asked once": true,
+  "no guessing": true,
+  "efficient": true
+ },
+ "rep_fields": [],
+ "stats": {
+  "turns": 1,
+  "requests": 2,
+  "requests_per_turn": [
+   2
+  ],
+  "tokens": 9049,
+  "seconds": [
+   9.3
+  ],
+  "models": [
+   "gemini-3.5-flash-lite"
+  ],
+  "guard_retries": 0
+ },
+ "turns": [
+  {
+   "text": "אני רוצה טסלה מודל 3. כמה זה יעלה לי?",
+   "reply": "טסלה מודל 3 שייכת לקבוצת רכב גבוהה מהקבוצה המותרת לך (קבוצה ג'). אפשר לבחור רכבים חשמליים מצוינים בקבוצה שלך, כמו בי ווי די ATTO 3 או קיה EV3. תרצה שנשווה את אחד מהם?",
+   "error": null,
+   "tools": [
+    "check_eligibility"
+   ],
+   "cards": []
+  }
+ ]
+}

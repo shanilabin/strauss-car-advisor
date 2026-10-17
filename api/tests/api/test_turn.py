@@ -48,12 +48,13 @@ def test_noa_asks_about_the_electric_car_and_gets_the_engines_numbers(model: Mod
     response = send(conversation_id, "כמה אקבל בנטו אם אעבור ל-ATTO 3?")
     assert response.status_code == 200, response.text
     body = response.json()
-    (card,) = body["reply"]["cards"]
+    card, pending = body["reply"]["cards"]  # ATTO 3's participation is a default: the rep is asked
     assert card["kind"] == "comparison" and card["comparison"]["results"][0]["delta"] == 661
+    assert pending["kind"] == "rep_pending" and pending["field"] == "participation:CAR-10"
     assert [e["kind"] for e in body["trace"]] == ["tool_call", "tool_result", "guard", "model"]
 
     state = body["state"]
-    assert state["status"] == "PRESENTED"
+    assert state["status"] == "WAITING_REP"
     assert state["latest_comparison"]["id"] == card["comparison"]["id"]  # saved for audit
     user, bot = state["messages"]
     assert (user["role"], bot["role"]) == ("user", "assistant")

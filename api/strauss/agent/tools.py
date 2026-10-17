@@ -406,16 +406,23 @@ def list_options(ctx: RunContext[AgentDeps]) -> dict[str, Any]:
 @traced
 def compare(ctx: RunContext[AgentDeps], option_ids: list[str]) -> dict[str, Any]:
     """Compare today's arrangement with the alternatives the employee asked about. The full comparison
-    (numbers, chart, explanation) appears on the employee's screen in a card.
+    (numbers, chart, explanation) appears on the employee's screen in a card. When a compared car's
+    participation is still the catalog default, the transport rep is asked automatically.
 
     Args:
-        option_ids: Ids from list_options: "waiver" or catalog car ids such as "CAR-10".
+        option_ids: Option ids from the conversation state: "waiver" or catalog car ids such as "CAR-10".
     """
-    outcome = _run(ctx.deps, option_ids)
+    deps = ctx.deps
+    outcome = _run(deps, option_ids)
     if not isinstance(outcome, Comparison):
         return outcome
-    ctx.deps.turn.cards.append(ComparisonCard(comparison=outcome))
-    return {"shown_to_employee": True, "results": [_describe(r) for r in outcome.results]}
+    deps.turn.cards.append(ComparisonCard(comparison=outcome))
+    described = [_describe(r) for r in outcome.results]
+    for item in described:  # the employee asked about this car - the company must confirm its participation
+        field = item.pop("ask_rep_field", None)
+        if isinstance(field, str) and _send_to_rep(deps, field):
+            item["participation"] = "default - the transport rep was asked to confirm; say so"
+    return {"shown_to_employee": True, "results": described}
 
 
 @traced
@@ -443,14 +450,26 @@ def ask_representative(ctx: RunContext[AgentDeps], field: str) -> dict[str, Any]
         field: Which fact is missing.
     """
     deps = ctx.deps
-    asked = _rep_question(field, deps)
-    if asked is None:
+    if any(r.field == field for r in deps.turn.rep_requests):
+        return {"sent": False, "already_asked": True}
+    if not _send_to_rep(deps, field):
         raise ModelRetry(
             f"'{field}' is not something the rep is asked about - use an 'ask_rep_field' a tool returned, "
             "or 'occupation' for an occupation that is not in the list"
         )
+    return {
+        "sent": True,
+        "tell_employee": "the transport rep was asked; the comparison updates when they answer",
+    }
+
+
+def _send_to_rep(deps: AgentDeps, field: str) -> bool:
+    """Queue a rep question for this turn (the service opens it). False if there is nothing to ask."""
     if any(r.field == field for r in deps.turn.rep_requests):
-        return {"sent": False, "already_asked": True}
+        return True
+    asked = _rep_question(field, deps)
+    if asked is None:
+        return False
     question, requested_car = asked
     profile = deps.profile
     context = {"occupation": profile.occupation or "", "group": profile.group or ""}
@@ -461,10 +480,7 @@ def ask_representative(ctx: RunContext[AgentDeps], field: str) -> dict[str, Any]
             f"{profile.current.vehicle.commercial_name} ({profile.current.vehicle.key.reg_year})"
         )
     deps.turn.rep_requests.append(RepRequest(field=field, question=question, context=context))
-    return {
-        "sent": True,
-        "tell_employee": "the transport rep was asked; the comparison updates when they answer",
-    }
+    return True
 
 
 def _rep_question(field: str, deps: AgentDeps) -> tuple[str, str | None] | None:

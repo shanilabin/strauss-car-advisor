@@ -16,8 +16,9 @@ from pydantic_ai.models import Model
 from strauss.agent.deps import AgentDeps
 from strauss.agent.guard import FALLBACK_WITH_CARDS, FALLBACK_WITHOUT_CARDS, invented, tool_results
 from strauss.agent.schemas import AgentReply
-from strauss.agent.tools import TOOLS
+from strauss.agent.tools import DRIVE_HE, TOOLS
 from strauss.domain.missing import missing_fields
+from strauss.domain.options import WAIVER_ID, car_label
 
 os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
 
@@ -50,6 +51,17 @@ def state_block(deps: AgentDeps) -> str:
             {"field": m.field, "ask": m.ask, "question": m.question} for m in missing_fields(profile)
         ],
         "occupations": [o.name for o in deps.bundle.occupations],
+        # the option ids, so a question about "ATTO 3" goes straight to compare(["CAR-10"])
+        "options": [
+            {
+                "id": c.id,
+                "car": f"{c.maker_name} {car_label(c)}",
+                "group": c.group,
+                "drive": DRIVE_HE[c.drive],
+            }
+            for c in deps.bundle.catalog
+        ]
+        + [{"id": WAIVER_ID, "car": "ויתור על הרכב (אחזקה)"}],
         "children_age_limit": family.requires.child_max_age if family else None,
     }
     return (

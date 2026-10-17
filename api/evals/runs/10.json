@@ -1,0 +1,64 @@
+{
+ "number": 10,
+ "name": "תיקון שכר באמצע השיחה",
+ "kind": "conversation",
+ "ran_at": "2026-10-17T20:15+00:00",
+ "chain": "google:gemini-3.6-flash,google:gemini-3.8-flash,google:gemini-3.5-flash,google:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b,openrouter:meta-llama/llama-3.3-70b-instruct:free",
+ "prompt_sha": "af05ecb9",
+ "checks": {
+  "answered": true,
+  "understood": true,
+  "card CAR-10": true,
+  "rep only when needed": true,
+  "asked the rep": true,
+  "asked once": true,
+  "no guessing": true,
+  "efficient": true
+ },
+ "rep_fields": [
+  "participation:CAR-10"
+ ],
+ "stats": {
+  "turns": 2,
+  "requests": 4,
+  "requests_per_turn": [
+   2,
+   2
+  ],
+  "tokens": 17415,
+  "seconds": [
+   5.9,
+   5.5
+  ],
+  "models": [
+   "gemini-3.5-flash-lite"
+  ],
+  "guard_retries": 0
+ },
+ "turns": [
+  {
+   "text": "כמה אקבל בנטו אם אעבור ל-ATTO 3?",
+   "reply": "השוותי עבורך את המעבר ל-ATTO 3. פניתי לנציג התחבורה כדי לוודא את ההשתתפות שלך ברכב החדש, ותוכל לראות את ההשפעה על הנטו בכרטיס שעל המסך.",
+   "error": null,
+   "tools": [
+    "compare"
+   ],
+   "cards": [
+    "comparison",
+    "rep_pending"
+   ]
+  },
+  {
+   "text": "רגע, טעיתי. שכר הבסיס שלי הוא 21,000, לא 18,500",
+   "reply": "עדכנתי את שכר הבסיס והשוויתי מחדש את המעבר ל-ATTO 3. תוכל לראות את הנתונים המעודכנים בכרטיס שעל המסך.",
+   "error": null,
+   "tools": [
+    "update_profile",
+    "compare"
+   ],
+   "cards": [
+    "comparison"
+   ]
+  }
+ ]
+}

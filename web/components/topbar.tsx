@@ -15,19 +15,21 @@ const STEPS: { step: Step; label: string }[] = [
 
 export function Topbar({ step }: { step: Step | null }) {
   return (
-    <header className="fixed inset-x-0 top-0 z-40 h-(--topbar-h) border-b-2 border-lime bg-nav text-nav-foreground [--ring:var(--nav-ring)]">
-      <div className="mx-auto grid h-full max-w-screen-2xl grid-cols-[auto_1fr_auto] items-center gap-3 px-4 lg:grid-cols-[1fr_auto_1fr] lg:px-8">
+    <header className="fixed inset-x-0 top-0 z-40 h-(--topbar-h) overflow-x-clip border-b-2 border-lime bg-nav text-nav-foreground [--ring:var(--nav-ring)]">
+      <div className="mx-auto grid h-full max-w-screen-2xl grid-cols-[minmax(0,auto)_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:gap-3 sm:px-4 lg:grid-cols-[1fr_auto_1fr] lg:px-8">
         <Link
           href="/"
           aria-label="STRAUSS DRIVE - דף הבית"
-          className="inline-flex h-11 items-center justify-self-start text-base font-black tracking-wide whitespace-nowrap lg:text-xl"
+          className="inline-flex h-11 min-w-0 items-center justify-self-start truncate text-sm font-black tracking-normal lg:text-xl lg:tracking-wide"
         >
           <bdi dir="ltr">
             STRAUSS <span className="text-lime">/</span> DRIVE
           </bdi>
         </Link>
 
-        <div className="flex min-w-0 justify-center">{step !== null && <StepIndicator current={step} />}</div>
+        <div className="flex min-w-0 justify-center overflow-hidden">
+          {step !== null && <StepIndicator current={step} />}
+        </div>
 
         <div className="flex items-center justify-self-end">
           <ThemeToggle />
@@ -39,24 +41,26 @@ export function Topbar({ step }: { step: Step | null }) {
 
 function StepIndicator({ current }: { current: Step }) {
   return (
-    <nav aria-label="שלבי התהליך">
-      <ol className="flex items-center gap-2 text-sm lg:gap-3">
+    <nav aria-label="שלבי התהליך" className="min-w-0">
+      <ol className="flex items-center gap-1 text-xs sm:gap-2 sm:text-sm lg:gap-3">
         {STEPS.map(({ step, label }, index) => {
           const state = step < current ? "done" : step === current ? "current" : "upcoming";
           return (
-            <li key={step} className="flex items-center gap-2 lg:gap-3">
-              {index > 0 && <span aria-hidden className="h-px w-3 bg-nav-border lg:w-6" />}
+            <li key={step} className="flex min-w-0 items-center gap-1 sm:gap-2 lg:gap-3">
+              {index > 0 && (
+                <span aria-hidden className="h-px w-2 shrink-0 bg-nav-border sm:w-3 lg:w-6" />
+              )}
               <span
                 aria-current={state === "current" ? "step" : undefined}
                 className={cn(
-                  "flex items-center gap-2",
+                  "flex min-w-0 items-center gap-1 sm:gap-2",
                   state === "current" ? "font-semibold text-nav-foreground" : "text-nav-muted",
                 )}
               >
                 <span
                   aria-hidden
                   className={cn(
-                    "inline-flex size-6 items-center justify-center border text-xs font-bold",
+                    "inline-flex size-6 shrink-0 items-center justify-center border text-xs font-bold",
                     state === "current" && "border-lime bg-lime text-navy",
                     state === "done" && "border-nav-muted",
                     state === "upcoming" && "border-nav-border",
@@ -64,7 +68,12 @@ function StepIndicator({ current }: { current: Step }) {
                 >
                   {state === "done" ? <Check className="size-3.5" strokeWidth={3} /> : step}
                 </span>
-                <span className={state === "current" ? "max-sm:sr-only" : "max-md:sr-only"}>
+                <span
+                  className={cn(
+                    "truncate",
+                    state === "current" ? "max-sm:sr-only" : "max-lg:sr-only",
+                  )}
+                >
                   {label}
                   {state === "done" && <span className="sr-only"> (הושלם)</span>}
                 </span>

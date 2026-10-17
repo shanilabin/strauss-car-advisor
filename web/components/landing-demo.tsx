@@ -10,8 +10,8 @@ const enterAt = (index: number) => ({ "--enter-index": index }) as CSSProperties
 /** Static illustration of a result card, built only from the labelled sample constant. */
 export function LandingDemo() {
   return (
-    <div className="relative">
-      <div aria-hidden className="enter absolute -end-3 -top-3 size-16 bg-lime" style={enterAt(5)} />
+    <div className="relative min-w-0 max-w-full">
+      <div aria-hidden className="enter absolute -top-3 end-0 size-12 bg-lime sm:-end-3 sm:size-16" style={enterAt(5)} />
       <figure
         aria-label="המחשה של תוצאה, על בסיס נתוני הדגמה"
         className="enter relative border border-border bg-surface"
@@ -27,7 +27,7 @@ export function LandingDemo() {
 
         <div className="bg-cobalt px-5 py-6 text-white lg:px-8 lg:py-8">
           <p className="text-sm font-semibold">השינוי בנטו החודשי</p>
-          <p className="mt-1 text-5xl leading-tight font-black sm:text-6xl">
+          <p className="mt-1 text-4xl leading-tight font-black break-words sm:text-6xl">
             <bdi dir="ltr">{formatDelta(sample.delta)}</bdi>
           </p>
           <p className="mt-1 font-medium">יותר בנטו בכל חודש</p>

@@ -76,7 +76,7 @@ export function WhyPopover({
         type="button"
         aria-label={aria}
         className={cn(
-          "ms-1 inline-flex min-h-8 min-w-8 items-center justify-center border border-border",
+          "ms-1 inline-flex min-h-11 min-w-11 items-center justify-center border border-border sm:min-h-8 sm:min-w-8",
           "px-1.5 text-xs font-semibold text-link hover:bg-muted",
           "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring",
           className,
@@ -88,7 +88,7 @@ export function WhyPopover({
         <Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-50">
           <Popover.Popup
             aria-labelledby={titleId}
-            className="max-w-xs border border-border bg-surface px-3 py-3 text-sm text-foreground shadow-none outline-none"
+            className="w-[min(20rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] border border-border bg-surface px-3 py-3 text-sm text-foreground shadow-none outline-none"
           >
             <Popover.Title
               id={titleId}
@@ -120,7 +120,7 @@ export function WhyPopover({
             </div>
             <Popover.Close
               type="button"
-              className="mt-3 inline-flex min-h-9 items-center border border-border px-3 text-xs font-semibold hover:bg-muted"
+              className="mt-3 inline-flex min-h-11 items-center border border-border px-3 text-xs font-semibold hover:bg-muted sm:min-h-9"
             >
               סגור
             </Popover.Close>

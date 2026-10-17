@@ -116,8 +116,8 @@ export function FormFlow() {
       <Topbar step={stepForStage(stage)} />
       <main
         className={cn(
-          "mx-auto flex w-full max-w-screen-xl flex-1 flex-col gap-6 px-5 py-8",
-          "min-h-[calc(100dvh-var(--topbar-h))] lg:px-8",
+          "mx-auto flex w-full min-w-0 max-w-screen-xl flex-1 flex-col gap-6 overflow-x-clip px-4 py-8",
+          "min-h-[calc(100dvh-var(--topbar-h))] sm:px-5 lg:px-8",
         )}
       >
         <header className="max-w-2xl">

@@ -12,14 +12,14 @@ export default function Home() {
   return (
     <>
       <Topbar step={null} />
-      <main className="mx-auto grid w-full max-w-screen-xl flex-1 items-center gap-12 px-5 py-10 sm:py-14 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-16 lg:px-8 lg:py-20">
+      <main className="mx-auto grid w-full min-w-0 max-w-screen-xl flex-1 items-center gap-10 overflow-x-clip px-4 py-8 sm:gap-12 sm:px-5 sm:py-14 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-16 lg:px-8 lg:py-20">
         <section aria-labelledby="landing-title">
           <p className="enter text-sm font-bold text-link" style={enterAt(0)}>
             יועץ הרכב של שטראוס
           </p>
           <h1
             id="landing-title"
-            className="enter mt-4 font-display text-[2.5rem] leading-[1.08] sm:text-6xl xl:text-7xl"
+            className="enter mt-4 font-display text-[2.15rem] leading-[1.08] break-words sm:text-6xl xl:text-7xl"
             style={enterAt(1)}
           >
             ההחלטה על הרכב.

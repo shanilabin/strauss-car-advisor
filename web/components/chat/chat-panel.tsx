@@ -1,7 +1,7 @@
 "use client";
 
 import { SendHorizontal } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 
 import { AgentActions } from "@/components/chat/agent-actions";
 import { MessageCardView } from "@/components/chat/message-cards";
@@ -50,13 +50,13 @@ export function ChatPanel({
   className,
 }: ChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const inputId = useId();
   const [openTraces, setOpenTraces] = useState<ReadonlySet<string>>(() => new Set());
-  const onTraceOpenChangeRef = useRef(onTraceOpenChange);
-  onTraceOpenChangeRef.current = onTraceOpenChange;
 
   useEffect(() => {
-    onTraceOpenChangeRef.current?.(openTraces.size > 0);
-  }, [openTraces]);
+    onTraceOpenChange?.(openTraces.size > 0);
+  }, [openTraces, onTraceOpenChange]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -78,7 +78,7 @@ export function ChatPanel({
   return (
     <section
       aria-label="השיחה עם היועץ"
-      className={cn("flex min-h-0 flex-col border border-border bg-surface", className)}
+      className={cn("flex min-h-0 min-w-0 flex-col border border-border bg-surface", className)}
     >
       <header className="flex shrink-0 items-center border-b border-border px-4 py-3">
         <h2 className={cn("font-semibold", narrow ? "text-sm" : "text-base")}>השיחה עם היועץ</h2>
@@ -88,7 +88,7 @@ export function ChatPanel({
         ref={listRef}
         aria-live="polite"
         aria-relevant="additions"
-        className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4"
+        className="flex min-h-0 min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4"
       >
         {messages.length === 0 && !thinking && (
           <p className="text-sm text-muted-foreground">כתבו הודעה כדי להתחיל את השיחה.</p>
@@ -99,7 +99,7 @@ export function ChatPanel({
             key={message.id}
             aria-busy={message.sending || undefined}
             className={cn(
-              "flex flex-col gap-1",
+              "flex min-w-0 flex-col gap-1",
               message.role === "user" && "border-s-2 border-cobalt ps-3",
               message.role === "system_event" && "text-sm text-muted-foreground",
             )}
@@ -108,7 +108,7 @@ export function ChatPanel({
               {roleLabel(message.role)}
               {message.sending ? " · שולח…" : ""}
             </p>
-            <p className={cn("whitespace-pre-wrap", narrow ? "text-sm" : "text-base")}>
+            <p className={cn("min-w-0 whitespace-pre-wrap break-words", narrow ? "text-sm" : "text-base")}>
               {message.text}
             </p>
             {message.role === "assistant" &&
@@ -158,7 +158,7 @@ export function ChatPanel({
               type="button"
               disabled={disabled || thinking}
               onClick={() => submit(reply)}
-              className="min-h-11 border border-border bg-surface px-3 py-2 text-sm font-semibold hover:border-primary hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+              className="min-h-11 max-w-full border border-border bg-surface px-3 py-2 text-start text-sm font-semibold break-words hover:border-primary hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
             >
               {reply}
             </button>
@@ -168,19 +168,28 @@ export function ChatPanel({
 
       <form
         onSubmit={handleSubmit}
-        className="flex shrink-0 items-stretch gap-2 border-t border-border p-3"
+        className="flex min-w-0 shrink-0 items-stretch gap-2 border-t border-border p-3"
       >
-        <label className="sr-only" htmlFor="chat-input">
+        <label className="sr-only" htmlFor={inputId}>
           כתיבת הודעה
         </label>
         <input
-          id="chat-input"
+          ref={inputRef}
+          id={inputId}
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
+          onFocus={() => {
+            const node = inputRef.current;
+            if (!node) return;
+            window.setTimeout(() => {
+              node.scrollIntoView({ block: "nearest", inline: "nearest" });
+            }, 300);
+          }}
           disabled={disabled || thinking}
           placeholder="כתיבת הודעה…"
           autoComplete="off"
-          className="min-h-11 min-w-0 flex-1 border border-input bg-background px-3 text-base outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
+          enterKeyHint="send"
+          className="min-h-11 min-w-0 flex-1 scroll-mb-4 border border-input bg-background px-3 text-base outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
         />
         <Button
           type="submit"

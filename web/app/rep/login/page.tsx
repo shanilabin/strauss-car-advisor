@@ -12,7 +12,7 @@ export default function RepLogin() {
   return (
     <>
       <Topbar step={null} />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 px-5 py-16">
+      <main className="mx-auto flex w-full min-w-0 max-w-md flex-1 flex-col justify-center gap-8 overflow-x-clip px-4 py-12 sm:px-5 sm:py-16">
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-4xl">כניסת נציג</h1>
           <p className="text-muted-foreground">מסך לנציגי התחבורה בלבד.</p>

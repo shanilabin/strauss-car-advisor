@@ -225,9 +225,58 @@
   }
   html {
     @apply font-sans;
+    overflow-x: clip;
   }
   body {
     @apply bg-background text-foreground tabular-nums;
+  }
+}
+
+/* Conversation route on a phone: one viewport, chat input pinned, no page scroll. */
+@media (max-width: 1023px) {
+  html.lock-viewport,
+  html.lock-viewport body {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  html.lock-viewport body > div {
+    overflow: hidden;
+  }
+}
+
+/* Comparison waterfall table: one stacked block per row on a narrow screen. */
+@media (max-width: 639px) {
+  .stack-table,
+  .stack-table tbody,
+  .stack-table tr,
+  .stack-table th,
+  .stack-table td {
+    display: block;
+    width: 100%;
+    text-align: start;
+  }
+
+  .stack-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .stack-table td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
   }
 }
 

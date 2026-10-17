@@ -244,9 +244,14 @@ export function WaterfallChart({ result, className, compact = false }: Waterfall
 
   const minChartWidth = Math.max(280, bars.length * 72);
 
+  const maxAbs = bars.reduce((max, bar) => {
+    const span = Math.abs(bar.role === "step" ? bar.amount : bar.netAfter);
+    return span > max ? span : max;
+  }, 1);
+
   return (
     <section
-      className={cn("border border-border bg-surface text-foreground", className)}
+      className={cn("min-w-0 max-w-full border border-border bg-surface text-foreground", className)}
       aria-label="גרף מפל"
     >
       <header
@@ -258,7 +263,7 @@ export function WaterfallChart({ result, className, compact = false }: Waterfall
         <h3 className={cn("font-display", compact ? "text-base" : "text-lg")}>פירוק ההפרש</h3>
         <p
           className={cn(
-            "inline-flex items-center gap-1.5 font-semibold tabular-nums",
+            "inline-flex min-w-0 flex-wrap items-center gap-1.5 font-semibold tabular-nums",
             delta > 0 && "text-success",
             delta < 0 && "text-error",
           )}
@@ -277,8 +282,12 @@ export function WaterfallChart({ result, className, compact = false }: Waterfall
         </p>
       </header>
 
+      <div className={cn("min-w-0 sm:hidden", compact ? "px-2 py-2" : "px-3 py-3")}>
+        <NarrowWaterfall bars={bars} maxAbs={maxAbs} ariaLabel={chartAriaLabel} />
+      </div>
+
       <div
-        className={cn("overflow-x-auto", compact ? "px-2 py-2" : "px-3 py-3")}
+        className={cn("hidden min-w-0 max-w-full overflow-x-auto sm:block", compact ? "px-2 py-2" : "px-3 py-3")}
         role="img"
         aria-label={chartAriaLabel}
       >
@@ -409,6 +418,60 @@ export function WaterfallChart({ result, className, compact = false }: Waterfall
   );
 }
 
+/** Fits the same bars in the viewport width. Widths are a visual scale; the amounts stay DTO text. */
+function NarrowWaterfall({
+  bars,
+  maxAbs,
+  ariaLabel,
+}: {
+  bars: ChartBar[];
+  maxAbs: number;
+  ariaLabel: string;
+}) {
+  return (
+    <ul className="flex flex-col gap-3" aria-label={ariaLabel}>
+      {bars.map((bar) => {
+        const span = Math.abs(bar.role === "step" ? bar.amount : bar.netAfter);
+        const width = Math.max(8, Math.min(100, (span / maxAbs) * 100));
+        const positive = bar.role === "step" && bar.direction === "up";
+        const negative = bar.role === "step" && bar.direction === "down";
+        return (
+          <li key={bar.id} className="min-w-0">
+            <p className="flex min-w-0 items-baseline justify-between gap-2 text-sm">
+              <span className="inline-flex min-w-0 items-center gap-1 font-medium break-words">
+                <DirectionMark direction={bar.direction} />
+                {bar.label}
+              </span>
+              <bdi
+                dir="ltr"
+                className={cn(
+                  "shrink-0 font-semibold tabular-nums",
+                  positive && "text-success",
+                  negative && "text-error",
+                )}
+              >
+                {amountLabel(bar)}
+              </bdi>
+            </p>
+            <div className="mt-1 h-2 bg-surface-raised" aria-hidden>
+              <div
+                className={cn(
+                  "h-full",
+                  bar.role !== "step" && "bg-cobalt",
+                  positive && "bg-success",
+                  negative && "bg-error",
+                  bar.role === "step" && !positive && !negative && "bg-navy",
+                )}
+                style={{ width: `${width}%` }}
+              />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function OrderedBreakdownTable({
   id,
   steps,
@@ -427,7 +490,7 @@ function OrderedBreakdownTable({
   return (
     <table
       id={id}
-      className="mt-3 w-full border-collapse text-sm"
+      className="stack-table relative mt-3 w-full max-w-full border-collapse text-sm"
       aria-label="פירוק לפי סדר"
     >
       <caption className="mb-2 text-start text-xs font-semibold text-muted-foreground">
@@ -454,8 +517,8 @@ function OrderedBreakdownTable({
           <th scope="row" className="py-2 pe-2 text-start font-semibold">
             היום
           </th>
-          <td className="py-2 pe-2 tabular-nums">
-            <span className="inline-flex items-center">
+          <td data-label="שינוי" className="py-2 pe-2 break-words tabular-nums">
+            <span className="inline-flex flex-wrap items-center">
               <bdi dir="ltr">{formatShekel(netToday)}</bdi>
               <WhyForField
                 sources={sources}
@@ -465,8 +528,8 @@ function OrderedBreakdownTable({
               />
             </span>
           </td>
-          <td className="py-2 text-muted-foreground">בסיס</td>
-          <td className="py-2 ps-2 tabular-nums">
+          <td data-label="כיוון" className="py-2 text-muted-foreground">בסיס</td>
+          <td data-label="נטו אחרי" className="py-2 ps-2 tabular-nums">
             <bdi dir="ltr">{formatShekel(netToday)}</bdi>
           </td>
         </tr>
@@ -476,12 +539,13 @@ function OrderedBreakdownTable({
           const stepSource = findSourceForWaterfallKey(sources, step.key);
           return (
             <tr key={step.key} className="border-b border-border">
-              <th scope="row" className="py-2 pe-2 text-start font-medium">
+              <th scope="row" className="py-2 pe-2 text-start font-medium break-words">
                 {step.label}
               </th>
               <td
+                data-label="שינוי"
                 className={cn(
-                  "py-2 pe-2 tabular-nums font-semibold",
+                  "py-2 pe-2 font-semibold break-words tabular-nums",
                   step.delta > 0 && "text-success",
                   step.delta < 0 && "text-error",
                 )}
@@ -502,8 +566,8 @@ function OrderedBreakdownTable({
                   )}
                 </span>
               </td>
-              <td className="py-2">{direction}</td>
-              <td className="py-2 ps-2 tabular-nums">
+              <td data-label="כיוון" className="py-2">{direction}</td>
+              <td data-label="נטו אחרי" className="py-2 ps-2 tabular-nums">
                 <bdi dir="ltr">{formatShekel(step.net_after)}</bdi>
               </td>
             </tr>
@@ -513,8 +577,8 @@ function OrderedBreakdownTable({
           <th scope="row" className="py-2 pe-2 text-start font-semibold">
             חלופה
           </th>
-          <td className="py-2 pe-2 tabular-nums">
-            <span className="inline-flex items-center">
+          <td data-label="שינוי" className="py-2 pe-2 break-words tabular-nums">
+            <span className="inline-flex flex-wrap items-center">
               <bdi dir="ltr">{formatShekel(netOption)}</bdi>
               <WhyForField
                 sources={sources}
@@ -524,8 +588,8 @@ function OrderedBreakdownTable({
               />
             </span>
           </td>
-          <td className="py-2 text-muted-foreground">סיום</td>
-          <td className="py-2 ps-2 tabular-nums">
+          <td data-label="כיוון" className="py-2 text-muted-foreground">סיום</td>
+          <td data-label="נטו אחרי" className="py-2 ps-2 tabular-nums">
             <bdi dir="ltr">{formatShekel(netOption)}</bdi>
           </td>
         </tr>
@@ -536,7 +600,7 @@ function OrderedBreakdownTable({
           <td
             colSpan={3}
             className={cn(
-              "py-2 pe-2 font-semibold tabular-nums",
+              "py-2 pe-2 font-semibold break-words tabular-nums",
               delta > 0 && "text-success",
               delta < 0 && "text-error",
             )}

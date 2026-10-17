@@ -23,6 +23,7 @@ import {
 import { OptionsFetchError, useOptions } from "@/lib/api/use-options";
 import { SendMessageError, useSendMessage } from "@/lib/api/use-send-message";
 import { useConversationRealtime } from "@/lib/realtime/use-conversation-realtime";
+import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { cn } from "@/lib/utils";
 
 type ConversationViewProps = {
@@ -59,6 +60,15 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   const [seenReady, setSeenReady] = useState(false);
   const [repAnnouncement, setRepAnnouncement] = useState("");
   const previousStatus = useRef(conversation.data?.status);
+  const keyboardInset = useKeyboardInset();
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("lock-viewport");
+    return () => {
+      root.classList.remove("lock-viewport");
+    };
+  }, []);
 
   useEffect(() => {
     const next = conversation.data?.status;
@@ -205,8 +215,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
       </p>
       <main
         className={cn(
-          "mx-auto flex w-full max-w-screen-2xl flex-1 flex-col",
-          "min-h-[calc(100dvh-var(--topbar-h))]",
+          "mx-auto flex w-full min-w-0 max-w-screen-2xl flex-1 flex-col",
+          "max-lg:min-h-0 max-lg:overflow-hidden",
+          "lg:min-h-[calc(100dvh-var(--topbar-h))]",
         )}
       >
         {/* Desktop phase layouts */}
@@ -274,7 +285,10 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
         </div>
 
         {/* Mobile: chat full screen + bottom sheet for side content */}
-        <div className="flex min-h-0 flex-1 flex-col lg:hidden">
+        <div
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:hidden"
+          style={keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}
+        >
           <ChatPanel
             messages={messages}
             quickReplies={quickReplies}
@@ -285,9 +299,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             onSend={handleSend}
             onSelectOption={handleSelectOption}
             openQuestions={data.open_questions ?? []}
-            className="min-h-0 flex-1 border-0 border-b"
+            className="min-h-0 min-w-0 flex-1 border-0 border-b"
           />
-          <div className="flex shrink-0 gap-2 border-t border-border bg-surface px-3 py-2">
+          <div className="flex shrink-0 gap-2 border-t border-border bg-surface px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             <button
               type="button"
               onClick={() => setSheetOpen(true)}

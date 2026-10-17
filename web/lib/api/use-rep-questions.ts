@@ -11,7 +11,7 @@ export type RepAnswerRequest = components["schemas"]["RepAnswerRequest"];
 
 export const REP_QUESTIONS_QUERY_KEY = ["rep", "questions", "OPEN"] as const;
 
-/** How often the open queue is polled until Realtime lands in B4.2. */
+/** Polling fallback for the open queue. Realtime invalidates the same query. */
 export const REP_QUEUE_POLL_MS = 5_000;
 
 export class RepQuestionsFetchError extends Error {
@@ -38,7 +38,7 @@ export class RepAnswerError extends Error {
   }
 }
 
-/** GET /v1/rep/questions?status=OPEN — polls until Realtime (B4.2). */
+/** GET /v1/rep/questions?status=OPEN — polled as a fallback while Realtime is connected. */
 export function useRepQuestions(enabled: boolean) {
   return useQuery({
     queryKey: REP_QUESTIONS_QUERY_KEY,

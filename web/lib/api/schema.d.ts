@@ -153,10 +153,9 @@ export interface paths {
         put?: never;
         /**
          * Send Message
-         * @description One agent turn. The reply text is words only; numbers arrive inside cards.
-         *
-         *     The agent arrives in task A4: until then the reply and trace are a fixed sample, while the state is
-         *     the real conversation (ownership is already enforced).
+         * @description One agent turn. The reply text is words only; numbers arrive inside cards built by the engine.
+         *     9-digit ID numbers are masked before the model or the database sees them. When no model can answer:
+         *     503 'agent_unavailable' with details.mode = "form" (nothing is saved) - the UI switches to the form.
          */
         post: operations["conversations_send_message"];
         delete?: never;
@@ -233,7 +232,8 @@ export interface paths {
         };
         /**
          * List Questions
-         * @description The rep's queue (send status=OPEN): each question with the minimum context needed to answer it.
+         * @description The rep's queue (send status=OPEN), newest first: each question with the minimum context needed to
+         *     answer it - occupation, group, the cars involved. Never salary, never the chat.
          */
         get: operations["rep_list_questions"];
         put?: never;
@@ -255,7 +255,9 @@ export interface paths {
         put?: never;
         /**
          * Answer Question
-         * @description Answer once. A second answer to the same question returns 409; the conversation resumes once.
+         * @description Answer once (atomic): a second answer returns 409 'already_answered'. A participation is an amount
+         *     ("350"), an occupation is a name from the table - anything else is 422 'invalid_answer'. The answer is
+         *     applied to that field of the employee's profile, and the conversation gets the updated comparison.
          */
         post: operations["rep_answer_question"];
         delete?: never;
@@ -1114,7 +1116,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Data service unavailable */
+            /** @description Data service or chat model unavailable (details.mode = form) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1203,7 +1205,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Data service unavailable */
+            /** @description Data service or chat model unavailable (details.mode = form) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1270,7 +1272,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Data service unavailable */
+            /** @description Data service or chat model unavailable (details.mode = form) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1341,7 +1343,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Data service unavailable */
+            /** @description Data service or chat model unavailable (details.mode = form) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1412,7 +1414,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Data service unavailable */
+            /** @description Data service or chat model unavailable (details.mode = form) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1479,7 +1481,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Data service unavailable */
+            /** @description Data service or chat model unavailable (details.mode = form) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1550,7 +1552,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Data service unavailable */
+            /** @description Data service or chat model unavailable (details.mode = form) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1638,7 +1640,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Data service unavailable */
+            /** @description Data service or chat model unavailable (details.mode = form) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1709,7 +1711,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Data service unavailable */
+            /** @description Data service or chat model unavailable (details.mode = form) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1778,7 +1780,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Data service unavailable */
+            /** @description Data service or chat model unavailable (details.mode = form) */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1849,7 +1851,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Data service unavailable */
+            /** @description Data service or chat model unavailable (details.mode = form) */
             503: {
                 headers: {
                     [name: string]: unknown;

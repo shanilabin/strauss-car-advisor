@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { BottomSheet } from "@/components/chat/bottom-sheet";
-import { ChatPanel, type MessageOut } from "@/components/chat/chat-panel";
+import { ChatPanel, type ChatMessage } from "@/components/chat/chat-panel";
 import { VehicleList } from "@/components/chat/vehicle-list";
 import { ComparisonCard } from "@/components/comparison-card";
 import { OptionsMap } from "@/components/options-map";
@@ -34,8 +34,18 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   const compare = useCompare(conversationId);
 
   // Remount via key={id} on the page resets this state when the conversation changes.
-  const [localMessages, setLocalMessages] = useState<MessageOut[]>([]);
+  const [draft, setDraft] = useState("");
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  /**
+   * The employee's text while POST /messages is in flight.
+   * Dropped as soon as the cached server transcript grows, so the masked
+   * server text replaces it and the row is never shown twice.
+   */
+  const [outgoing, setOutgoing] = useState<{
+    text: string;
+    baseline: number;
+    startedAt: string;
+  } | null>(null);
   const [userSelectedId, setUserSelectedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   /**
@@ -62,7 +72,21 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   const optionsQuery = useOptions(conversationId, showOptionsGallery);
 
   const serverMessages = data?.messages ?? [];
-  const messages = [...serverMessages, ...localMessages];
+  const showOutgoing =
+    outgoing !== null && !sendMessage.isError && serverMessages.length <= outgoing.baseline;
+  const messages: ChatMessage[] =
+    showOutgoing && outgoing
+      ? [
+          ...serverMessages,
+          {
+            id: "sending",
+            role: "user",
+            text: outgoing.text,
+            created_at: outgoing.startedAt,
+            sending: true,
+          },
+        ]
+      : serverMessages;
   const comparison = data?.latest_comparison ?? null;
   const galleryComparison = optionsQuery.data ?? comparison;
   const results = comparison?.results ?? [];
@@ -72,29 +96,23 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
       : (comparison?.best_option_id ?? results[0]?.option.id ?? null);
 
   function handleSend(text: string) {
+    const previousReplies = quickReplies;
+    setDraft("");
+    setQuickReplies([]);
+    setOutgoing({
+      text,
+      baseline: data?.messages?.length ?? 0,
+      startedAt: new Date().toISOString(),
+    });
     sendMessage.mutate(text, {
       onSuccess: (turn) => {
-        const now = new Date().toISOString();
-        setLocalMessages((prev) => [
-          ...prev,
-          {
-            id: `local-user-${now}`,
-            role: "user",
-            text,
-            created_at: now,
-          },
-          {
-            id: `local-assistant-${now}`,
-            role: "assistant",
-            text: turn.reply.text,
-            cards: turn.reply.cards,
-            created_at: now,
-            trace: turn.trace,
-          },
-        ]);
+        setOutgoing(null);
         setQuickReplies(turn.reply.quick_replies ?? []);
       },
       onError: (error) => {
+        setOutgoing(null);
+        setDraft(text);
+        setQuickReplies(previousReplies);
         if (isFormModeFallback(error)) {
           router.push("/form");
         }
@@ -118,8 +136,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     setBrowsingOptions(true);
   }
 
-  const sendError =
-    sendMessage.error instanceof SendMessageError
+  const sendError = isFormModeFallback(sendMessage.error)
+    ? null
+    : sendMessage.error instanceof SendMessageError
       ? sendMessage.error.message
       : sendMessage.error
         ? "שליחת ההודעה נכשלה. נסו שוב."
@@ -184,6 +203,8 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               quickReplies={quickReplies}
               thinking={sendMessage.isPending}
               errorMessage={sendError}
+              draft={draft}
+              onDraftChange={setDraft}
               onSend={handleSend}
               onSelectOption={handleSelectOption}
             />
@@ -194,6 +215,8 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               quickReplies={quickReplies}
               thinking={sendMessage.isPending}
               errorMessage={sendError}
+              draft={draft}
+              onDraftChange={setDraft}
               onSend={handleSend}
               onSelectOption={handleSelectOption}
               galleryComparison={galleryComparison}
@@ -211,6 +234,8 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
                 quickReplies={quickReplies}
                 thinking={sendMessage.isPending}
                 errorMessage={sendError}
+                draft={draft}
+                onDraftChange={setDraft}
                 onSend={handleSend}
                 onSelectOption={handleSelectOption}
                 comparison={comparison}
@@ -235,6 +260,8 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             quickReplies={quickReplies}
             thinking={sendMessage.isPending}
             errorMessage={sendError}
+            draft={draft}
+            onDraftChange={setDraft}
             onSend={handleSend}
             onSelectOption={handleSelectOption}
             className="min-h-0 flex-1 border-0 border-b"
@@ -281,16 +308,20 @@ function CollectingDesktop({
   quickReplies,
   thinking,
   errorMessage,
+  draft,
+  onDraftChange,
   onSend,
   onSelectOption,
 }: {
   conversationId: string;
   profile: ConversationState["profile"];
   missing: ConversationState["missing"];
-  messages: MessageOut[];
+  messages: ChatMessage[];
   quickReplies: string[];
   thinking: boolean;
   errorMessage: string | null;
+  draft: string;
+  onDraftChange: (value: string) => void;
   onSend: (text: string) => void;
   onSelectOption: (optionId: string) => void;
 }) {
@@ -301,6 +332,8 @@ function CollectingDesktop({
         quickReplies={quickReplies}
         thinking={thinking}
         errorMessage={errorMessage}
+        draft={draft}
+        onDraftChange={onDraftChange}
         onSend={onSend}
         onSelectOption={onSelectOption}
         className="min-h-0"
@@ -320,6 +353,8 @@ function OptionsDesktop({
   quickReplies,
   thinking,
   errorMessage,
+  draft,
+  onDraftChange,
   onSend,
   onSelectOption,
   galleryComparison,
@@ -329,10 +364,12 @@ function OptionsDesktop({
   selectedId,
   compareError,
 }: {
-  messages: MessageOut[];
+  messages: ChatMessage[];
   quickReplies: string[];
   thinking: boolean;
   errorMessage: string | null;
+  draft: string;
+  onDraftChange: (value: string) => void;
   onSend: (text: string) => void;
   onSelectOption: (optionId: string) => void;
   galleryComparison: ConversationState["latest_comparison"];
@@ -349,6 +386,8 @@ function OptionsDesktop({
         quickReplies={quickReplies}
         thinking={thinking}
         errorMessage={errorMessage}
+        draft={draft}
+        onDraftChange={onDraftChange}
         onSend={onSend}
         onSelectOption={onSelectOption}
         narrow
@@ -373,6 +412,8 @@ function ComparisonDesktop({
   quickReplies,
   thinking,
   errorMessage,
+  draft,
+  onDraftChange,
   onSend,
   onSelectOption,
   comparison,
@@ -382,10 +423,12 @@ function ComparisonDesktop({
   waitingRep,
   openQuestions,
 }: {
-  messages: MessageOut[];
+  messages: ChatMessage[];
   quickReplies: string[];
   thinking: boolean;
   errorMessage: string | null;
+  draft: string;
+  onDraftChange: (value: string) => void;
   onSend: (text: string) => void;
   onSelectOption: (optionId: string) => void;
   comparison: NonNullable<ConversationState["latest_comparison"]>;
@@ -430,6 +473,8 @@ function ComparisonDesktop({
         quickReplies={quickReplies}
         thinking={thinking}
         errorMessage={errorMessage}
+        draft={draft}
+        onDraftChange={onDraftChange}
         onSend={onSend}
         onSelectOption={onSelectOption}
         narrow

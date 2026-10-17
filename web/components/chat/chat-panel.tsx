@@ -1,7 +1,7 @@
 "use client";
 
 import { SendHorizontal } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, type FormEvent } from "react";
 
 import { MessageCardView } from "@/components/chat/message-cards";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,15 @@ import type { components } from "@/lib/api/schema";
 
 export type MessageOut = components["schemas"]["MessageOut"];
 
+/** A transcript row. `sending` is the optimistic employee message, not a server field. */
+export type ChatMessage = MessageOut & { sending?: boolean };
+
 type ChatPanelProps = {
-  messages: MessageOut[];
+  messages: ChatMessage[];
   quickReplies: string[];
   thinking: boolean;
+  draft: string;
+  onDraftChange: (value: string) => void;
   disabled?: boolean;
   narrow?: boolean;
   errorMessage?: string | null;
@@ -27,6 +32,8 @@ export function ChatPanel({
   messages,
   quickReplies,
   thinking,
+  draft,
+  onDraftChange,
   disabled = false,
   narrow = false,
   errorMessage,
@@ -34,7 +41,6 @@ export function ChatPanel({
   onSelectOption,
   className,
 }: ChatPanelProps) {
-  const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,7 +53,6 @@ export function ChatPanel({
     const trimmed = text.trim();
     if (!trimmed || thinking || disabled) return;
     onSend(trimmed);
-    setDraft("");
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -77,6 +82,7 @@ export function ChatPanel({
         {messages.map((message) => (
           <article
             key={message.id}
+            aria-busy={message.sending || undefined}
             className={cn(
               "flex flex-col gap-1",
               message.role === "user" && "border-s-2 border-cobalt ps-3",
@@ -85,6 +91,7 @@ export function ChatPanel({
           >
             <p className="text-xs font-bold text-muted-foreground">
               {roleLabel(message.role)}
+              {message.sending ? " · שולח…" : ""}
             </p>
             <p className={cn("whitespace-pre-wrap", narrow ? "text-sm" : "text-base")}>
               {message.text}
@@ -139,7 +146,7 @@ export function ChatPanel({
         <input
           id="chat-input"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => onDraftChange(e.target.value)}
           disabled={disabled || thinking}
           placeholder="כתיבת הודעה…"
           autoComplete="off"

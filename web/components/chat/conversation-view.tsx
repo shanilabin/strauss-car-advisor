@@ -407,8 +407,15 @@ function OptionsDesktop({
   compareError: string | null;
   openQuestions: NonNullable<ConversationState["open_questions"]>;
 }) {
+  const [chatExpanded, setChatExpanded] = useState(false);
+
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)] gap-4 p-6">
+    <div
+      className={cn(
+        "grid min-h-0 flex-1 gap-4 p-6",
+        chatExpanded ? "grid-cols-[440px_minmax(0,1fr)]" : "grid-cols-[280px_minmax(0,1fr)]",
+      )}
+    >
       <ChatPanel
         messages={messages}
         quickReplies={quickReplies}
@@ -419,8 +426,9 @@ function OptionsDesktop({
         onSend={onSend}
         onSelectOption={onSelectOption}
         openQuestions={openQuestions}
-        narrow
-        className="min-h-0"
+        narrow={!chatExpanded}
+        onTraceOpenChange={setChatExpanded}
+        className="min-h-0 min-w-0 transition-[width] duration-300 ease-out motion-reduce:transition-none"
       />
       <OptionsGalleryPanel
         galleryComparison={galleryComparison}
@@ -469,6 +477,8 @@ function ComparisonDesktop({
   openQuestions: NonNullable<ConversationState["open_questions"]>;
   missing: NonNullable<ConversationState["missing"]>;
 }) {
+  const [chatExpanded, setChatExpanded] = useState(false);
+
   return (
     <div className="flex min-h-0 flex-1 gap-4 p-6">
       {/* RTL: visual order is chat (end/left) · comparison · vehicles (start/right).
@@ -501,8 +511,12 @@ function ComparisonDesktop({
         onSend={onSend}
         onSelectOption={onSelectOption}
         openQuestions={openQuestions}
-        narrow
-        className="w-[280px] shrink-0 self-stretch"
+        narrow={!chatExpanded}
+        onTraceOpenChange={setChatExpanded}
+        className={cn(
+          "shrink-0 self-stretch transition-[width] duration-300 ease-out motion-reduce:transition-none",
+          chatExpanded ? "w-[min(440px,42vw)]" : "w-[280px]",
+        )}
       />
     </div>
   );

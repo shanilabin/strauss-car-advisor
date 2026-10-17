@@ -1,8 +1,9 @@
 "use client";
 
 import { SendHorizontal } from "lucide-react";
-import { useEffect, useRef, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import { AgentActions } from "@/components/chat/agent-actions";
 import { MessageCardView } from "@/components/chat/message-cards";
 import { Button } from "@/components/ui/button";
 import type { components } from "@/lib/api/schema";
@@ -28,6 +29,8 @@ type ChatPanelProps = {
   onSelectOption?: (optionId: string) => void;
   /** Open rep questions, so a rep_pending card can show when it was asked. */
   openQuestions?: readonly RepQuestionOut[];
+  /** True while a narrow chat has an AI-actions timeline open, so the parent can widen it. */
+  onTraceOpenChange?: (open: boolean) => void;
   className?: string;
 };
 
@@ -43,9 +46,17 @@ export function ChatPanel({
   onSend,
   onSelectOption,
   openQuestions,
+  onTraceOpenChange,
   className,
 }: ChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
+  const [openTraces, setOpenTraces] = useState<ReadonlySet<string>>(() => new Set());
+  const onTraceOpenChangeRef = useRef(onTraceOpenChange);
+  onTraceOpenChangeRef.current = onTraceOpenChange;
+
+  useEffect(() => {
+    onTraceOpenChangeRef.current?.(openTraces.size > 0);
+  }, [openTraces]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -109,6 +120,20 @@ export function ChatPanel({
                   askedAt={askedAtFor(card, message.created_at, openQuestions)}
                 />
               ))}
+            {message.role === "assistant" && (
+              <AgentActions
+                trace={message.trace}
+                messageId={message.id}
+                onOpenChange={(open) => {
+                  setOpenTraces((current) => {
+                    const next = new Set(current);
+                    if (open) next.add(message.id);
+                    else next.delete(message.id);
+                    return next;
+                  });
+                }}
+              />
+            )}
           </article>
         ))}
 

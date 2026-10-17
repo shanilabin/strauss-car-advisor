@@ -207,7 +207,7 @@ net          = gross_cash − income_tax − ni − health − pension − study
 3. המדרגות עולות; שיעורים בין 0 ל-1; `null` רק במדרגה האחרונה.
 4. `carRequired ⇒ !waiverAllowed`; `waiverAllowed ⇒ maintenance > 0`.
 
-**מקור לכל כלל (`PROVENANCE.md`):** טבלה שבה לכל שדה רשום אם הוא **מהאתגר** (קובץ, גיליון, שורה), **מאומת** (מה נבדק ואיך), או **נגזר** (מההנדסה לאחור, עם הפניה ל-`research/verify_reference.py`). כך אין הנחה סמויה.
+**מקור לכל כלל ([`api/config/PROVENANCE.md`](api/config/PROVENANCE.md)):** לכל שדה ב-rules.json, בקטלוג ובעיסוקים רשום אם הוא **מהאתגר** (איזה קובץ ואיזה שדה), **מאומת** (נבדק מול גיליון הייחוס 36/36 או מול מאגר רשות המסים), או **נגזר** (החלטה שלנו איפה שהאתגר שותק, עם נימוק). `tests/config/test_provenance.py` נכשל אם נוסף שדה בלי מקור, כך שאין הנחה סמויה.
 
 ---
 

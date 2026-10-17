@@ -60,7 +60,7 @@ export function OptionsMap({
   return (
     <section
       aria-label="מפת האפשרויות"
-      className={cn("flex min-h-0 flex-col border border-border bg-surface", className)}
+      className={cn("flex min-h-0 min-w-0 flex-col overflow-x-clip border border-border bg-surface", className)}
     >
       <header
         className={cn(
@@ -79,14 +79,14 @@ export function OptionsMap({
         <div className="flex items-center gap-3">
           <label
             htmlFor={filterId}
-            className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold"
+            className="inline-flex min-h-11 min-w-11 cursor-pointer items-center gap-2 text-sm font-semibold"
           >
             <input
               id={filterId}
               type="checkbox"
               checked={electricOnly}
               onChange={(e) => setElectricOnly(e.target.checked)}
-              className="size-4 accent-primary border border-input"
+              className="size-11 shrink-0 border border-input accent-primary sm:size-4"
             />
             רק חשמליים
           </label>
@@ -138,7 +138,7 @@ export function OptionsMap({
                     aria-busy={selecting || undefined}
                     onClick={() => onSelect?.(id)}
                     className={cn(
-                      "relative flex w-full flex-col gap-2 border border-border bg-background p-4 text-start transition-colors",
+                      "relative flex min-h-11 w-full min-w-0 flex-col gap-2 border border-border bg-background p-4 text-start break-words transition-colors",
                       compact && "p-3",
                       interactive && "hover:bg-muted/80 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring",
                       selected && "border-cobalt bg-muted",

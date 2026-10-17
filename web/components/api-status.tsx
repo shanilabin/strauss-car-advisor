@@ -42,7 +42,7 @@ export function ApiStatus() {
 
   const { health } = state;
   return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <p className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 break-words">
       <span className="flex items-center gap-1.5">
         <CircleCheck aria-hidden className="size-3.5 text-success" />
         השרת מחובר

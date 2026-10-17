@@ -23,6 +23,7 @@ import {
 import { OptionsFetchError, useOptions } from "@/lib/api/use-options";
 import { SendMessageError, useSendMessage } from "@/lib/api/use-send-message";
 import { useConversationRealtime } from "@/lib/realtime/use-conversation-realtime";
+import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { cn } from "@/lib/utils";
 
 type ConversationViewProps = {
@@ -59,6 +60,15 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   const [seenReady, setSeenReady] = useState(false);
   const [repAnnouncement, setRepAnnouncement] = useState("");
   const previousStatus = useRef(conversation.data?.status);
+  const keyboardInset = useKeyboardInset();
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("lock-viewport");
+    return () => {
+      root.classList.remove("lock-viewport");
+    };
+  }, []);
 
   useEffect(() => {
     const next = conversation.data?.status;
@@ -205,8 +215,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
       </p>
       <main
         className={cn(
-          "mx-auto flex w-full max-w-screen-2xl flex-1 flex-col",
-          "min-h-[calc(100dvh-var(--topbar-h))]",
+          "mx-auto flex w-full min-w-0 max-w-screen-2xl flex-1 flex-col",
+          "max-lg:min-h-0 max-lg:overflow-hidden",
+          "lg:min-h-[calc(100dvh-var(--topbar-h))]",
         )}
       >
         {/* Desktop phase layouts */}
@@ -274,7 +285,10 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
         </div>
 
         {/* Mobile: chat full screen + bottom sheet for side content */}
-        <div className="flex min-h-0 flex-1 flex-col lg:hidden">
+        <div
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:hidden"
+          style={keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}
+        >
           <ChatPanel
             messages={messages}
             quickReplies={quickReplies}
@@ -285,9 +299,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             onSend={handleSend}
             onSelectOption={handleSelectOption}
             openQuestions={data.open_questions ?? []}
-            className="min-h-0 flex-1 border-0 border-b"
+            className="min-h-0 min-w-0 flex-1 border-0 border-b"
           />
-          <div className="flex shrink-0 gap-2 border-t border-border bg-surface px-3 py-2">
+          <div className="flex shrink-0 gap-2 border-t border-border bg-surface px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
@@ -407,8 +421,15 @@ function OptionsDesktop({
   compareError: string | null;
   openQuestions: NonNullable<ConversationState["open_questions"]>;
 }) {
+  const [chatExpanded, setChatExpanded] = useState(false);
+
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)] gap-4 p-6">
+    <div
+      className={cn(
+        "grid min-h-0 flex-1 gap-4 p-6",
+        chatExpanded ? "grid-cols-[440px_minmax(0,1fr)]" : "grid-cols-[280px_minmax(0,1fr)]",
+      )}
+    >
       <ChatPanel
         messages={messages}
         quickReplies={quickReplies}
@@ -419,8 +440,9 @@ function OptionsDesktop({
         onSend={onSend}
         onSelectOption={onSelectOption}
         openQuestions={openQuestions}
-        narrow
-        className="min-h-0"
+        narrow={!chatExpanded}
+        onTraceOpenChange={setChatExpanded}
+        className="min-h-0 min-w-0 transition-[width] duration-300 ease-out motion-reduce:transition-none"
       />
       <OptionsGalleryPanel
         galleryComparison={galleryComparison}
@@ -469,6 +491,8 @@ function ComparisonDesktop({
   openQuestions: NonNullable<ConversationState["open_questions"]>;
   missing: NonNullable<ConversationState["missing"]>;
 }) {
+  const [chatExpanded, setChatExpanded] = useState(false);
+
   return (
     <div className="flex min-h-0 flex-1 gap-4 p-6">
       {/* RTL: visual order is chat (end/left) · comparison · vehicles (start/right).
@@ -501,8 +525,12 @@ function ComparisonDesktop({
         onSend={onSend}
         onSelectOption={onSelectOption}
         openQuestions={openQuestions}
-        narrow
-        className="w-[280px] shrink-0 self-stretch"
+        narrow={!chatExpanded}
+        onTraceOpenChange={setChatExpanded}
+        className={cn(
+          "shrink-0 self-stretch transition-[width] duration-300 ease-out motion-reduce:transition-none",
+          chatExpanded ? "w-[min(440px,42vw)]" : "w-[280px]",
+        )}
       />
     </div>
   );

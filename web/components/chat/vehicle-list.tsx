@@ -76,7 +76,7 @@ export function VehicleList({
                   onClick={() => onSelect(result.option.id)}
                   aria-pressed={selected}
                   className={cn(
-                    "relative flex w-full flex-col gap-1 border border-transparent px-3 py-3 text-start transition-colors",
+                    "relative flex min-h-11 w-full min-w-0 flex-col gap-1 border border-transparent px-3 py-3 text-start break-words transition-colors",
                     selected && "border-border bg-muted",
                     !eligible && "opacity-60",
                     "hover:bg-muted/80",

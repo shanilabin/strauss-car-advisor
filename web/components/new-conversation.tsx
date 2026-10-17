@@ -92,7 +92,7 @@ function StatusShell({ children }: { children: ReactNode }) {
   return (
     <>
       <Topbar step={null} />
-      <main className="mx-auto flex w-full max-w-screen-md flex-1 flex-col justify-center gap-4 px-5 py-16">
+      <main className="mx-auto flex w-full min-w-0 max-w-screen-md flex-1 flex-col justify-center gap-4 overflow-x-clip px-4 py-16 sm:px-5">
         {children}
       </main>
     </>

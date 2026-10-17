@@ -125,7 +125,7 @@ function DeltaHero({
       </p>
       <p
         className={cn(
-          "mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 font-display text-4xl font-normal tracking-tight sm:text-5xl",
+          "mt-2 flex max-w-full flex-wrap items-baseline gap-x-3 gap-y-1 font-display text-3xl font-normal tracking-tight break-words sm:text-5xl",
           positive && "text-success",
           negative && "text-error",
           !positive && !negative && "text-foreground",
@@ -182,8 +182,8 @@ export function ComparisonCard({
   return (
     <article
       className={cn(
-        "border border-border bg-surface text-foreground",
-        compact ? "px-4 py-4" : "px-5 py-6 sm:px-8 sm:py-8",
+        "min-w-0 max-w-full overflow-x-clip border border-border bg-surface text-foreground",
+        compact ? "px-4 py-4" : "px-4 py-5 sm:px-8 sm:py-8",
         className,
       )}
       aria-label={`השוואה: ${option.label}`}
@@ -194,7 +194,7 @@ export function ComparisonCard({
           <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
             השוואה חודשית
           </p>
-          <h2 className={cn("mt-1 font-display", compact ? "text-xl" : "text-2xl sm:text-3xl")}>
+          <h2 className={cn("mt-1 font-display break-words", compact ? "text-xl" : "text-2xl sm:text-3xl")}>
             <bdi>{option.label}</bdi>
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -265,13 +265,13 @@ export function ComparisonCard({
       >
         <div className="border-e border-border bg-surface-raised px-3 py-3 sm:px-4">
           <p className="text-xs font-bold text-muted-foreground">היום</p>
-          <p className="mt-1 text-sm font-semibold">
+          <p className="mt-1 text-sm font-semibold break-words">
             <bdi>{todayLabel}</bdi>
           </p>
         </div>
         <div className="border-s-0 bg-muted/40 px-3 py-3 sm:px-4">
           <p className="text-xs font-bold text-muted-foreground">חלופה</p>
-          <p className="mt-1 text-sm font-semibold">
+          <p className="mt-1 text-sm font-semibold break-words">
             <bdi>{option.label}</bdi>
           </p>
         </div>
@@ -324,9 +324,9 @@ export function ComparisonCard({
           )}
 
           {/* Requirement-23 detail table */}
-          <table className="mt-5 w-full border-collapse text-sm">
+          <table className="mt-5 w-full max-w-full border-collapse text-sm max-sm:block">
             <caption className="sr-only">פירוט שדות ההשוואה</caption>
-            <tbody>
+            <tbody className="max-sm:block">
               <FieldRow label="עלות לחברה ותקציב הקבוצה">
                 {result.cost_to_company != null && result.group_budget != null ? (
                   <span className="inline-flex flex-wrap items-center gap-x-1">
@@ -476,7 +476,7 @@ export function ComparisonCard({
       )}
 
       {/* Tax years / transparency */}
-      <footer className="mt-5 border-t border-border pt-3 text-xs text-muted-foreground">
+      <footer className="mt-5 border-t border-border pt-3 text-xs break-words text-muted-foreground">
         <p>
           חושב לפי לוחות מס{" "}
           <bdi dir="ltr" className="tabular-nums">
@@ -504,11 +504,11 @@ function FieldRow({
   emphasize?: boolean;
 }) {
   return (
-    <tr className="border-b border-border last:border-b-0">
+    <tr className="block border-b border-border py-3 last:border-b-0 sm:table-row sm:py-0">
       <th
         scope="row"
         className={cn(
-          "py-3 pe-3 text-start align-top font-medium text-muted-foreground",
+          "block w-full pb-1 text-start align-top font-medium break-words text-muted-foreground sm:table-cell sm:w-auto sm:py-3 sm:pe-3 sm:pb-0",
           emphasize && "font-semibold text-foreground",
         )}
       >
@@ -516,7 +516,7 @@ function FieldRow({
       </th>
       <td
         className={cn(
-          "py-3 ps-3 text-start align-top font-semibold",
+          "block w-full text-start align-top font-semibold break-words sm:table-cell sm:py-3 sm:ps-3",
           emphasize && "text-base",
         )}
       >

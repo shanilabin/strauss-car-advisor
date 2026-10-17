@@ -284,7 +284,7 @@ export function ProfileCard({
     <section
       aria-label="פרופיל עובד"
       className={cn(
-        "flex min-h-0 flex-col overflow-y-auto border border-border bg-surface",
+        "flex min-h-0 min-w-0 flex-col overflow-x-clip overflow-y-auto border border-border bg-surface",
         className,
       )}
     >
@@ -651,7 +651,7 @@ function ProfileRow({
           {editing ? (
             children
           ) : readOnly || !onStartEdit ? (
-            <p className={cn("mt-1 font-semibold", missing && "text-error")}>
+            <p className={cn("mt-1 font-semibold break-words", missing && "text-error")}>
               {missing ? "חסר" : display}
             </p>
           ) : (
@@ -660,7 +660,7 @@ function ProfileRow({
               onClick={onStartEdit}
               disabled={saving}
               className={cn(
-                "mt-1 block w-full border-b border-transparent py-1 text-start font-semibold",
+                "mt-1 block min-h-11 w-full border-b border-transparent py-2 text-start font-semibold break-words",
                 "hover:border-border focus-visible:border-cobalt focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt",
                 missing && "text-error",
               )}
@@ -739,16 +739,18 @@ function FieldEditor({
   function onKeyDown(event: KeyboardEvent<HTMLInputElement | HTMLSelectElement>) {
     if (event.key === "Enter") {
       event.preventDefault();
+      event.stopPropagation();
       onSave();
     }
     if (event.key === "Escape") {
       event.preventDefault();
+      event.stopPropagation();
       onCancel();
     }
   }
 
   const fieldClass =
-    "mt-2 w-full border-0 border-b-2 border-border bg-transparent py-2 text-base font-semibold focus-visible:border-cobalt focus-visible:outline-none";
+    "mt-2 w-full min-w-0 max-w-full border-0 border-b-2 border-border bg-transparent py-2 text-base font-semibold focus-visible:border-cobalt focus-visible:outline-none";
 
   return (
     <div className="mt-1">

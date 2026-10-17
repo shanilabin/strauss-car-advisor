@@ -84,7 +84,7 @@ export function RepQueue({ enabled = true }: RepQueueProps) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-screen-2xl flex-1 flex-col gap-4 px-4 py-6 lg:px-8">
+    <div className="mx-auto flex w-full min-w-0 max-w-screen-2xl flex-1 flex-col gap-4 overflow-x-clip px-4 py-6 lg:px-8">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="font-display text-3xl lg:text-4xl">תור הנציג</h1>
         <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
@@ -141,7 +141,7 @@ function QuestionList({
                 onClick={() => onSelect(question.id)}
                 aria-current={selected ? "true" : undefined}
                 className={cn(
-                  "flex w-full flex-col gap-1 px-4 py-3 text-start transition-colors",
+                  "flex min-h-11 w-full min-w-0 flex-col gap-1 px-4 py-3 text-start break-words transition-colors",
                   "hover:bg-muted focus-visible:outline-3 focus-visible:outline-offset-[-3px] focus-visible:outline-ring",
                   selected && "border-s-4 border-primary bg-info-surface",
                 )}
@@ -190,7 +190,7 @@ function QuestionPanel({ question }: { question: RepQuestionOut }) {
               <dt className="text-xs font-semibold text-muted-foreground">
                 {CONTEXT_LABELS[key] ?? key}
               </dt>
-              <dd className="text-sm">
+              <dd className="text-sm break-words">
                 <bdi>{value}</bdi>
               </dd>
             </div>
@@ -282,7 +282,7 @@ function AnswerForm({ questionId }: { questionId: string }) {
           type="date"
           disabled={disabled}
           dir="ltr"
-          className="h-11 w-full max-w-xs border border-input bg-surface px-3 text-base text-foreground"
+          className="h-11 w-full min-w-0 max-w-full border border-input bg-surface px-3 text-base text-foreground sm:max-w-xs"
         />
       </div>
 

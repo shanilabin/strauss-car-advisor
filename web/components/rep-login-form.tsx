@@ -10,7 +10,7 @@ import { getSupabase } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/supabase/errors";
 
 const inputClass =
-  "h-11 w-full border border-input bg-surface px-3 text-base text-foreground aria-invalid:border-error";
+  "h-11 w-full min-w-0 border border-input bg-surface px-3 text-base text-foreground aria-invalid:border-error";
 
 export function RepLoginForm() {
   const router = useRouter();

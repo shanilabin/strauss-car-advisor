@@ -58,7 +58,7 @@ export function RepScreen() {
   return (
     <>
       <Topbar step={null} />
-      <main className="flex flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
         <RepQueue enabled />
       </main>
     </>

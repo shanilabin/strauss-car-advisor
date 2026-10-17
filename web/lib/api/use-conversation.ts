@@ -20,10 +20,15 @@ export class ConversationFetchError extends Error {
   }
 }
 
+/** Cache key for GET /v1/conversations/{id}. */
+export function conversationQueryKey(id: string) {
+  return ["conversation", id] as const;
+}
+
 /** GET /v1/conversations/{id} — typed data and typed ErrorResponse on failure. */
 export function useConversation(id: string) {
   return useQuery({
-    queryKey: ["conversation", id] as const,
+    queryKey: conversationQueryKey(id),
     enabled: id.length > 0,
     queryFn: async (): Promise<ConversationState> => {
       const { data, error, response } = await api.GET("/v1/conversations/{conversation_id}", {

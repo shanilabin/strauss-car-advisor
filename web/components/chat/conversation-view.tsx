@@ -21,6 +21,7 @@ import {
 } from "@/lib/api/use-conversation";
 import { OptionsFetchError, useOptions } from "@/lib/api/use-options";
 import { SendMessageError, useSendMessage } from "@/lib/api/use-send-message";
+import { useConversationRealtime } from "@/lib/realtime/use-conversation-realtime";
 import { cn } from "@/lib/utils";
 
 type ConversationViewProps = {
@@ -29,6 +30,7 @@ type ConversationViewProps = {
 
 export function ConversationView({ conversationId }: ConversationViewProps) {
   const router = useRouter();
+  useConversationRealtime(conversationId);
   const conversation = useConversation(conversationId);
   const sendMessage = useSendMessage(conversationId);
   const compare = useCompare(conversationId);

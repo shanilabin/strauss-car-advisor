@@ -5,10 +5,11 @@ import { useEffect, useRef, type FormEvent } from "react";
 
 import { MessageCardView } from "@/components/chat/message-cards";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { components } from "@/lib/api/schema";
+import { cn } from "@/lib/utils";
 
 export type MessageOut = components["schemas"]["MessageOut"];
+type RepQuestionOut = components["schemas"]["RepQuestionOut"];
 
 /** A transcript row. `sending` is the optimistic employee message, not a server field. */
 export type ChatMessage = MessageOut & { sending?: boolean };
@@ -25,6 +26,8 @@ type ChatPanelProps = {
   onSend: (text: string) => void;
   /** When set, options cards in messages can open a comparison. */
   onSelectOption?: (optionId: string) => void;
+  /** Open rep questions, so a rep_pending card can show when it was asked. */
+  openQuestions?: readonly RepQuestionOut[];
   className?: string;
 };
 
@@ -39,6 +42,7 @@ export function ChatPanel({
   errorMessage,
   onSend,
   onSelectOption,
+  openQuestions,
   className,
 }: ChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
@@ -102,6 +106,7 @@ export function ChatPanel({
                   key={`${message.id}-${card.kind}-${index}`}
                   card={card}
                   onSelectOption={onSelectOption}
+                  askedAt={askedAtFor(card, message.created_at, openQuestions)}
                 />
               ))}
           </article>
@@ -163,6 +168,16 @@ export function ChatPanel({
       </form>
     </section>
   );
+}
+
+function askedAtFor(
+  card: NonNullable<MessageOut["cards"]>[number],
+  messageCreatedAt: string,
+  openQuestions: readonly RepQuestionOut[] | undefined,
+): string | undefined {
+  if (card.kind !== "rep_pending") return undefined;
+  const match = openQuestions?.find((question) => question.id === card.question_id);
+  return match?.created_at ?? messageCreatedAt;
 }
 
 function roleLabel(role: MessageOut["role"]): string {

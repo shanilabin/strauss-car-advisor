@@ -15,7 +15,7 @@ from pydantic_ai.models import Model
 
 from strauss.agent.deps import AgentDeps
 from strauss.agent.guard import FALLBACK_WITH_CARDS, FALLBACK_WITHOUT_CARDS, invented, tool_results
-from strauss.agent.schemas import AgentReply
+from strauss.agent.schemas import AgentReply, Card, MissingCard
 from strauss.agent.tools import DRIVE_HE, TOOLS
 from strauss.domain.missing import missing_fields
 from strauss.domain.options import WAIVER_ID, car_label
@@ -114,4 +114,14 @@ def default_agent() -> Agent[AgentDeps, ReplyDraft]:
 
 
 def to_reply(draft: ReplyDraft, deps: AgentDeps) -> AgentReply:
-    return AgentReply(text=draft.text, quick_replies=draft.quick_replies, cards=list(deps.turn.cards))
+    """The model's words + the cards the tools produced. A "missing details" card from earlier in the turn is
+    replaced by what is still missing at its end (or dropped), so it never asks for something just saved."""
+    still_missing = [m for m in missing_fields(deps.profile) if m.ask == "employee"]
+    cards: list[Card] = []
+    for card in deps.turn.cards:
+        if isinstance(card, MissingCard):
+            if not still_missing or any(isinstance(c, MissingCard) for c in cards):
+                continue
+            card = MissingCard(missing=still_missing)
+        cards.append(card)
+    return AgentReply(text=draft.text, quick_replies=draft.quick_replies, cards=cards)

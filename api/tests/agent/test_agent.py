@@ -3,12 +3,15 @@ network, no keys, no cost. The script plays the LLM's part: which tools to call 
 
 import json
 import re
+import time
 from typing import Any
 
 import pytest
 from pydantic_ai.messages import (
     ModelRequest,
+    ModelResponse,
     RetryPromptPart,
+    ToolCallPart,
     ToolReturnPart,
 )
 from pydantic_ai.models.fallback import FallbackModel
@@ -347,3 +350,36 @@ def test_catalog_cars_are_found_even_when_the_name_matches_hundreds_of_variants(
     returned = tool_returns(result)[0].content
     names = {c["name"] for c in returned["candidates"]}
     assert "COROLLA CROSS" in names and "catalog" in returned["hint"]
+
+
+# ── Found on the live site: two tool calls in one model response ─────────────
+
+
+def test_tools_called_together_run_in_order_and_no_stale_missing_card() -> None:
+    """The model saved today's car and compared in the same response. compare must see the saved car."""
+    noa = to_profile(next(e for e in load_sample_employees() if e.id == "E-001"), BUNDLE)
+
+    class SlowLookup:  # like Supabase in production: reading the car takes a moment, comparing doesn't
+        def get(self, key: Any) -> Any:
+            time.sleep(0.3)
+            return _tax_authority_repo().get(key)
+
+        def search(self, *args: Any) -> Any:
+            return _tax_authority_repo().search(*args)
+
+    deps = AgentDeps(
+        profile=noa.model_copy(update={"current": None}), bundle=BUNDLE, value_of_use=SlowLookup()
+    )
+
+    def car_and_compare_together(messages: Any) -> ModelResponse:
+        return ModelResponse(
+            parts=[
+                ToolCallPart("set_current_car", {**COROLLA_CROSS_2025, "participation": 300}),
+                ToolCallPart("compare", {"option_ids": ["CAR-10"]}),
+            ]
+        )
+
+    result = build_agent(scripted(car_and_compare_together, FINAL)).run_sync("ATTO 3?", deps=deps)
+    reply = to_reply(result.output, deps)
+    assert [type(c) for c in reply.cards] == [ComparisonCard]  # no "which car do you have?" card
+    assert [r.field for r in deps.turn.rep_requests] == ["participation:CAR-10"]

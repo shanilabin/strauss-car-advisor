@@ -3,19 +3,22 @@ import { Clock } from "lucide-react";
 import { ComparisonCard } from "@/components/comparison-card";
 import { OptionsMap } from "@/components/options-map";
 import type { components } from "@/lib/api/schema";
+import { formatDateTime } from "@/lib/format";
 
 type MessageCard = NonNullable<components["schemas"]["MessageOut"]["cards"]>[number];
 
 type MessageCardViewProps = {
   card: MessageCard;
   onSelectOption?: (optionId: string) => void;
+  /** When the rep question was asked, from open_questions or the message timestamp. */
+  askedAt?: string;
 };
 
 /**
  * Registry keyed by card.kind. Unknown kinds render nothing.
  * Numbers come only from the card DTO — never parsed from bot text.
  */
-export function MessageCardView({ card, onSelectOption }: MessageCardViewProps) {
+export function MessageCardView({ card, onSelectOption, askedAt }: MessageCardViewProps) {
   switch (card.kind) {
     case "comparison":
       return (
@@ -39,7 +42,7 @@ export function MessageCardView({ card, onSelectOption }: MessageCardViewProps) 
     case "missing":
       return <MissingMessageCard card={card} />;
     case "rep_pending":
-      return <RepPendingMessageCard card={card} />;
+      return <RepPendingMessageCard card={card} askedAt={askedAt} />;
     default:
       return null;
   }
@@ -58,14 +61,32 @@ function MissingMessageCard({ card }: { card: components["schemas"]["MissingCard
   );
 }
 
-function RepPendingMessageCard({ card }: { card: components["schemas"]["RepPendingCard"] }) {
+function RepPendingMessageCard({
+  card,
+  askedAt,
+}: {
+  card: components["schemas"]["RepPendingCard"];
+  askedAt?: string;
+}) {
   return (
-    <div className="mt-3 border border-pending-border bg-pending-surface px-4 py-3 text-pending">
-      <p className="flex items-center gap-2 text-xs font-bold">
+    <div className="mt-3 border border-pending-border bg-pending-surface px-4 py-3">
+      <p className="flex items-center gap-2 text-xs font-bold text-pending">
+        <span
+          aria-hidden
+          className="size-2 shrink-0 rounded-full bg-pending motion-safe:animate-pulse"
+        />
         <Clock aria-hidden className="size-3.5" />
         ממתין לנציג
       </p>
       <p className="mt-2 text-sm text-foreground">{card.question}</p>
+      {askedAt && (
+        <time
+          dateTime={askedAt}
+          className="mt-1 block text-xs text-muted-foreground tabular-nums"
+        >
+          נשאל ב-{formatDateTime(askedAt)}
+        </time>
+      )}
     </div>
   );
 }

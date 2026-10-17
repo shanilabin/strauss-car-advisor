@@ -11,6 +11,7 @@ import {
   useRepQuestions,
   type RepQuestionOut,
 } from "@/lib/api/use-rep-questions";
+import { useRepQueueRealtime } from "@/lib/realtime/use-rep-queue-realtime";
 import { cn } from "@/lib/utils";
 
 /** Hebrew labels for the minimal context keys the DTO may include. Unknown keys fall back to the key. */
@@ -32,6 +33,7 @@ type RepQueueProps = {
 };
 
 export function RepQueue({ enabled = true }: RepQueueProps) {
+  useRepQueueRealtime(enabled);
   const query = useRepQuestions(enabled);
   const questions = useMemo(() => {
     const list = query.data ?? [];

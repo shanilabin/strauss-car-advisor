@@ -2,10 +2,11 @@
 
 import { PanelRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { BottomSheet } from "@/components/chat/bottom-sheet";
 import { ChatPanel, type ChatMessage } from "@/components/chat/chat-panel";
+import { RepWaitingPanel } from "@/components/chat/rep-waiting-panel";
 import { VehicleList } from "@/components/chat/vehicle-list";
 import { ComparisonCard } from "@/components/comparison-card";
 import { OptionsMap } from "@/components/options-map";
@@ -21,6 +22,7 @@ import {
 } from "@/lib/api/use-conversation";
 import { OptionsFetchError, useOptions } from "@/lib/api/use-options";
 import { SendMessageError, useSendMessage } from "@/lib/api/use-send-message";
+import { useConversationRealtime } from "@/lib/realtime/use-conversation-realtime";
 import { cn } from "@/lib/utils";
 
 type ConversationViewProps = {
@@ -29,6 +31,7 @@ type ConversationViewProps = {
 
 export function ConversationView({ conversationId }: ConversationViewProps) {
   const router = useRouter();
+  useConversationRealtime(conversationId);
   const conversation = useConversation(conversationId);
   const sendMessage = useSendMessage(conversationId);
   const compare = useCompare(conversationId);
@@ -54,6 +57,17 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
    */
   const [browsingOptions, setBrowsingOptions] = useState(false);
   const [seenReady, setSeenReady] = useState(false);
+  const [repAnnouncement, setRepAnnouncement] = useState("");
+  const previousStatus = useRef(conversation.data?.status);
+
+  useEffect(() => {
+    const next = conversation.data?.status;
+    const previous = previousStatus.current;
+    previousStatus.current = next;
+    if (previous === "WAITING_REP" && next && next !== "WAITING_REP") {
+      setRepAnnouncement("הנציג עדכן את ההשוואה.");
+    }
+  }, [conversation.data?.status]);
 
   const data = conversation.data;
   const status = data?.status;
@@ -186,6 +200,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   return (
     <>
       <Topbar step={step} />
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
+        {repAnnouncement}
+      </p>
       <main
         className={cn(
           "mx-auto flex w-full max-w-screen-2xl flex-1 flex-col",
@@ -207,6 +224,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               onDraftChange={setDraft}
               onSend={handleSend}
               onSelectOption={handleSelectOption}
+              openQuestions={data.open_questions ?? []}
             />
           )}
           {displayPhase === "options" && (
@@ -225,6 +243,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               selectingId={compare.isPending ? (compare.variables?.option_ids[0] ?? null) : null}
               selectedId={userSelectedId}
               compareError={compareError}
+              openQuestions={data.open_questions ?? []}
             />
           )}
           {displayPhase === "comparison" && (
@@ -244,6 +263,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
                 onChangeCar={handleChangeCar}
                 waitingRep={waitingRep}
                 openQuestions={data.open_questions ?? []}
+                missing={data.missing ?? []}
               />
             ) : (
               <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
@@ -264,6 +284,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             onDraftChange={setDraft}
             onSend={handleSend}
             onSelectOption={handleSelectOption}
+            openQuestions={data.open_questions ?? []}
             className="min-h-0 flex-1 border-0 border-b"
           />
           <div className="flex shrink-0 gap-2 border-t border-border bg-surface px-3 py-2">
@@ -292,6 +313,8 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               onSelectOption={handleSelectOption}
               onChangeCar={handleChangeCar}
               waitingRep={waitingRep}
+              openQuestions={data.open_questions ?? []}
+              missing={data.missing ?? []}
             />
           </BottomSheet>
         </div>
@@ -312,6 +335,7 @@ function CollectingDesktop({
   onDraftChange,
   onSend,
   onSelectOption,
+  openQuestions,
 }: {
   conversationId: string;
   profile: ConversationState["profile"];
@@ -324,6 +348,7 @@ function CollectingDesktop({
   onDraftChange: (value: string) => void;
   onSend: (text: string) => void;
   onSelectOption: (optionId: string) => void;
+  openQuestions: NonNullable<ConversationState["open_questions"]>;
 }) {
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(280px,400px)] gap-0 p-4 lg:gap-4 lg:p-6">
@@ -336,6 +361,7 @@ function CollectingDesktop({
         onDraftChange={onDraftChange}
         onSend={onSend}
         onSelectOption={onSelectOption}
+        openQuestions={openQuestions}
         className="min-h-0"
       />
       <ProfileCard
@@ -363,6 +389,7 @@ function OptionsDesktop({
   selectingId,
   selectedId,
   compareError,
+  openQuestions,
 }: {
   messages: ChatMessage[];
   quickReplies: string[];
@@ -378,6 +405,7 @@ function OptionsDesktop({
   selectingId: string | null;
   selectedId: string | null;
   compareError: string | null;
+  openQuestions: NonNullable<ConversationState["open_questions"]>;
 }) {
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)] gap-4 p-6">
@@ -390,6 +418,7 @@ function OptionsDesktop({
         onDraftChange={onDraftChange}
         onSend={onSend}
         onSelectOption={onSelectOption}
+        openQuestions={openQuestions}
         narrow
         className="min-h-0"
       />
@@ -422,6 +451,7 @@ function ComparisonDesktop({
   onChangeCar,
   waitingRep,
   openQuestions,
+  missing,
 }: {
   messages: ChatMessage[];
   quickReplies: string[];
@@ -437,6 +467,7 @@ function ComparisonDesktop({
   onChangeCar: () => void;
   waitingRep: boolean;
   openQuestions: NonNullable<ConversationState["open_questions"]>;
+  missing: NonNullable<ConversationState["missing"]>;
 }) {
   return (
     <div className="flex min-h-0 flex-1 gap-4 p-6">
@@ -451,15 +482,7 @@ function ComparisonDesktop({
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto">
         {waitingRep && (
-          <div
-            role="status"
-            className="border border-pending-border bg-pending-surface px-4 py-3 text-sm text-pending"
-          >
-            <p className="font-bold text-foreground">ממתינים לתשובת נציג התחבורה</p>
-            {openQuestions[0] && (
-              <p className="mt-1 text-foreground">{openQuestions[0].question}</p>
-            )}
-          </div>
+          <RepWaitingPanel questions={openQuestions} missing={missing} />
         )}
         <ComparisonCard
           comparison={comparison}
@@ -477,6 +500,7 @@ function ComparisonDesktop({
         onDraftChange={onDraftChange}
         onSend={onSend}
         onSelectOption={onSelectOption}
+        openQuestions={openQuestions}
         narrow
         className="w-[280px] shrink-0 self-stretch"
       />
@@ -499,6 +523,8 @@ function MobileSideContent({
   onSelectOption,
   onChangeCar,
   waitingRep,
+  openQuestions,
+  missing,
 }: {
   phase: ReturnType<typeof layoutPhaseFromStatus>;
   data: ConversationState;
@@ -514,6 +540,8 @@ function MobileSideContent({
   onSelectOption: (optionId: string) => void;
   onChangeCar: () => void;
   waitingRep: boolean;
+  openQuestions: NonNullable<ConversationState["open_questions"]>;
+  missing: NonNullable<ConversationState["missing"]>;
 }) {
   if (phase === "collecting") {
     return (
@@ -547,17 +575,7 @@ function MobileSideContent({
 
   return (
     <div className="flex flex-col gap-4 pb-4">
-      {waitingRep && (
-        <div
-          role="status"
-          className="border border-pending-border bg-pending-surface px-4 py-3 text-sm"
-        >
-          <p className="font-bold">ממתינים לתשובת נציג התחבורה</p>
-          {data.open_questions?.[0] && (
-            <p className="mt-1">{data.open_questions[0].question}</p>
-          )}
-        </div>
-      )}
+      {waitingRep && <RepWaitingPanel questions={openQuestions} missing={missing} />}
       <VehicleList
         results={comparison.results}
         selectedId={selectedOptionId}

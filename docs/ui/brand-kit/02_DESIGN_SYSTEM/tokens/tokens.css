@@ -1,0 +1,39 @@
+/* Color in Motion — original derivative identity; not official Strauss brand assets */
+:root, [data-theme="light"] {
+  --brand-red: #EE3028;
+  --brand-orange: #FF9326;
+  --brand-lime: #B4D66B;
+  --brand-green: #78A82A;
+  --brand-blue: #008CC8;
+  --brand-cyan: #00B6D9;
+  --brand-sky: #9BDAEE;
+  --brand-navy: #15354C;
+  --brand-ink: #173248;
+  --brand-paper: #FAFCFD;
+  --brand-warm: #FFF7EF;
+  --brand-mist: #EAF7FB;
+  --brand-mint: #EEF6E3;
+  --brand-border: #DDE8ED;
+  --ui-bg: #FAFCFD; --ui-surface: #FFFFFF; --ui-text: #173248; --ui-muted: #547082;
+  --ui-line: #DDE8ED; --ui-primary: #007DB5; --ui-primary-text: #FFFFFF;
+  --ui-action: #D82721; --ui-action-text: #FFFFFF; --ui-positive: #277449;
+  --ui-negative: #B83E36; --ui-pending: #995B18;
+  --ui-info-surface: #EAF7FB; --ui-positive-surface: #EEF6E3; --ui-pending-surface: #FFF1DE;
+}
+[data-theme="dark"] {
+  --ui-bg: #102632; --ui-surface: #193642; --ui-text: #F4FAFC; --ui-muted: #BED2D9;
+  --ui-line: #365462; --ui-primary: #63CAE9; --ui-primary-text: #092733;
+  --ui-action: #FF6860; --ui-action-text: #2D1718; --ui-positive: #9DE2B4;
+  --ui-negative: #FFAAA5; --ui-pending: #FFC77E;
+  --ui-info-surface: #174354; --ui-positive-surface: #234537; --ui-pending-surface: #51402A;
+}
+:root { --font-ui: 'Heebo', sans-serif; --font-display: 'Secular One', sans-serif;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px; --radius-ui: 0px;
+}
+body {background:var(--ui-bg); color:var(--ui-text); font-family:var(--font-ui)}
+.ui-panel {background:var(--ui-surface); border:1px solid var(--ui-line); border-radius:0; box-shadow:none}
+.display-title {font-family:var(--font-display)}
+.money {font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate}
+.ui-primary {background:var(--ui-primary);color:var(--ui-primary-text);border:0;border-radius:0}
+.ui-primary:focus-visible {outline:3px solid var(--ui-action);outline-offset:3px}
+@media (prefers-reduced-motion: reduce) {*,*::before,*::after {animation-duration:.01ms!important;transition-duration:.01ms!important}}

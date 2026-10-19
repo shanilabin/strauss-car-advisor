@@ -8,14 +8,13 @@ from typing import Any
 import pytest
 from pydantic_ai.messages import (
     ModelRequest,
-    RetryPromptPart,
     ToolReturnPart,
 )
 from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIChatModel
 
-from strauss.agent.agent import build_agent, state_block, to_reply
+from strauss.agent.agent import build_agent, employee_replies, state_block, to_reply
 from strauss.agent.deps import AgentDeps
 from strauss.agent.guard import FALLBACK_WITH_CARDS
 from strauss.agent.models_chain import AgentUnavailable, build_model
@@ -101,7 +100,7 @@ def test_every_tool_call_is_in_the_trace() -> None:
 # ── Tools refuse to guess ────────────────────────────────────────────────────
 
 
-def test_pension_without_credit_points_is_sent_back_to_ask() -> None:
+def test_pension_without_credit_points_is_reported_and_asked_for() -> None:
     deps = deps_for()
     result = run(
         deps,
@@ -109,14 +108,8 @@ def test_pension_without_credit_points_is_sent_back_to_ask() -> None:
         ("update_profile", {"pension_pct": 6, "credit_points": 2.25}),
         FINAL,
     )
-    retries = [
-        part
-        for message in result.all_messages()
-        if isinstance(message, ModelRequest)
-        for part in message.parts
-        if isinstance(part, RetryPromptPart)
-    ]
-    assert retries and "credit_points" in str(retries[0].content)
+    first = tool_returns(result)[0].content
+    assert "credit_points" in first["not_saved"]["deductions"]
     assert deps.profile.deductions is not None and deps.profile.deductions.credit_points == 2.25
 
 
@@ -221,15 +214,17 @@ def test_the_default_chain_tries_several_gemini_models_then_groq_without_sdk_ret
     chain = build_model(Settings(gemini_api_key="g", groq_api_key="q", openrouter_api_key=""))
     assert isinstance(chain, FallbackModel)
     names = [m.model_name for m in chain.models]
-    assert sum(name.startswith("gemini") for name in names) >= 3 and names[-1] == "openai/gpt-oss-120b"
-    groq = chain.models[-1]
-    assert isinstance(groq, OpenAIChatModel) and groq.client.max_retries == 0  # hand over at once
+    assert sum(name.startswith("gemini") for name in names) >= 3
+    # Groq limits tokens per minute per model, so several Groq models follow the Gemini ones
+    groq = [m for m in chain.models if isinstance(m, OpenAIChatModel)]
+    assert len(groq) >= 2 and names.index(groq[0].model_name) > 2
+    assert all(m.client.max_retries == 0 for m in groq)  # hand over at once
 
 
 # ── Review follow-ups ────────────────────────────────────────────────────────
 
 
-def test_an_almost_right_occupation_is_sent_back_with_the_listed_name() -> None:
+def test_an_almost_right_occupation_comes_back_with_the_listed_name() -> None:
     deps = deps_for()
     result = run(
         deps,
@@ -237,15 +232,24 @@ def test_an_almost_right_occupation_is_sent_back_with_the_listed_name() -> None:
         ("update_profile", {"occupation": "מנהל/ת מוצר"}),
         FINAL,
     )
-    retry = next(
-        part
-        for message in result.all_messages()
-        if isinstance(message, ModelRequest)
-        for part in message.parts
-        if isinstance(part, RetryPromptPart)
-    )
-    assert "מנהל/ת מוצר" in str(retry.content)
+    first = tool_returns(result)[0].content
+    assert "מנהל/ת מוצר" in first["not_saved"]["occupation"]
     assert deps.profile.occupation == "מנהל/ת מוצר"
+
+
+def test_an_unlisted_occupation_never_blocks_the_salary() -> None:
+    """Found on the live site: "אני מנתחת מערכות, ומרוויחה 15000" ended in "sorry, I couldn't complete".
+    The salary is saved, and the occupation comes back as a question - the turn goes on."""
+    deps = deps_for()
+    result = run(
+        deps,
+        ("update_profile", {"occupation": "מנתח/ת מערכות", "base_salary": 15000}),
+        say("שמרתי את השכר. איזה מהתפקידים ברשימה הכי קרוב לשלך?"),
+    )
+    returned = tool_returns(result)[0].content
+    assert returned["saved"] == ["salary"] and "occupation" in returned["not_saved"]
+    assert deps.profile.salary is not None and deps.profile.salary.base == 15000
+    assert deps.profile.occupation is None and deps.turn.profile_changed
 
 
 def test_a_really_unlisted_occupation_is_saved_when_flagged() -> None:
@@ -347,3 +351,25 @@ def test_catalog_cars_are_found_even_when_the_name_matches_hundreds_of_variants(
     returned = tool_returns(result)[0].content
     names = {c["name"] for c in returned["candidates"]}
     assert "COROLLA CROSS" in names and "catalog" in returned["hint"]
+
+
+# ── Found by testers on the live site ────────────────────────────────────────
+
+
+def test_quick_replies_are_the_employees_words_never_the_bots_questions() -> None:
+    """A tester saw "מה התפקיד שלך בחברה?" as a button to tap."""
+    replies = [
+        "מה התפקיד שלך בחברה?",
+        "יש לי רכב חברה",
+        "מה עם ויתור?",
+        "איזה רכב יש לך היום?",
+        "השוואת מחירים?",
+    ]
+    assert employee_replies(replies) == ["יש לי רכב חברה", "מה עם ויתור?", "השוואת מחירים?"]
+
+
+def test_options_on_an_incomplete_profile_say_nothing_was_shown() -> None:
+    """A tester got "here are the cars" while the screen asked for a missing detail."""
+    result = run(deps_for(Profile(occupation="מנהל/ת מוצר")), ("list_options", {}), FINAL)
+    returned = tool_returns(result)[0].content
+    assert returned["shown_to_employee"] is False and "do NOT say" in returned["tell_employee"]

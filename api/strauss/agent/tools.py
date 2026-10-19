@@ -128,24 +128,30 @@ def update_profile(
     deps = ctx.deps
     profile = deps.profile
     changes: dict[str, Any] = {}
-    try:
-        if occupation is not None:
-            names = [o.name for o in deps.bundle.occupations]
-            name = occupation.strip()
-            if name not in names and not occupation_not_in_list:
-                close = difflib.get_close_matches(name, names, n=3, cutoff=0.4)
-                raise ModelRetry(
-                    f"'{name}' is not in the occupations list. Use the exact listed name"
-                    + (f" - closest: {close}" if close else "")
-                    + ". If the employee's occupation truly isn't listed, "
-                    + "call again with occupation_not_in_list=true."
-                )
+    # A field that can't be saved never blocks the others: it is reported back with what to ask, so one
+    # unclear answer (an occupation that isn't listed, a half-given pair) doesn't sink the whole turn.
+    not_saved: dict[str, str] = {}
+
+    if occupation is not None:
+        names = [o.name for o in deps.bundle.occupations]
+        name = occupation.strip()
+        if name in names or occupation_not_in_list:
             changes["occupation"] = name
-        if base_salary is not None or commissions is not None or bonus is not None:
-            current = profile.salary
-            if base_salary is None and current is None:
-                raise ModelRetry("base_salary is required the first time salary is saved - ask for it")
-            base = _decimal(base_salary, "base_salary")
+        else:
+            close = difflib.get_close_matches(name, names, n=3, cutoff=0.4)
+            not_saved["occupation"] = (
+                f"'{name}' is not in the occupations list"
+                + (f" - closest: {close}" if close else "")
+                + ". Ask the employee which listed occupation fits, or whether it is none of them "
+                "(then save it with occupation_not_in_list=true)."
+            )
+
+    if base_salary is not None or commissions is not None or bonus is not None:
+        current = profile.salary
+        base = _decimal(base_salary, "base_salary")
+        if base is None and current is None:
+            not_saved["salary"] = "the base salary is needed first - ask for it"
+        else:
             commission_amount = _decimal(commissions, "commissions")
             bonus_amount = _decimal(bonus, "bonus")
             changes["salary"] = SalaryInput(
@@ -157,22 +163,21 @@ def update_profile(
                 if bonus_amount is not None
                 else (current.bonus if current else Decimal(0)),
             )
-        if pension_pct is not None or credit_points is not None or study_fund_pct is not None:
-            known = profile.deductions
-            pension = (
-                _decimal(pension_pct, "pension_pct")
-                if pension_pct is not None
-                else (known and known.pension_pct)
-            )
-            points = (
-                _decimal(credit_points, "credit_points")
-                if credit_points is not None
-                else (known and known.credit_points)
-            )
-            if pension is None or points is None:
-                raise ModelRetry(
-                    "pension_pct and credit_points are saved together - ask for the one that is missing"
-                )
+
+    if pension_pct is not None or credit_points is not None or study_fund_pct is not None:
+        known = profile.deductions
+        pension = (
+            _decimal(pension_pct, "pension_pct") if pension_pct is not None else (known and known.pension_pct)
+        )
+        points = (
+            _decimal(credit_points, "credit_points")
+            if credit_points is not None
+            else (known and known.credit_points)
+        )
+        if pension is None or points is None:
+            missing_part = "credit_points" if points is None else "pension_pct"
+            not_saved["deductions"] = f"pension and credit points are saved together - ask for {missing_part}"
+        else:
             study = (
                 _decimal(study_fund_pct, "study_fund_pct")
                 if study_fund_pct is not None
@@ -181,32 +186,47 @@ def update_profile(
             changes["deductions"] = Deductions(
                 pension_pct=pension, study_fund_pct=study, credit_points=points
             )
-        if children_under_23 is not None:
-            changes["children_under_23"] = children_under_23
-        if current_is_waiver:
-            occupation_name = changes.get("occupation") or profile.occupation
-            known_occupation = next((o for o in deps.bundle.occupations if o.name == occupation_name), None)
-            if known_occupation is None:
-                raise ModelRetry(
-                    "save the occupation (from the occupations list) before a waiver arrangement"
-                )
+
+    if children_under_23 is not None:
+        changes["children_under_23"] = children_under_23
+
+    if current_is_waiver:
+        occupation_name = changes.get("occupation") or profile.occupation
+        known_occupation = next((o for o in deps.bundle.occupations if o.name == occupation_name), None)
+        if known_occupation is None:
+            not_saved["current"] = "the occupation (from the list) is needed before a waiver - ask for it"
+        else:
             changes["current"] = WaiverArrangement(maintenance=known_occupation.maintenance)
-        if current_participation is not None:
-            car = changes.get("current", profile.current)
-            if not isinstance(car, CarArrangement):
-                raise ModelRetry("set the current car with set_current_car before its participation")
+
+    if current_participation is not None:
+        car = changes.get("current", profile.current)
+        if not isinstance(car, CarArrangement):
+            not_saved["current.participation"] = (
+                "save today's car first (find_vehicle, then set_current_car with participation)"
+            )
+        else:
             changes["current"] = car.model_copy(
                 update={
                     "participation": _decimal(current_participation, "current_participation"),
                     "participation_status": ParticipationStatus.CONFIRMED,
                 }
             )
-        updated = Profile.model_validate({**profile.model_dump(), **{k: v for k, v in changes.items()}})
-    except ValidationError as exc:
-        raise ModelRetry(f"invalid value: {exc.errors()[0]['msg']} - ask the employee again") from exc
-    deps.profile = updated
-    deps.turn.profile_changed = True
-    return {"saved": sorted(changes), "still_missing": _missing_text(updated)}
+
+    # Validate one field at a time, so a bad value is dropped alone.
+    updated = profile
+    for field_name, value in changes.items():
+        try:
+            updated = Profile.model_validate({**updated.model_dump(), field_name: value})
+        except ValidationError as exc:
+            not_saved[field_name] = f"invalid value ({exc.errors()[0]['msg']}) - ask the employee again"
+    saved = [name for name in changes if name not in not_saved]
+    if saved:
+        deps.profile = updated
+        deps.turn.profile_changed = True
+    result: dict[str, Any] = {"saved": sorted(saved), "still_missing": _missing_text(updated)}
+    if not_saved:
+        result["not_saved"] = not_saved
+    return result
 
 
 # ── Vehicles ─────────────────────────────────────────────────────────────────
@@ -384,6 +404,9 @@ def _run(deps: AgentDeps, option_ids: list[str] | None) -> Comparison | dict[str
         deps.turn.cards.append(MissingCard(missing=missing.missing))
         return {
             "incomplete": True,
+            "shown_to_employee": False,
+            "tell_employee": "nothing was calculated yet - do NOT say you showed options or a comparison; "
+            "ask for the missing details below",
             "ask": [m.question for m in missing.missing if m.ask == "employee"],
             "ask_rep_field": [m.field for m in missing.missing if m.ask == "rep"],
         }

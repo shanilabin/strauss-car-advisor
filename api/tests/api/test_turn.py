@@ -3,6 +3,7 @@ and everything it did is saved - profile, comparisons, both messages with cards 
 
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, ToolCallPart, UserPromptPart
@@ -11,6 +12,7 @@ from index import app
 from strauss.adapters.memory_repos import MemoryConversationRepo
 from strauss.agent.guard import ID_MASK
 from strauss.agent.models_chain import AgentUnavailable
+from strauss.services import turn as turn_service
 from strauss.services.turn import STUCK_REPLY
 from tests.api.conftest import AS_NOA, AS_OTHER, ModelSlot
 from tests.scripted import say, scripted
@@ -109,15 +111,29 @@ def test_no_model_means_form_mode_and_nothing_is_saved(
     assert conversations.messages(conversation_id) == []
 
 
-def test_a_failing_provider_means_form_mode(model: ModelSlot) -> None:
+def rate_limited(messages: list[ModelMessage]) -> ModelResponse:
+    raise ModelHTTPError(429, "gemini-3.8-flash", "quota")
+
+
+def test_a_provider_still_busy_after_one_retry_means_form_mode(
+    model: ModelSlot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(turn_service, "BUSY_WAIT_SECONDS", 0)
     conversation_id = start()
-
-    def rate_limited(messages: list[ModelMessage]) -> ModelResponse:
-        raise ModelHTTPError(429, "gemini-3.8-flash", "quota")
-
-    model.factory = lambda: scripted(rate_limited)
+    model.factory = lambda: scripted(rate_limited, rate_limited)
     response = send(conversation_id, "שלום")
     assert response.status_code == 503 and response.json()["error"]["details"] == {"mode": "form"}
+
+
+def test_a_provider_busy_for_a_moment_is_retried_once(
+    model: ModelSlot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Free tiers limit per minute: one short wait often saves the turn instead of the form."""
+    monkeypatch.setattr(turn_service, "BUSY_WAIT_SECONDS", 0)
+    conversation_id = start()
+    model.factory = lambda: scripted(rate_limited, say("שלום! במה אפשר לעזור?"))
+    response = send(conversation_id, "שלום")
+    assert response.status_code == 200 and response.json()["reply"]["text"] == "שלום! במה אפשר לעזור?"
 
 
 def test_a_profile_corrected_meanwhile_is_not_overwritten(

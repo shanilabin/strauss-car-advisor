@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     # Gemini's free quota is per model (about 20 requests a day), so several are chained before Groq
     llm_chain: str = (
         "google:gemini-3.6-flash,google:gemini-3.8-flash,google:gemini-3.5-flash,"
-        "google:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b,"
-        "openrouter:meta-llama/llama-3.3-70b-instruct:free"
+        "google:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b,groq:llama-3.3-70b-versatile,"
+        "groq:meta-llama/llama-4-scout-17b-16e-instruct,openrouter:meta-llama/llama-3.3-70b-instruct:free"
     )
 
     @property

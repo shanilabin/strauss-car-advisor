@@ -8,6 +8,7 @@ Read before any task: [ARCHITECTURE.md](ARCHITECTURE.md) (the contract) and [TAS
 - `web/lib/api/schema.d.ts` is generated (`pnpm gen:api`) - never edit by hand.
 - If a task needs a change outside your folder, stop and say so instead of making it.
 - UI work follows `docs/ui/STRAUSS_UI_FINAL_SPEC.md`; `docs/ui/README.md` maps every UI element to the API field it comes from.
+- Visual design (logo, mascot, colors, approved mockups): `docs/ui/brand-kit/`. Mockups set the STYLE only - their numbers, cars and rep fields are wrong; content always comes from the API (read `docs/ui/brand-kit/README.md` first).
 
 ## Non-negotiables
 - The LLM never computes numbers, and every number on screen is rendered from an engine DTO (never from bot text). All money math lives in `api/strauss/domain/` (pure, `Decimal`, no I/O).

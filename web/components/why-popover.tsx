@@ -26,26 +26,60 @@ export type WhyPopoverProps = {
   fieldLabel?: string;
 };
 
-function kindLabel(kind: Source["kind"]): string {
+/** What each sourced number means, in an employee's words. Unknown fields fall back to the label. */
+const EXPLANATIONS: Record<string, string> = {
+  group_budget: "זה התקציב החודשי שהחברה מקצה לרכב בקבוצה שלך, לפי כללי רכב החברה.",
+  cost_to_company: "כמה הרכב הזה עולה לחברה בכל חודש, לפי קטלוג הרכבים של החברה.",
+  participation:
+    "הסכום שהעובד משלם בכל חודש על הרכב. עד שנציג התחבורה מאשר, מוצגת ברירת המחדל מהקטלוג.",
+  value_of_use:
+    "שווי השימוש נלקח מהמאגר הרשמי של רשות המסים, לפי הדגם המדויק של הרכב. הוא נוסף לשכר שעליו משלמים מס.",
+  maintenance: "אחזקת הרכב שמקבלים כשמוותרים על רכב החברה, לפי טבלת העיסוקים של החברה.",
+  electric_refund_net:
+    "החזר החשמל החודשי שהחברה נותנת על רכב חשמלי. הוא מגולם, כלומר מגיע במלואו לנטו.",
+  track_employee_share:
+    "במסלול ברוכת ילדים העובד משלם חלק מהפער שבין עלות הרכב לתקציב הקבוצה, והחברה את השאר.",
+  eligibility: "הזכאות נקבעת לפי כללי רכב החברה: הקבוצה שלך, העיסוק שלך והמסלולים.",
+};
+
+function explanationFor(source: Source): string {
+  return EXPLANATIONS[source.field] ?? source.label;
+}
+
+function sourceName(kind: Source["kind"]): string {
   switch (kind) {
     case "CONFIG":
-      return "קונפיג";
+      return "כללי רכב החברה (קובץ הכללים)";
     case "VALUE_OF_USE_DB":
-      return "מאגר שווי שימוש";
+      return "מאגר שווי השימוש של רשות המסים";
   }
 }
 
-const heNumber = new Intl.NumberFormat("he-IL", { maximumFractionDigits: 4 });
-
-function formatResolvedValue(value: string | number | boolean): string {
+/** Shares (0.5) read as percent; amounts as shekels; anything else as it is. */
+function formatResolvedValue(source: Source, value: string | number | boolean): string {
   if (typeof value === "boolean") return value ? "כן" : "לא";
-  if (typeof value === "number") return heNumber.format(value);
+  if (typeof value === "number") {
+    if (source.field === "track_employee_share" && value <= 1) return heNumber.format(value * 100) + "%";
+    return MONEY_FIELDS.has(source.field) ? formatShekel(value) : heNumber.format(value);
+  }
   return value;
 }
 
+const MONEY_FIELDS = new Set([
+  "group_budget",
+  "cost_to_company",
+  "participation",
+  "value_of_use",
+  "maintenance",
+  "electric_refund_net",
+]);
+
+const heNumber = new Intl.NumberFormat("he-IL", { maximumFractionDigits: 4 });
+
 /**
- * Small "למה?" trigger next to a DTO number. Opens a popover with the engine Source
- * and the matching value from GET /v1/config (or catalog/occupations when the ref points there).
+ * Small "למה?" trigger next to a DTO number. Opens a popover that says, in plain Hebrew, what the
+ * number is and where it comes from, with its value (from GET /v1/config, catalog or occupations).
+ * The exact technical source stays one click away for anyone who wants to check it.
  * Render only when a Source exists for that field — never invent sources.
  */
 export function WhyPopover({
@@ -88,41 +122,39 @@ export function WhyPopover({
         <Popover.Positioner side="bottom" align="start" sideOffset={6} className="z-50">
           <Popover.Popup
             aria-labelledby={titleId}
-            className="rounded-xl shadow-card w-[min(20rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] border border-border bg-surface px-3 py-3 text-sm text-foreground outline-none"
+            className="w-[min(21rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-surface px-4 py-4 text-sm text-foreground shadow-card outline-none"
           >
-            <Popover.Title
-              id={titleId}
-              className="font-display text-base font-normal"
-            >
+            <Popover.Title id={titleId} className="text-base font-extrabold">
               {source.label}
             </Popover.Title>
-            <div className="mt-2 space-y-1.5 text-sm text-foreground">
-              <Popover.Description>
-                <span className="text-muted-foreground">סוג מקור: </span>
-                {kindLabel(source.kind)}
-              </Popover.Description>
-              <p>
-                <span className="text-muted-foreground">מפתח: </span>
-                <bdi dir="ltr" className="break-all font-mono text-xs">
+            <Popover.Description className="mt-1.5 leading-relaxed text-foreground/85">
+              {explanationFor(source)}
+            </Popover.Description>
+            <ValueRow
+              source={source}
+              resolved={resolved}
+              fieldValue={fieldValue}
+              loading={configQuery.isPending || catalogQuery.isPending || occupationsQuery.isPending}
+            />
+            <details className="group mt-3 text-xs text-muted-foreground">
+              <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1 font-semibold [&::-webkit-details-marker]:hidden">
+                המקור המדויק
+                <span aria-hidden className="transition-transform group-open:rotate-180">
+                  ▾
+                </span>
+              </summary>
+              <p className="mt-1">{sourceName(source.kind)}</p>
+              <p className="mt-0.5">
+                <bdi dir="ltr" className="font-mono break-all">
                   {source.ref}
                 </bdi>
               </p>
-              <ConfigValueRow
-                source={source}
-                resolved={resolved}
-                fieldValue={fieldValue}
-                loading={
-                  configQuery.isPending ||
-                  catalogQuery.isPending ||
-                  occupationsQuery.isPending
-                }
-              />
-            </div>
+            </details>
             <Popover.Close
               type="button"
-              className="rounded-full mt-3 inline-flex min-h-11 items-center border border-border px-3 text-xs font-semibold hover:bg-muted sm:min-h-9"
+              className="mt-3 inline-flex min-h-11 items-center rounded-full border border-border px-4 text-xs font-semibold hover:bg-muted sm:min-h-9"
             >
-              סגור
+              סגירה
             </Popover.Close>
           </Popover.Popup>
         </Popover.Positioner>
@@ -131,7 +163,7 @@ export function WhyPopover({
   );
 }
 
-function ConfigValueRow({
+function ValueRow({
   source,
   resolved,
   fieldValue,
@@ -144,44 +176,24 @@ function ConfigValueRow({
 }) {
   if (loading && resolved == null && source.kind === "CONFIG") {
     return (
-      <p className="text-muted-foreground" aria-busy="true">
-        טוען ערך מהקונפיג…
+      <p className="mt-3 text-muted-foreground" aria-busy="true">
+        טוען…
       </p>
     );
   }
-
-  if (resolved != null) {
-    return (
-      <p>
-        <span className="text-muted-foreground">ערך בקונפיג: </span>
-        <bdi dir="ltr" className="tabular-nums font-semibold">
-          {formatResolvedValue(resolved)}
-        </bdi>
-      </p>
-    );
-  }
-
-  if (source.kind === "VALUE_OF_USE_DB" && fieldValue != null) {
-    return (
-      <p>
-        <span className="text-muted-foreground">ערך מהמאגר (בתוצאה): </span>
-        <bdi dir="ltr" className="tabular-nums font-semibold">
-          {formatShekel(fieldValue)}
-        </bdi>
-      </p>
-    );
-  }
-
-  if (fieldValue != null) {
-    return (
-      <p>
-        <span className="text-muted-foreground">ערך בתוצאה: </span>
-        <bdi dir="ltr" className="tabular-nums font-semibold">
-          {formatShekel(fieldValue)}
-        </bdi>
-      </p>
-    );
-  }
-
-  return null;
+  const value =
+    resolved != null
+      ? formatResolvedValue(source, resolved)
+      : fieldValue != null
+        ? formatShekel(Math.abs(fieldValue)) // waterfall rows carry a sign; the explanation does not
+        : null;
+  if (value == null) return null;
+  return (
+    <p className="mt-3 inline-flex items-baseline gap-2 rounded-xl bg-mist px-3 py-1.5">
+      <span className="text-muted-foreground">הערך:</span>
+      <bdi dir="ltr" className="text-base font-extrabold tabular-nums">
+        {value}
+      </bdi>
+    </p>
+  );
 }

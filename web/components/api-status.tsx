@@ -50,11 +50,6 @@ export function ApiStatus() {
       <span>
         גרסה <bdi>{health.version}</bdi>
       </span>
-      {Object.entries(health.configured).map(([name, ok]) => (
-        <span key={name}>
-          <bdi>{name}</bdi>: {ok ? "מוגדר" : "לא מוגדר"}
-        </span>
-      ))}
     </p>
   );
 }

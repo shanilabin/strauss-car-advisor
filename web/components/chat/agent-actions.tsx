@@ -78,7 +78,7 @@ export function AgentActions({ trace, messageId, onOpenChange }: AgentActionsPro
         aria-expanded={open}
         aria-controls={panelId}
         onClick={toggle}
-        className="inline-flex min-h-11 max-w-full items-center gap-2 border border-border bg-surface px-3 text-sm font-semibold hover:bg-muted focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className="inline-flex min-h-9 max-w-full items-center gap-2 rounded-full border border-border bg-surface px-3.5 text-xs font-semibold text-muted-foreground shadow-soft hover:border-primary hover:text-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11"
       >
         הצג פעולות AI
         <ChevronDown
@@ -92,7 +92,7 @@ export function AgentActions({ trace, messageId, onOpenChange }: AgentActionsPro
       <ol
         id={panelId}
         className={cn(
-          "mt-2 max-w-full min-w-0 border-s border-border ps-3",
+          "mt-2 max-w-full min-w-0 rounded-2xl border border-border/70 bg-background px-4 py-1",
           !open && "hidden",
         )}
       >

@@ -123,7 +123,9 @@ async function runChallenge(employee: Page, rep: Page): Promise<void> {
     timeout: REALTIME_TIMEOUT_MS,
   });
   await expect(employee.getByRole("status").filter({ hasText: "ממתין לנציג" })).toHaveCount(0);
-  const participation = comparison.getByRole("row", { name: /^השתתפות העובד/ });
+  const participation = comparison
+    .getByRole("table", { name: "פירוט שדות ההשוואה" })
+    .getByRole("row", { name: /^השתתפות העובד/ });
   await expect(participation).toContainText(REP_PARTICIPATION_ANSWER);
   await expect(participation.getByText("מאושר", { exact: true })).toBeVisible();
 

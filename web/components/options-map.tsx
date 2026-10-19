@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Fuel, Leaf, PlugZap, Zap } from "lucide-react";
+import { Check, Fuel, HandCoins, Leaf, PlugZap, Zap } from "lucide-react";
+import Image from "next/image";
 import { useId, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +61,7 @@ export function OptionsMap({
   return (
     <section
       aria-label="מפת האפשרויות"
-      className={cn("flex min-h-0 min-w-0 flex-col overflow-x-clip border border-border bg-surface", className)}
+      className={cn("flex min-h-0 min-w-0 flex-col overflow-x-clip rounded-3xl border border-border/70 bg-surface shadow-card", className)}
     >
       <header
         className={cn(
@@ -106,7 +107,7 @@ export function OptionsMap({
         {visible.length === 0 ? (
           <p
             role="status"
-            className="border border-border bg-muted px-4 py-8 text-center text-sm text-muted-foreground"
+            className="rounded-2xl border border-border bg-muted px-4 py-8 text-center text-sm text-muted-foreground"
           >
             {electricOnly
               ? "אין חלופות חשמליות להצגה עם הסינון הנוכחי."
@@ -138,21 +139,17 @@ export function OptionsMap({
                     aria-busy={selecting || undefined}
                     onClick={() => onSelect?.(id)}
                     className={cn(
-                      "relative flex min-h-11 w-full min-w-0 flex-col gap-2 border border-border bg-background p-4 text-start break-words transition-colors",
+                      "relative flex h-full min-h-11 w-full min-w-0 flex-col gap-2 rounded-2xl border border-border/70 bg-surface p-4 text-start break-words shadow-soft transition-all",
                       compact && "p-3",
-                      interactive && "hover:bg-muted/80 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring",
-                      selected && "border-cobalt bg-muted",
+                      interactive && "hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-card focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:hover:translate-y-0",
+                      isBest && "border-success/60",
+                      selected && "border-success ring-2 ring-success/30",
                       !eligible && "opacity-70",
                       (!interactive || selectingId != null) && "cursor-default",
                       selectingId != null && !selecting && "opacity-50",
                     )}
                   >
-                    {selected && (
-                      <span
-                        aria-hidden
-                        className="absolute inset-y-0 start-0 w-1 bg-cobalt"
-                      />
-                    )}
+                    {!compact && <VehicleTile drive={result.option.drive ?? null} eligible={eligible} />}
 
                     <span className="flex flex-wrap items-start justify-between gap-2">
                       <span className="min-w-0">
@@ -177,7 +174,7 @@ export function OptionsMap({
                           <Badge variant="highlight">הכי משתלם לך</Badge>
                         )}
                         {selected && (
-                          <Check aria-hidden className="size-4 text-cobalt" />
+                          <Check aria-hidden className="size-4 text-success" />
                         )}
                       </span>
                     </span>
@@ -238,6 +235,33 @@ export function sortByDeltaEligibleFirst(results: OptionResult[]): OptionResult[
     if (db == null) return -1;
     return db - da;
   });
+}
+
+const DRIVE_TONE: Record<Drive, string> = {
+  ELECTRIC: "bg-mint",
+  HYBRID: "bg-mist",
+  PLUG_IN: "bg-[#e6f0fb] dark:bg-[#1d3b52]",
+  PETROL: "bg-peach",
+};
+
+/** The mockup's car picture, made from the brand car on a tint per drive (no photos - we have none). */
+function VehicleTile({ drive, eligible }: { drive: Drive | null; eligible: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "flex h-20 items-center justify-center rounded-xl",
+        drive ? DRIVE_TONE[drive] : "bg-background",
+        !eligible && "grayscale",
+      )}
+    >
+      {drive ? (
+        <Image src="/brand/svg/car-silhouette.svg" alt="" width={340} height={175} className="h-14 w-auto" />
+      ) : (
+        <HandCoins className="size-9 text-success" />
+      )}
+    </span>
+  );
 }
 
 function DriveBadge({ drive }: { drive: Drive }) {

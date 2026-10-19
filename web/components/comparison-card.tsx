@@ -1,4 +1,22 @@
-import { ArrowDown, ArrowUp, Check, Clock, Minus, RefreshCw } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Building2,
+  CalendarCheck,
+  CarFront,
+  Check,
+  Clock,
+  Info,
+  type LucideIcon,
+  Minus,
+  RefreshCw,
+  Sparkles,
+  Star,
+  TrendingUp,
+  Wallet,
+  Zap,
+} from "lucide-react";
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -114,39 +132,32 @@ function DeltaHero({
   return (
     <div
       className={cn(
-        "border px-4 py-5",
-        positive && "border-success-border bg-success-surface",
-        negative && "border-error-border bg-error-surface",
-        !positive && !negative && "border-border bg-surface-raised",
+        "rounded-2xl px-5 py-6 text-center",
+        positive && "bg-success-surface ring-1 ring-success-border",
+        negative && "bg-error-surface ring-1 ring-error-border",
+        !positive && !negative && "bg-surface-raised ring-1 ring-border",
       )}
     >
-      <p className="text-sm font-semibold text-foreground">
-        {estimated ? "הפרש נטו חודשי משוער" : "הפרש נטו חודשי"}
-      </p>
       <p
         className={cn(
-          "mt-2 flex max-w-full flex-wrap items-baseline gap-x-3 gap-y-1 font-display text-3xl font-normal tracking-tight break-words sm:text-5xl",
+          "flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 text-5xl font-black tracking-tight break-words sm:text-6xl",
           positive && "text-success",
           negative && "text-error",
           !positive && !negative && "text-foreground",
         )}
         aria-label={`${formatDelta(delta)} בחודש, ${word}`}
       >
-        <span className="inline-flex items-center gap-2">
-          <Icon aria-hidden className="size-7 shrink-0 sm:size-8" />
-          <bdi dir="ltr">{formatDelta(delta)}</bdi>
-        </span>
-        <span className="text-lg font-semibold text-foreground sm:text-xl">{word}</span>
+        <bdi dir="ltr">{formatDelta(delta)}</bdi>
+        <Icon aria-hidden className="size-9 shrink-0" strokeWidth={2.6} />
       </p>
-      <p className="mt-1 text-sm text-muted-foreground">בחודש</p>
+      <p className="mt-2 text-base font-bold text-foreground">
+        {estimated ? "הפרש נטו חודשי משוער" : "הפרש נטו חודשי"}
+        <span className="font-semibold text-muted-foreground"> · {word} בכל חודש</span>
+      </p>
     </div>
   );
 }
 
-/**
- * Full comparison card: today vs one alternative.
- * Every requirement-23 field is rendered from OptionResult / Comparison DTOs only.
- */
 export function ComparisonCard({
   comparison,
   optionId,
@@ -159,7 +170,7 @@ export function ComparisonCard({
   if (!result) {
     return (
       <article
-        className={cn("border border-border bg-surface px-5 py-6 text-sm text-muted-foreground", className)}
+        className={cn("rounded-3xl border border-border bg-surface px-5 py-6 text-sm text-muted-foreground", className)}
         aria-label="כרטיס השוואה"
       >
         אין תוצאת השוואה להצגה.
@@ -174,6 +185,7 @@ export function ComparisonCard({
   const todayLabel = todayArrangementLabel(comparison.profile_snapshot);
   const todayVou = comparison.today.value_of_use;
   const waitingRep = result.participation_status === "DEFAULT_PENDING";
+  const isBest = comparison.best_option_id === option.id;
   const participationMeta =
     result.participation_status != null
       ? participationStatusLabel(result.participation_status)
@@ -182,43 +194,52 @@ export function ComparisonCard({
   return (
     <article
       className={cn(
-        "min-w-0 max-w-full overflow-x-clip border border-border bg-surface text-foreground",
-        compact ? "px-4 py-4" : "px-4 py-5 sm:px-8 sm:py-8",
+        "min-w-0 max-w-full overflow-x-clip rounded-3xl border border-border/70 bg-surface text-foreground shadow-card",
+        compact ? "p-4" : "p-4 sm:p-6 lg:p-7",
         className,
       )}
       aria-label={`השוואה: ${option.label}`}
     >
-      {/* Header: alternative title + eligibility */}
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
-        <div className="min-w-0">
-          <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-            השוואה חודשית
-          </p>
-          <h2 className={cn("mt-1 font-display break-words", compact ? "text-xl" : "text-2xl sm:text-3xl")}>
+      <div className={cn("grid gap-4", !compact && "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-6")}>
+        {/* The alternative: name, drive, eligibility (no photo - the brand car stands in) */}
+        <section aria-label="החלופה" className="relative isolate flex min-w-0 flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-mist to-surface p-5 ring-1 ring-border/70">
+          <div className="flex flex-wrap items-center gap-2">
+            {eligible ? (
+              <Badge variant="success" className="gap-1">
+                <Check aria-hidden data-icon="inline-start" className="size-3.5" />
+                זכאי
+              </Badge>
+            ) : (
+              <Badge variant="error">לא זכאי</Badge>
+            )}
+            {waitingRep && (
+              <Badge variant="pending" className="gap-1">
+                <Clock aria-hidden data-icon="inline-start" className="size-3.5" />
+                ממתין לנציג
+              </Badge>
+            )}
+            {estimated && eligible && <Badge variant="outline">משוערת</Badge>}
+          </div>
+          {!compact && (
+            <Image
+              src="/brand/svg/car-silhouette.svg"
+              alt=""
+              width={340}
+              height={175}
+              className="mx-auto my-3 h-auto w-[70%] max-w-64 drop-shadow-[0_14px_12px_rgb(23_50_72/0.15)]"
+            />
+          )}
+          <h2 className={cn("font-extrabold break-words", compact ? "mt-3 text-xl" : "text-2xl lg:text-3xl")}>
             <bdi>{option.label}</bdi>
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             מול <bdi>{todayLabel}</bdi>
           </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {eligible ? (
-            <Badge variant="success" className="gap-1">
-              <Check aria-hidden data-icon="inline-start" className="size-3.5" />
-              זכאי
-            </Badge>
-          ) : (
-            <Badge variant="error">לא זכאי</Badge>
-          )}
-          {waitingRep && (
-            <Badge variant="pending" className="gap-1">
-              <Clock aria-hidden data-icon="inline-start" className="size-3.5" />
-              ממתין לנציג
-            </Badge>
-          )}
-          {estimated && eligible && (
-            <Badge variant="outline">משוערת</Badge>
-          )}
+          <p className="mt-3 flex items-start gap-2 text-sm" role="status">
+            {eligible && <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />}
+            <span className={cn(!eligible && "text-muted-foreground")}>{eligibility.reason}</span>
+            <Why sources={result.sources} field="eligibility" fieldLabel="זכאות" />
+          </p>
           {onChangeCar && (
             <Button
               type="button"
@@ -226,93 +247,72 @@ export function ComparisonCard({
               size="sm"
               onClick={onChangeCar}
               aria-label="החלף רכב — חזרה לגלריית האפשרויות"
+              className="mt-4 self-start"
             >
               <RefreshCw aria-hidden data-icon="inline-start" />
               החלף רכב
             </Button>
           )}
-        </div>
-      </header>
+        </section>
 
-      <p className="mt-3 text-sm" role="status">
-        {eligible ? (
-          <span className="inline-flex items-start gap-2">
-            <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
-            <span>{eligibility.reason}</span>
-            <Why
-              sources={result.sources}
-              field="eligibility"
-              fieldLabel="זכאות"
-            />
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 text-muted-foreground">
-            {eligibility.reason}
-            <Why
-              sources={result.sources}
-              field="eligibility"
-              fieldLabel="זכאות"
-            />
-          </span>
-        )}
-      </p>
-
-      {/* Today vs alternative columns */}
-      <div
-        className="mt-5 grid grid-cols-2 gap-3 border border-border"
-        role="group"
-        aria-label="היום מול החלופה"
-      >
-        <div className="border-e border-border bg-surface-raised px-3 py-3 sm:px-4">
-          <p className="text-xs font-bold text-muted-foreground">היום</p>
-          <p className="mt-1 text-sm font-semibold break-words">
-            <bdi>{todayLabel}</bdi>
-          </p>
-        </div>
-        <div className="border-s-0 bg-muted/40 px-3 py-3 sm:px-4">
-          <p className="text-xs font-bold text-muted-foreground">חלופה</p>
-          <p className="mt-1 text-sm font-semibold break-words">
-            <bdi>{option.label}</bdi>
-          </p>
-        </div>
-      </div>
-
-      {!eligible ? (
-        <p className="mt-5 border border-border bg-surface-raised px-4 py-3 text-sm text-muted-foreground">
-          אין תוצאה מספרית לחלופה שאינה מותרת.
-        </p>
-      ) : (
-        <>
-          {/* Delta first (dominant) */}
-          <div className="mt-5">
-            {result.delta != null ? (
-              <div className="relative">
-                <DeltaHero delta={result.delta} estimated={estimated} />
-                <div className="absolute top-3 end-3">
-                  <Why
-                    sources={result.sources}
-                    field="delta"
-                    fieldValue={result.delta}
-                    fieldLabel="הפרש נטו"
-                  />
-                </div>
+        {/* The answer: monthly net delta first, then today and the alternative */}
+        <section aria-label="ההפרש בנטו" className="flex min-w-0 flex-col gap-3">
+          {isBest && eligible && !compact && (
+            <p className="inline-flex items-center gap-2 self-start rounded-full bg-success px-4 py-1.5 text-sm font-bold text-white shadow-soft dark:text-[#102632]">
+              <Star aria-hidden className="size-4 fill-current" />
+              החלופה המשתלמת ביותר עבורך
+            </p>
+          )}
+          {!eligible ? (
+            <p className="rounded-2xl border border-border bg-surface-raised px-4 py-5 text-sm text-muted-foreground">
+              אין תוצאה מספרית לחלופה שאינה מותרת.
+            </p>
+          ) : result.delta != null ? (
+            <div className="relative">
+              <DeltaHero delta={result.delta} estimated={estimated} />
+              <div className="absolute top-3 end-3">
+                <Why sources={result.sources} field="delta" fieldValue={result.delta} fieldLabel="הפרש נטו" />
               </div>
-            ) : (
-              <div className="border border-pending-border bg-pending-surface px-4 py-5">
-                <p className="text-sm font-semibold">הפרש נטו חודשי</p>
-                <p className="mt-2 text-2xl font-bold text-pending">
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-pending-border bg-pending-surface px-4 py-5">
+              <p className="text-sm font-semibold">הפרש נטו חודשי</p>
+              <p className="mt-2 text-2xl font-bold text-pending">
+                <WaitingValue />
+              </p>
+            </div>
+          )}
+
+          {eligible && (
+            <dl className="grid grid-cols-2 gap-3">
+              <NetTile label="נטו היום" tone="bg-mist">
+                {result.net_today != null ? (
+                  <span className="inline-flex items-center">
+                    <Money amount={result.net_today} />
+                    <Why sources={result.sources} field="net_today" fieldValue={result.net_today} fieldLabel="נטו היום" />
+                  </span>
+                ) : (
                   <WaitingValue />
-                </p>
-              </div>
-            )}
-          </div>
+                )}
+              </NetTile>
+              <NetTile label="נטו בחלופה" tone="bg-mint">
+                {result.net_option != null ? (
+                  <span className="inline-flex items-center">
+                    <Money amount={result.net_option} />
+                    <Why sources={result.sources} field="net_option" fieldValue={result.net_option} fieldLabel="נטו בחלופה" />
+                  </span>
+                ) : (
+                  <WaitingValue />
+                )}
+              </NetTile>
+            </dl>
+          )}
 
-          {/* Explanation — 2 lines from engine */}
-          {result.explanation && result.explanation.length > 0 && (
+          {eligible && result.explanation && result.explanation.length > 0 && (
             <div
               className={cn(
-                "mt-4 border-s-4 border-lime bg-surface-raised ps-4 pe-3 py-3",
-                compact ? "text-sm" : "text-base",
+                "rounded-2xl border-s-4 border-success bg-success-surface px-4 py-3 text-foreground",
+                compact ? "text-sm" : "text-[0.95rem]",
               )}
             >
               {result.explanation.map((line, i) => (
@@ -322,46 +322,53 @@ export function ComparisonCard({
               ))}
             </div>
           )}
+        </section>
+      </div>
 
-          {/* Requirement-23 detail table */}
-          <table className="mt-5 w-full max-w-full border-collapse text-sm max-sm:block">
+      {eligible && (
+        <>
+          {/* How we got to the delta */}
+          <section aria-label="איך הגענו להפרש" className="mt-6 rounded-2xl border border-border/70 p-4 sm:p-5">
+            <h3 className="flex flex-wrap items-center gap-2 text-lg font-extrabold">
+              <Info aria-hidden className="size-5 text-primary" />
+              איך הגענו להפרש
+              {result.delta != null && (
+                <>
+                  {" של "}
+                  <bdi dir="ltr" className={cn(result.delta > 0 ? "text-success" : result.delta < 0 ? "text-error" : "")}>
+                    {formatDelta(result.delta)}
+                  </bdi>
+                  ?
+                </>
+              )}
+            </h3>
+            <WaterfallChart result={result} compact={compact} />
+          </section>
+
+          {/* Requirement 23: every field, from the DTO. A real table (rows keep their names), laid out as tiles. */}
+          <table className="mt-4 block w-full text-sm">
             <caption className="sr-only">פירוט שדות ההשוואה</caption>
-            <tbody className="max-sm:block">
-              <FieldRow label="עלות לחברה ותקציב הקבוצה">
+            <tbody className={cn("grid gap-3", compact ? "grid-cols-1" : "sm:grid-cols-2")}>
+              <FactRow icon={Building2} label="עלות לחברה ותקציב הקבוצה">
                 {result.cost_to_company != null && result.group_budget != null ? (
                   <span className="inline-flex flex-wrap items-center gap-x-1">
                     <Money amount={result.cost_to_company} />
-                    <Why
-                      sources={result.sources}
-                      field="cost_to_company"
-                      fieldValue={result.cost_to_company}
-                      fieldLabel="עלות לחברה"
-                    />
-                    <span className="text-muted-foreground"> מתוך תקציב </span>
+                    <Why sources={result.sources} field="cost_to_company" fieldValue={result.cost_to_company} fieldLabel="עלות לחברה" />
+                    <span className="font-normal text-muted-foreground">מתוך תקציב</span>
                     <Money amount={result.group_budget} />
-                    <Why
-                      sources={result.sources}
-                      field="group_budget"
-                      fieldValue={result.group_budget}
-                      fieldLabel="תקציב הקבוצה"
-                    />
+                    <Why sources={result.sources} field="group_budget" fieldValue={result.group_budget} fieldLabel="תקציב הקבוצה" />
                   </span>
                 ) : (
                   <WaitingValue />
                 )}
-              </FieldRow>
+              </FactRow>
 
-              <FieldRow label="השתתפות העובד">
+              <FactRow icon={Wallet} label="השתתפות העובד">
                 <span className="inline-flex flex-wrap items-center gap-2">
                   {result.participation != null ? (
                     <span className="inline-flex items-center">
                       <Money amount={result.participation} />
-                      <Why
-                        sources={result.sources}
-                        field="participation"
-                        fieldValue={result.participation}
-                        fieldLabel="השתתפות העובד"
-                      />
+                      <Why sources={result.sources} field="participation" fieldValue={result.participation} fieldLabel="השתתפות העובד" />
                     </span>
                   ) : (
                     <WaitingValue />
@@ -375,88 +382,64 @@ export function ComparisonCard({
                     </Badge>
                   )}
                 </span>
-              </FieldRow>
+              </FactRow>
 
-              <FieldRow label="שווי שימוש">
+              <FactRow icon={CarFront} label="שווי שימוש">
                 {result.value_of_use != null ? (
                   <span className="inline-flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     <Money amount={todayVou} />
                     <span aria-hidden className="text-muted-foreground">
-                      →
+                      ←
                     </span>
                     <span className="sr-only">בחלופה </span>
                     <span className="inline-flex items-center">
                       <Money amount={result.value_of_use} />
-                      <Why
-                        sources={result.sources}
-                        field="value_of_use"
-                        fieldValue={result.value_of_use}
-                        fieldLabel="שווי שימוש"
-                      />
+                      <Why sources={result.sources} field="value_of_use" fieldValue={result.value_of_use} fieldLabel="שווי שימוש" />
                     </span>
                   </span>
                 ) : (
                   <WaitingValue />
                 )}
-              </FieldRow>
+              </FactRow>
 
-              <FieldRow label="החזר חשמל או אחזקת רכב">
+              <FactRow icon={Zap} label="החזר חשמל או אחזקת רכב">
                 <ElectricOrMaintenance result={result} />
-              </FieldRow>
+              </FactRow>
 
-              <FieldRow label="נטו משוער היום">
+              <FactRow icon={CalendarCheck} label="נטו משוער היום">
                 {result.net_today != null ? (
                   <span className="inline-flex items-center">
                     <Money amount={result.net_today} />
-                    <Why
-                      sources={result.sources}
-                      field="net_today"
-                      fieldValue={result.net_today}
-                      fieldLabel="נטו היום"
-                    />
+                    <Why sources={result.sources} field="net_today" fieldValue={result.net_today} fieldLabel="נטו היום" />
                   </span>
                 ) : (
                   <WaitingValue />
                 )}
-              </FieldRow>
+              </FactRow>
 
-              <FieldRow label="נטו משוער בחלופה">
+              <FactRow icon={Sparkles} label="נטו משוער בחלופה">
                 {result.net_option != null ? (
                   <span className="inline-flex items-center">
                     <Money amount={result.net_option} />
-                    <Why
-                      sources={result.sources}
-                      field="net_option"
-                      fieldValue={result.net_option}
-                      fieldLabel="נטו בחלופה"
-                    />
+                    <Why sources={result.sources} field="net_option" fieldValue={result.net_option} fieldLabel="נטו בחלופה" />
                   </span>
                 ) : (
                   <WaitingValue />
                 )}
-              </FieldRow>
+              </FactRow>
 
-              <FieldRow label="ההפרש" emphasize>
+              <FactRow icon={TrendingUp} label="ההפרש" wide={!compact}>
                 {result.delta != null ? (
                   <span className="inline-flex items-center">
                     <DeltaInline delta={result.delta} />
-                    <Why
-                      sources={result.sources}
-                      field="delta"
-                      fieldValue={result.delta}
-                      fieldLabel="ההפרש"
-                    />
+                    <Why sources={result.sources} field="delta" fieldValue={result.delta} fieldLabel="ההפרש" />
                   </span>
                 ) : (
                   <WaitingValue />
                 )}
-              </FieldRow>
+              </FactRow>
             </tbody>
           </table>
-
-          <div className="mt-5">
-            <WaterfallChart result={result} compact={compact} />
-          </div>
         </>
       )}
 
@@ -464,7 +447,7 @@ export function ComparisonCard({
       {!result.complete && result.missing && result.missing.length > 0 && (
         <div
           role="status"
-          className="mt-5 border border-pending-border bg-pending-surface px-4 py-3 text-sm"
+          className="mt-5 rounded-2xl border border-pending-border bg-pending-surface px-4 py-3 text-sm"
         >
           <p className="font-bold text-pending">חסרים פרטים להשוואה מלאה</p>
           <ul className="mt-2 list-inside list-disc text-foreground">
@@ -476,7 +459,7 @@ export function ComparisonCard({
       )}
 
       {/* Tax years / transparency */}
-      <footer className="mt-5 border-t border-border pt-3 text-xs break-words text-muted-foreground">
+      <footer className="mt-5 border-t border-border/70 pt-3 text-xs break-words text-muted-foreground">
         <p>
           חושב לפי לוחות מס{" "}
           <bdi dir="ltr" className="tabular-nums">
@@ -494,33 +477,41 @@ export function ComparisonCard({
   );
 }
 
-function FieldRow({
+function NetTile({ label, tone, children }: { label: string; tone: string; children: ReactNode }) {
+  return (
+    <div className={cn("rounded-2xl px-4 py-3 text-center", tone)}>
+      <dt className="text-sm font-semibold text-foreground/80">{label}</dt>
+      <dd className="mt-1 text-xl font-extrabold tabular-nums sm:text-2xl">{children}</dd>
+    </div>
+  );
+}
+
+function FactRow({
+  icon: Icon,
   label,
+  wide = false,
   children,
-  emphasize = false,
 }: {
+  icon: LucideIcon;
   label: string;
+  wide?: boolean;
   children: ReactNode;
-  emphasize?: boolean;
 }) {
   return (
-    <tr className="block border-b border-border py-3 last:border-b-0 sm:table-row sm:py-0">
-      <th
-        scope="row"
-        className={cn(
-          "block w-full pb-1 text-start align-top font-medium break-words text-muted-foreground sm:table-cell sm:w-auto sm:py-3 sm:pe-3 sm:pb-0",
-          emphasize && "font-semibold text-foreground",
-        )}
-      >
+    <tr className={cn("flex min-w-0 items-start gap-3 rounded-2xl bg-background px-4 py-3", wide && "sm:col-span-2")}>
+      <td aria-hidden className="shrink-0">
+        <span className="inline-flex size-9 items-center justify-center rounded-full bg-mist text-primary">
+          <Icon className="size-4.5" />
+        </span>
+      </td>
+      <th scope="row" className="sr-only">
         {label}
       </th>
-      <td
-        className={cn(
-          "block w-full text-start align-top font-semibold break-words sm:table-cell sm:py-3 sm:ps-3",
-          emphasize && "text-base",
-        )}
-      >
-        {children}
+      <td className="min-w-0">
+        <span aria-hidden className="block text-xs font-semibold text-muted-foreground">
+          {label}
+        </span>
+        <span className="mt-0.5 block text-sm font-bold break-words">{children}</span>
       </td>
     </tr>
   );

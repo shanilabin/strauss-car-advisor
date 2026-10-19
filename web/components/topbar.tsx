@@ -1,4 +1,4 @@
-import { Check, MessageCircle, UserRound } from "lucide-react";
+import { Check, House, MessageCircle, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -71,8 +71,16 @@ export function Topbar({
               </span>
               נציג/ת תחבורה
             </span>
+          ) : step !== null ? (
+            <Link
+              href="/"
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-nav-border bg-surface px-3 text-sm font-semibold transition-colors hover:border-primary hover:bg-mist sm:px-4"
+            >
+              <House aria-hidden className="size-4 text-primary" />
+              <span className="max-sm:sr-only">דף הבית</span>
+            </Link>
           ) : (
-            step === null && (
+            (
               <Link
                 href="/c/new"
                 className="hidden h-11 items-center gap-2 rounded-full border border-nav-border bg-surface px-4 text-sm font-semibold transition-colors hover:border-primary hover:bg-mist sm:inline-flex"

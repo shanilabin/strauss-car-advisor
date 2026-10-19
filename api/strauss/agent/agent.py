@@ -6,6 +6,7 @@ AgentReply = the model's words + the cards the tools produced in this turn.
 
 import json
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -30,7 +31,10 @@ class ReplyDraft(BaseModel):
 
     text: str = Field(description="Your message to the employee, in Hebrew. Words only - no money amounts.")
     quick_replies: list[str] = Field(
-        default_factory=list, max_length=3, description="Up to 3 short suggestions"
+        default_factory=list,
+        max_length=3,
+        description="Up to 3 short replies the EMPLOYEE could tap, in the employee's own words "
+        "(e.g. 'יש לי רכב חברה', 'מה עם ויתור?'). Never your own questions to the employee.",
     )
 
 
@@ -111,6 +115,15 @@ def build_agent(model: Model | None = None) -> Agent[AgentDeps, ReplyDraft]:
 @lru_cache
 def default_agent() -> Agent[AgentDeps, ReplyDraft]:
     return build_agent()
+
+
+# A quick reply is something the employee taps. One that asks the employee something ("מה התפקיד שלך?")
+# is the bot's own question in the wrong place - it is dropped.
+ASKS_THE_EMPLOYEE = re.compile(r"(?<!\w)(שלך|לך|אצלך|את/ה|אתה|את)(?!\w).*\?\s*$")
+
+
+def employee_replies(replies: list[str]) -> list[str]:
+    return [r for r in replies if r.strip() and not ASKS_THE_EMPLOYEE.search(r)]
 
 
 def to_reply(draft: ReplyDraft, deps: AgentDeps) -> AgentReply:

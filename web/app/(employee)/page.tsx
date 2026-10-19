@@ -24,6 +24,8 @@ export default function Home() {
             sizes="100vw"
             className="-z-10 object-cover object-top opacity-95 dark:opacity-25"
           />
+          {/* The brand art fades into the page instead of ending on a hard edge */}
+          <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-48 bg-gradient-to-b from-transparent to-background" />
           <div className="mx-auto grid w-full max-w-screen-xl items-center gap-6 px-4 pt-8 pb-10 sm:px-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-10 lg:px-10 lg:pt-14 lg:pb-16">
             <div className="min-w-0">
               <h1

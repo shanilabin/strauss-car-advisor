@@ -2,8 +2,8 @@
 
 import { PanelRight } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { BottomSheet } from "@/components/chat/bottom-sheet";
 import { ChatPanel, type ChatMessage } from "@/components/chat/chat-panel";
@@ -32,7 +32,6 @@ type ConversationViewProps = {
 };
 
 export function ConversationView({ conversationId }: ConversationViewProps) {
-  const router = useRouter();
   useConversationRealtime(conversationId);
   const conversation = useConversation(conversationId);
   const sendMessage = useSendMessage(conversationId);
@@ -134,13 +133,10 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
         setOutgoing(null);
         setQuickReplies(turn.reply.quick_replies ?? []);
       },
-      onError: (error) => {
+      onError: () => {
         setOutgoing(null);
         setDraft(text);
         setQuickReplies(previousReplies);
-        if (isFormModeFallback(error)) {
-          router.push("/form");
-        }
       },
     });
   }
@@ -161,8 +157,11 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     setBrowsingOptions(true);
   }
 
-  const sendError = isFormModeFallback(sendMessage.error)
-    ? null
+  // When no model can answer (free-tier quota, provider down) the employee stays in the chat: the
+  // message is kept, and the form - the same calculation, no AI - is one click away.
+  const modelBusy = isFormModeFallback(sendMessage.error);
+  const sendError = modelBusy
+    ? "היועץ עמוס כרגע. ההודעה שלך נשמרה בתיבה: נסו לשלוח שוב בעוד רגע, או המשיכו במצב טופס (אותו חישוב בדיוק)."
     : sendMessage.error instanceof SendMessageError
       ? sendMessage.error.message
       : sendMessage.error
@@ -232,6 +231,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               quickReplies={quickReplies}
               thinking={sendMessage.isPending}
               errorMessage={sendError}
+                errorAction={modelBusy ? <FormModeLink /> : null}
               draft={draft}
               onDraftChange={setDraft}
               onSend={handleSend}
@@ -245,6 +245,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               quickReplies={quickReplies}
               thinking={sendMessage.isPending}
               errorMessage={sendError}
+                errorAction={modelBusy ? <FormModeLink /> : null}
               draft={draft}
               onDraftChange={setDraft}
               onSend={handleSend}
@@ -265,6 +266,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
                 quickReplies={quickReplies}
                 thinking={sendMessage.isPending}
                 errorMessage={sendError}
+                errorAction={modelBusy ? <FormModeLink /> : null}
                 draft={draft}
                 onDraftChange={setDraft}
                 onSend={handleSend}
@@ -278,9 +280,21 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
                 missing={data.missing ?? []}
               />
             ) : (
-              <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-                אין השוואה מהשרת עדיין.
-              </div>
+              <CollectingDesktop
+                conversationId={conversationId}
+                profile={data.profile}
+                missing={data.missing}
+                messages={messages}
+                quickReplies={quickReplies}
+                thinking={sendMessage.isPending}
+                errorMessage={sendError}
+                errorAction={modelBusy ? <FormModeLink /> : null}
+                draft={draft}
+                onDraftChange={setDraft}
+                onSend={handleSend}
+                onSelectOption={handleSelectOption}
+                openQuestions={data.open_questions ?? []}
+              />
             )
           )}
         </div>
@@ -295,6 +309,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             quickReplies={quickReplies}
             thinking={sendMessage.isPending}
             errorMessage={sendError}
+                errorAction={modelBusy ? <FormModeLink /> : null}
             draft={draft}
             onDraftChange={setDraft}
             onSend={handleSend}
@@ -346,6 +361,7 @@ function CollectingDesktop({
   quickReplies,
   thinking,
   errorMessage,
+  errorAction = null,
   draft,
   onDraftChange,
   onSend,
@@ -359,6 +375,7 @@ function CollectingDesktop({
   quickReplies: string[];
   thinking: boolean;
   errorMessage: string | null;
+  errorAction?: ReactNode;
   draft: string;
   onDraftChange: (value: string) => void;
   onSend: (text: string) => void;
@@ -372,6 +389,7 @@ function CollectingDesktop({
         quickReplies={quickReplies}
         thinking={thinking}
         errorMessage={errorMessage}
+        errorAction={errorAction}
         draft={draft}
         onDraftChange={onDraftChange}
         onSend={onSend}
@@ -394,6 +412,7 @@ function OptionsDesktop({
   quickReplies,
   thinking,
   errorMessage,
+  errorAction = null,
   draft,
   onDraftChange,
   onSend,
@@ -410,6 +429,7 @@ function OptionsDesktop({
   quickReplies: string[];
   thinking: boolean;
   errorMessage: string | null;
+  errorAction?: ReactNode;
   draft: string;
   onDraftChange: (value: string) => void;
   onSend: (text: string) => void;
@@ -436,6 +456,7 @@ function OptionsDesktop({
         quickReplies={quickReplies}
         thinking={thinking}
         errorMessage={errorMessage}
+        errorAction={errorAction}
         draft={draft}
         onDraftChange={onDraftChange}
         onSend={onSend}
@@ -464,6 +485,7 @@ function ComparisonDesktop({
   quickReplies,
   thinking,
   errorMessage,
+  errorAction = null,
   draft,
   onDraftChange,
   onSend,
@@ -480,6 +502,7 @@ function ComparisonDesktop({
   quickReplies: string[];
   thinking: boolean;
   errorMessage: string | null;
+  errorAction?: ReactNode;
   draft: string;
   onDraftChange: (value: string) => void;
   onSend: (text: string) => void;
@@ -523,6 +546,7 @@ function ComparisonDesktop({
         quickReplies={quickReplies}
         thinking={thinking}
         errorMessage={errorMessage}
+        errorAction={errorAction}
         draft={draft}
         onDraftChange={onDraftChange}
         onSend={onSend}
@@ -599,9 +623,7 @@ function MobileSideContent({
   }
 
   if (!comparison) {
-    return (
-      <p className="px-1 py-6 text-sm text-muted-foreground">אין השוואה מהשרת עדיין.</p>
-    );
+    return <ProfileCard conversationId={data.id} profile={data.profile} missing={data.missing} />;
   }
 
   return (
@@ -733,6 +755,14 @@ function ResultBanner() {
         className="mascot-float h-auto w-32 shrink-0 drop-shadow-[0_12px_14px_rgb(23_50_72/0.18)] lg:w-44"
       />
     </div>
+  );
+}
+
+function FormModeLink() {
+  return (
+    <Link href="/form" className="font-bold text-primary underline underline-offset-4">
+      למצב טופס
+    </Link>
   );
 }
 

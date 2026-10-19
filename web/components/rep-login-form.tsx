@@ -3,7 +3,7 @@
 import { isAuthApiError } from "@supabase/supabase-js";
 import { CircleX, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { getSupabase } from "@/lib/supabase/client";
@@ -17,6 +17,16 @@ export function RepLoginForm() {
   const submitting = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Next keeps this page alive but hidden after the redirect (cacheComponents). Unlock it when it is
+  // hidden, so coming back to sign in again (after signing out) works.
+  useEffect(
+    () => () => {
+      submitting.current = false;
+      setBusy(false);
+    },
+    [],
+  );
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

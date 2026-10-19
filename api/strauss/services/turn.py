@@ -25,7 +25,7 @@ from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import UsageLimits
 
 from strauss.agent.agent import ReplyDraft, default_agent, to_reply
-from strauss.agent.deps import AgentDeps
+from strauss.agent.deps import AgentDeps, TurnLog
 from strauss.agent.guard import mask_ids
 from strauss.agent.models_chain import AgentUnavailable
 from strauss.agent.schemas import ComparisonCard, OptionsCard, RepPendingCard
@@ -44,6 +44,8 @@ LIMITS = UsageLimits(request_limit=12)  # a runaway tool loop ends here instead 
 # Low thinking keeps a turn in seconds; the timeout hands a stuck provider over to the next in the chain.
 SETTINGS = ModelSettings(temperature=0.2, thinking="low", timeout=30)
 NO_MODEL = (AgentUnavailable, ModelAPIError, FallbackExceptionGroup)  # -> form mode
+BUSY_RETRIES = 1  # one more try when every model is rate-limited
+BUSY_WAIT_SECONDS = 6
 STUCK_REPLY = "סליחה, לא הצלחתי להשלים את הבקשה. אפשר לנסח אותה אחרת?"
 
 
@@ -139,23 +141,35 @@ class TurnService:
     def _think(self, record: ConversationRecord, deps: AgentDeps, text: str) -> ReplyDraft:
         started = time.perf_counter()
         try:
-            result = _run(
-                default_agent().run(
-                    text,
-                    deps=deps,
-                    model=self._model(),
-                    message_history=history(self._repo.messages(record.id)),
-                    model_settings=SETTINGS,
-                    usage_limits=LIMITS,
-                )
-            )
-        except NO_MODEL as exc:
-            logger.warning("no model answered for conversation %s: %r", record.id, exc)
+            model = self._model()
+        except AgentUnavailable as exc:  # no keys at all: form mode, no point retrying
             raise agent_unavailable() from exc
-        except AgentRunError as exc:  # the model answered but got stuck - keep what the tools did
-            logger.warning("agent got stuck in conversation %s: %r", record.id, exc)
-            deps.turn.event("model", "stuck", {"error": type(exc).__name__})
-            return ReplyDraft(text=STUCK_REPLY)
+        past = history(self._repo.messages(record.id))
+        for attempt in range(1 + BUSY_RETRIES):
+            try:
+                result = _run(
+                    default_agent().run(
+                        text,
+                        deps=deps,
+                        model=model,
+                        message_history=past,
+                        model_settings=SETTINGS,
+                        usage_limits=LIMITS,
+                    )
+                )
+                break
+            except NO_MODEL as exc:
+                # Free tiers limit requests and tokens per MINUTE: every model busy now is often free
+                # again a few seconds later. Wait once before sending the employee to the form.
+                logger.warning("no model answered (%s, try %d): %r", record.id, attempt + 1, exc)
+                if attempt == BUSY_RETRIES:
+                    raise agent_unavailable() from exc
+                deps.profile, deps.turn = record.profile, TurnLog()  # the next try starts clean
+                time.sleep(BUSY_WAIT_SECONDS)
+            except AgentRunError as exc:  # the model answered but got stuck - keep what the tools did
+                logger.warning("agent got stuck in conversation %s: %r", record.id, exc)
+                deps.turn.event("model", "stuck", {"error": type(exc).__name__})
+                return ReplyDraft(text=STUCK_REPLY)
         usage = result.usage
         deps.turn.event(
             "model",

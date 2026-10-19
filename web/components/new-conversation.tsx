@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Topbar } from "@/components/topbar";
 import { Button } from "@/components/ui/button";
@@ -13,26 +13,40 @@ import { useSession } from "@/lib/supabase/use-session";
 
 /**
  * Opens one real conversation and replaces this route with /c/{id}.
- * A ref blocks the second effect run under React Strict Mode in dev.
+ *
+ * With cacheComponents, Next keeps a left page alive but hidden (React Activity) and shows it again on
+ * the next visit: effects are torn down on hide and run again on show, while refs survive. So the
+ * "start" lives in the effect itself (a timer its cleanup cancels) - every visit opens a new
+ * conversation, and Strict Mode's double run in dev still starts only one.
  */
+const SLOW_AFTER_MS = 15_000;
+
 export function NewConversation() {
   const router = useRouter();
   const session = useSession();
   const createConversation = useCreateConversation();
-  const started = useRef(false);
   const { mutate } = createConversation;
+  const [slow, setSlow] = useState(false);
 
   useEffect(() => {
-    if (!session.session || started.current) return;
-    started.current = true;
-    mutate(
-      {},
-      {
-        onSuccess: (state) => {
-          router.replace(`/c/${state.id}`);
+    if (!session.session) return;
+    const start = window.setTimeout(() => {
+      setSlow(false);
+      mutate(
+        {},
+        {
+          onSuccess: (state) => {
+            router.replace(`/c/${state.id}`);
+          },
         },
-      },
-    );
+      );
+    }, 0);
+    // Never wait forever: after a while, offer to try again.
+    const tooLong = window.setTimeout(() => setSlow(true), SLOW_AFTER_MS);
+    return () => {
+      window.clearTimeout(start);
+      window.clearTimeout(tooLong);
+    };
   }, [mutate, router, session.session]);
 
   function retry() {
@@ -73,6 +87,18 @@ export function NewConversation() {
           {message}
         </p>
         <Button type="button" onClick={retry} disabled={createConversation.isPending}>
+          נסו שוב
+        </Button>
+      </StatusShell>
+    );
+  }
+
+  if (slow) {
+    return (
+      <StatusShell>
+        <h1 className="font-display text-3xl">זה לוקח יותר מהרגיל</h1>
+        <p className="text-muted-foreground">החיבור לשרת איטי כרגע. אפשר לנסות שוב.</p>
+        <Button type="button" onClick={() => window.location.reload()}>
           נסו שוב
         </Button>
       </StatusShell>

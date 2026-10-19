@@ -2,7 +2,7 @@
 
 import { SendHorizontal, UserRound } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { AgentActions } from "@/components/chat/agent-actions";
 import { MessageCardView } from "@/components/chat/message-cards";
@@ -25,6 +25,8 @@ type ChatPanelProps = {
   disabled?: boolean;
   narrow?: boolean;
   errorMessage?: string | null;
+  /** A follow-up shown with the error (e.g. a link to form mode). */
+  errorAction?: ReactNode;
   onSend: (text: string) => void;
   /** When set, options cards in messages can open a comparison. */
   onSelectOption?: (optionId: string) => void;
@@ -44,6 +46,7 @@ export function ChatPanel({
   disabled = false,
   narrow = false,
   errorMessage,
+  errorAction,
   onSend,
   onSelectOption,
   openQuestions,
@@ -242,7 +245,7 @@ export function ChatPanel({
 
       {errorMessage && (
         <p role="alert" className="mx-4 mb-2 rounded-2xl border border-error-border bg-error-surface px-4 py-2 text-sm text-error">
-          {errorMessage}
+          {errorMessage} {errorAction}
         </p>
       )}
 

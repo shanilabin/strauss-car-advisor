@@ -383,7 +383,7 @@ function CollectingDesktop({
   openQuestions: NonNullable<ConversationState["open_questions"]>;
 }) {
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(280px,400px)] gap-0 p-4 lg:gap-4 lg:p-6">
+    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(280px,400px)] grid-rows-[minmax(0,1fr)] gap-0 p-4 lg:gap-4 lg:p-6">
       <ChatPanel
         messages={messages}
         quickReplies={quickReplies}
@@ -447,7 +447,7 @@ function OptionsDesktop({
   return (
     <div
       className={cn(
-        "grid min-h-0 flex-1 gap-4 p-6",
+        "grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-4 p-6",
         chatExpanded ? "grid-cols-[440px_minmax(0,1fr)]" : "grid-cols-[280px_minmax(0,1fr)]",
       )}
     >

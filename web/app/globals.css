@@ -291,6 +291,19 @@
   }
 }
 
+/* Desktop conversation: the screen is the app - each panel scrolls on its own, the page never does. */
+@media (min-width: 1024px) {
+  html.lock-viewport,
+  html.lock-viewport body {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  html.lock-viewport #app-footer {
+    display: none;
+  }
+}
+
 /* Comparison waterfall table: one stacked block per row on a narrow screen. */
 @media (max-width: 639px) {
   .stack-table,

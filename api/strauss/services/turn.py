@@ -28,9 +28,9 @@ from strauss.agent.agent import ReplyDraft, default_agent, to_reply
 from strauss.agent.deps import AgentDeps, TurnLog
 from strauss.agent.guard import mask_ids
 from strauss.agent.models_chain import AgentUnavailable
-from strauss.agent.schemas import ComparisonCard, OptionsCard, RepPendingCard
+from strauss.agent.schemas import Card, ComparisonCard, OptionsCard, RepPendingCard
 from strauss.config.bundle import ConfigBundle
-from strauss.domain.models import Profile
+from strauss.domain.models import Comparison, Profile
 from strauss.errors import ApiError
 from strauss.http.schemas import ConversationStatus, MessageRole, TurnResponse
 from strauss.ports.repositories import AuthUser, ConversationRecord, ConversationRepo, ValueOfUseRepo
@@ -85,6 +85,20 @@ def history(rows: list[dict[str, Any]]) -> list[ModelMessage]:
     return messages
 
 
+def _stamped(card: Card, saved: Profile) -> Card:
+    """A comparison the agent computed on the profile it just saved carries that save's revision (the
+    revision only moves when the profile is stored, after the tools ran)."""
+    if not isinstance(card, ComparisonCard | OptionsCard):
+        return card
+    snapshot = card.comparison.profile_snapshot
+    if snapshot.revision == saved.revision:
+        return card
+    if snapshot.model_copy(update={"revision": saved.revision}) != saved:
+        return card  # computed on an in-between profile of this turn
+    comparison = card.comparison.model_copy(update={"profile_snapshot": saved})
+    return card.model_copy(update={"comparison": comparison})
+
+
 class TurnService:
     def __init__(
         self,
@@ -104,10 +118,12 @@ class TurnService:
         record = self._conversations.owned(user, conversation_id)
         text = mask_ids(text)
         asked_at = datetime.now(UTC)
-        deps = AgentDeps(profile=record.profile, bundle=self._bundle, value_of_use=self._vou)
-        draft = self._think(record, deps, text)
+        shown = self._repo.latest_comparison(record.id)
+        deps = AgentDeps(profile=record.profile, bundle=self._bundle, value_of_use=self._vou, shown=shown)
+        draft = self._think(record, deps, text, shown)
 
         record = self._save_profile(record, deps)
+        deps.turn.cards = [_stamped(card, record.profile) for card in deps.turn.cards]
         questions = self._ask_rep(record, deps)
         for card in deps.turn.cards:
             if isinstance(card, ComparisonCard | OptionsCard):
@@ -138,7 +154,9 @@ class TurnService:
 
     # ── Steps ────────────────────────────────────────────────────────────────
 
-    def _think(self, record: ConversationRecord, deps: AgentDeps, text: str) -> ReplyDraft:
+    def _think(
+        self, record: ConversationRecord, deps: AgentDeps, text: str, shown: Comparison | None
+    ) -> ReplyDraft:
         started = time.perf_counter()
         try:
             model = self._model()
@@ -164,7 +182,7 @@ class TurnService:
                 logger.warning("no model answered (%s, try %d): %r", record.id, attempt + 1, exc)
                 if attempt == BUSY_RETRIES:
                     raise agent_unavailable() from exc
-                deps.profile, deps.turn = record.profile, TurnLog()  # the next try starts clean
+                deps.profile, deps.shown, deps.turn = record.profile, shown, TurnLog()  # a clean retry
                 time.sleep(BUSY_WAIT_SECONDS)
             except AgentRunError as exc:  # the model answered but got stuck - keep what the tools did
                 logger.warning("agent got stuck in conversation %s: %r", record.id, exc)

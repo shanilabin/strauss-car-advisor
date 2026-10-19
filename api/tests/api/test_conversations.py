@@ -207,3 +207,47 @@ def test_a_malformed_conversation_id_is_simply_not_found() -> None:
     response = client.get("/v1/conversations/not-a-uuid", headers=AS_NOA)
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "conversation_not_found"
+
+
+# ── An edit after the comparison recomputes it ───────────────────────────────
+
+
+def test_editing_a_detail_after_a_comparison_recomputes_it(conversations: MemoryConversationRepo) -> None:
+    conversation_id = start()["id"]
+    before = client.post(
+        f"/v1/conversations/{conversation_id}/compare", json={"option_ids": ["CAR-10"]}, headers=AS_NOA
+    ).json()
+    patched = client.patch(
+        f"/v1/conversations/{conversation_id}/profile",
+        json={"expected_revision": 0, "salary": {"base": 20000}},
+        headers=AS_NOA,
+    ).json()
+    after = patched["latest_comparison"]
+    assert after["id"] != before["id"]
+    assert [r["option"]["id"] for r in after["results"]] == ["CAR-10"]  # the same alternative
+    assert after["results"][0]["net_today"] != before["results"][0]["net_today"]
+    assert after["profile_snapshot"]["revision"] == 1
+    assert patched["status"] == "PRESENTED"  # still on the comparison, not back to the options
+    note = patched["messages"][-1]
+    assert note["role"] == "system_event" and "שכר" in note["text"] and "חושבה מחדש" in note["text"]
+    request, _ = conversations.comparisons[conversation_id][-1]
+    assert request["by"] == "profile_edit"
+
+
+def test_an_edit_after_all_options_recomputes_all_of_them() -> None:
+    conversation_id = start()["id"]
+    shown = client.get(f"/v1/conversations/{conversation_id}/options", headers=AS_NOA).json()
+    patched = client.patch(
+        f"/v1/conversations/{conversation_id}/profile", json={"children_under_23": 0}, headers=AS_NOA
+    ).json()
+    ids = {r["option"]["id"] for r in patched["latest_comparison"]["results"]}
+    assert ids and ids <= {r["option"]["id"] for r in shown["results"]}
+
+
+def test_an_edit_before_any_comparison_computes_nothing() -> None:
+    conversation_id = start()["id"]
+    patched = client.patch(
+        f"/v1/conversations/{conversation_id}/profile", json={"children_under_23": 1}, headers=AS_NOA
+    ).json()
+    assert patched["latest_comparison"] is None and patched["messages"] == []
+    assert patched["status"] == "READY"

@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from strauss.agent.schemas import Card, TraceEvent
 from strauss.config.bundle import ConfigBundle
-from strauss.domain.models import Profile
+from strauss.domain.models import Comparison, Profile
 from strauss.ports.repositories import ValueOfUseRepo
 
 
@@ -39,4 +39,6 @@ class AgentDeps:
     profile: Profile
     bundle: ConfigBundle
     value_of_use: ValueOfUseRepo
+    # The comparison on the employee's screen (the latest saved one). A change to the details recomputes it.
+    shown: Comparison | None = None
     turn: TurnLog = field(default_factory=TurnLog)

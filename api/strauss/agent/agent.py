@@ -17,12 +17,13 @@ from pydantic_ai.models import Model
 from strauss.agent.deps import AgentDeps
 from strauss.agent.guard import FALLBACK_WITH_CARDS, FALLBACK_WITHOUT_CARDS, invented, tool_results
 from strauss.agent.schemas import AgentReply
-from strauss.agent.tools import DRIVE_HE, TOOLS
+from strauss.agent.tools import DRIVE_HE, TOOLS, describe
 from strauss.domain.missing import missing_fields
 from strauss.domain.options import WAIVER_ID, car_label
 
 os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
 
+ON_SCREEN_LIMIT = 8  # of a full options list, the best ones
 PROMPT = (Path(__file__).parent / "prompts" / "system.he.md").read_text(encoding="utf-8")
 
 
@@ -67,12 +68,27 @@ def state_block(deps: AgentDeps) -> str:
         ]
         + [{"id": WAIVER_ID, "car": "ויתור על הרכב (אחזקה)"}],
         "children_age_limit": family.requires.child_max_age if family else None,
+        # what the employee is looking at, so "and the other one?" or "why?" has a referent
+        "on_screen": _on_screen(deps),
     }
     return (
         "## מצב השיחה (מחושב מחדש בכל הודעה)\n```json\n"
         + json.dumps(state, ensure_ascii=False, indent=1)
         + "\n```"
     )
+
+
+def _on_screen(deps: AgentDeps) -> dict[str, object] | None:
+    shown = deps.shown
+    if shown is None:
+        return None
+    # best first, in words (net up/down and why) - enough to answer "why?" without calculating again
+    return {
+        "compared": [describe(r) for r in shown.results[:ON_SCREEN_LIMIT]],
+        "best_for_net": next(
+            (r.option.label for r in shown.results if r.option.id == shown.best_option_id), None
+        ),
+    }
 
 
 def build_agent(model: Model | None = None) -> Agent[AgentDeps, ReplyDraft]:

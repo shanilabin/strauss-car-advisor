@@ -173,6 +173,18 @@ def compare(
     )
 
 
+def rerun(previous: Comparison, profile: Profile, bundle: ConfigBundle) -> Comparison:
+    """The comparison on screen, recomputed for a changed profile: the same alternatives - all of them if
+    it showed all. An alternative the new profile no longer has (a family track without children) drops
+    out; if none is left, every alternative is shown. Raises IncompleteProfile like compare()."""
+    shown = [r.option.id for r in previous.results]
+    if set(shown) == {o.id for o in build_options(previous.profile_snapshot, bundle)}:
+        return compare(profile, bundle, None)
+    available = {o.id for o in build_options(profile, bundle)}
+    kept = [option_id for option_id in shown if option_id in available]
+    return compare(profile, bundle, kept or None)
+
+
 def _option_result(
     profile: Profile,
     option: Option,

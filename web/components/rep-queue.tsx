@@ -1,7 +1,27 @@
 "use client";
 
-import { CircleX, LoaderCircle } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  CircleX,
+  Clock,
+  History,
+  LoaderCircle,
+  type LucideIcon,
+  MessagesSquare,
+  PencilLine,
+  Search,
+  Send,
+  UserRound,
+} from "lucide-react";
+import Image from "next/image";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -73,7 +93,7 @@ export function RepQueue({ enabled = true }: RepQueueProps) {
         : "לא הצלחנו לטעון את תור השאלות.";
     return (
       <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-4 px-5 py-16">
-        <p role="alert" className="border border-error-border bg-error-surface px-3 py-2.5 text-sm text-error">
+        <p role="alert" className="rounded-2xl border border-error-border bg-error-surface px-3 py-2.5 text-sm text-error">
           {message}
         </p>
         <Button type="button" variant="outline" onClick={() => void query.refetch()}>
@@ -84,29 +104,47 @@ export function RepQueue({ enabled = true }: RepQueueProps) {
   }
 
   return (
-    <div className="mx-auto flex w-full min-w-0 max-w-screen-2xl flex-1 flex-col gap-4 overflow-x-clip px-4 py-6 lg:px-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="font-display text-3xl lg:text-4xl">תור הנציג</h1>
-        <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
-          {questions.length === 0
-            ? "אין שאלות פתוחות"
-            : questions.length === 1
-              ? "שאלה אחת פתוחה"
-              : `${questions.length} שאלות פתוחות`}
-        </p>
-      </div>
+    <div className="mx-auto flex w-full min-w-0 max-w-screen-2xl flex-1 flex-col gap-5 overflow-x-clip px-4 py-6 lg:px-8">
+      <header className="relative isolate flex min-h-28 items-center gap-4 overflow-hidden rounded-3xl px-6 py-5 shadow-card lg:min-h-32 lg:px-8">
+        <Image
+          src="/brand/bg-flowing-arcs.webp"
+          alt=""
+          fill
+          sizes="100vw"
+          className="-z-10 object-cover object-[50%_35%] dark:opacity-30"
+        />
+        <span aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-l from-surface/95 via-surface/80 to-surface/20" />
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-3xl lg:text-4xl">תור הנציג</h1>
+          <p className="mt-1 text-sm text-foreground/80" aria-live="polite">
+            {questions.length === 0
+              ? "אין שאלות פתוחות"
+              : questions.length === 1
+                ? "שאלה אחת ממתינה לתשובה"
+                : `${questions.length} שאלות ממתינות לתשובה`}
+          </p>
+        </div>
+        <Image
+          src="/brand/mascot-peek.webp"
+          alt=""
+          width={355}
+          height={360}
+          className="h-auto w-24 shrink-0 drop-shadow-[0_10px_12px_rgb(23_50_72/0.18)] lg:w-28"
+        />
+      </header>
 
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {liveMessage}
       </div>
 
       {questions.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center border border-border bg-surface px-5 py-16 text-center">
-          <p className="text-lg font-semibold">אין שאלות פתוחות כרגע</p>
-          <p className="mt-2 text-sm text-muted-foreground">שאלות חדשות יופיעו כאן אוטומטית.</p>
+        <div className="flex flex-1 flex-col items-center justify-center rounded-3xl border border-border/70 bg-surface px-5 py-16 text-center shadow-card">
+          <Image src="/brand/mascot-celebrate.webp" alt="" width={520} height={503} className="h-auto w-40" />
+          <p className="mt-3 text-lg font-bold">אין שאלות פתוחות כרגע</p>
+          <p className="mt-1 text-sm text-muted-foreground">שאלות חדשות יופיעו כאן אוטומטית.</p>
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 items-start gap-5 lg:grid-cols-[minmax(20rem,26rem)_minmax(0,1fr)]">
           <QuestionList
             questions={questions}
             selectedId={selected?.id ?? null}
@@ -128,78 +166,212 @@ function QuestionList({
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
+  const searchId = useId();
+  const [search, setSearch] = useState("");
+  const term = search.trim();
+  const visible = term
+    ? questions.filter((q) =>
+        [q.question, ...Object.values(q.context ?? {})].some((text) => text.includes(term)),
+      )
+    : questions;
+
   return (
-    <nav aria-label="שאלות פתוחות" className="border border-border bg-surface">
-      <ul className="divide-y divide-border">
-        {questions.map((question) => {
-          const selected = question.id === selectedId;
-          const summary = contextSummary(question.context);
-          return (
-            <li key={question.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(question.id)}
-                aria-current={selected ? "true" : undefined}
-                className={cn(
-                  "flex min-h-11 w-full min-w-0 flex-col gap-1 px-4 py-3 text-start break-words transition-colors",
-                  "hover:bg-muted focus-visible:outline-3 focus-visible:outline-offset-[-3px] focus-visible:outline-ring",
-                  selected && "border-s-4 border-primary bg-info-surface",
-                )}
-              >
-                <span className="line-clamp-2 text-sm font-semibold">{question.question}</span>
-                {summary && (
-                  <span className="line-clamp-1 text-xs text-muted-foreground">{summary}</span>
-                )}
-                <time
-                  dateTime={question.created_at}
-                  className="text-xs text-muted-foreground tabular-nums"
+    <div className="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-border/70 bg-surface shadow-card">
+      <div className="flex flex-col gap-3 px-4 pt-5 pb-3">
+        <h2 className="flex items-center gap-2 text-lg font-extrabold">
+          <span className="inline-flex size-9 items-center justify-center rounded-full bg-mist text-primary">
+            <MessagesSquare aria-hidden className="size-4.5" />
+          </span>
+          שאלות פתוחות מעובדים
+        </h2>
+        <p className="flex flex-wrap gap-2 text-sm font-semibold">
+          <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-primary bg-mist px-3 py-1 text-primary">
+            הכל ({questions.length})
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1">
+            <Clock aria-hidden className="size-3.5 text-pending" />
+            ממתין ({questions.length})
+          </span>
+        </p>
+        <label htmlFor={searchId} className="sr-only">
+          חיפוש בשאלות
+        </label>
+        <div className="relative">
+          <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            id={searchId}
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="חיפוש לפי רכב, עיסוק או שאלה…"
+            className="h-11 w-full rounded-full border border-border bg-background ps-9 pe-4 text-sm outline-none focus-visible:border-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          />
+        </div>
+      </div>
+      <nav aria-label="שאלות פתוחות">
+        <ul className="flex flex-col gap-2 px-3 pb-3">
+          {visible.map((question) => {
+            const selected = question.id === selectedId;
+            const summary = contextSummary(question.context);
+            return (
+              <li key={question.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(question.id)}
+                  aria-current={selected ? "true" : undefined}
+                  className={cn(
+                    "flex w-full min-w-0 items-center gap-3 rounded-2xl border px-3 py-3 text-start break-words transition-colors",
+                    "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                    selected
+                      ? "border-primary bg-mist/70 ring-2 ring-primary/20"
+                      : "border-border/70 bg-surface hover:border-primary/40",
+                  )}
                 >
-                  {timeFormatter.format(new Date(question.created_at))}
-                </time>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+                  <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-mist text-primary">
+                    <UserRound className="size-5" />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="text-sm font-extrabold">{fieldTitle(question.field)}</span>
+                    {summary && <span className="line-clamp-1 text-xs text-muted-foreground">{summary}</span>}
+                    <span className="line-clamp-1 text-xs text-foreground/80">{question.question}</span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1.5">
+                    <StatusPill />
+                    <time dateTime={question.created_at} className="text-[0.7rem] text-muted-foreground tabular-nums">
+                      {timeFormatter.format(new Date(question.created_at))}
+                    </time>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+          {visible.length === 0 && (
+            <li className="px-2 py-6 text-center text-sm text-muted-foreground">לא נמצאו שאלות לחיפוש הזה.</li>
+          )}
+        </ul>
+      </nav>
+    </div>
+  );
+}
+
+function StatusPill() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-pending-surface px-2.5 py-1 text-xs font-bold text-pending">
+      <Clock aria-hidden className="size-3.5" />
+      ממתין
+    </span>
   );
 }
 
 function QuestionPanel({ question }: { question: RepQuestionOut }) {
   const contextEntries = Object.entries(question.context ?? {});
+  const requestedCar = question.context?.requested_car;
 
   return (
     <section
       aria-labelledby={`rep-question-${question.id}`}
-      className="flex flex-col gap-6 border border-border bg-surface p-5 lg:p-6"
+      className="flex min-w-0 flex-col gap-5 rounded-3xl border border-border/70 bg-surface p-5 shadow-card lg:p-7"
     >
-      <div className="flex flex-col gap-2">
-        <p className="text-xs font-semibold text-muted-foreground">שאלה פתוחה</p>
-        <h2 id={`rep-question-${question.id}`} className="text-xl font-semibold leading-snug">
-          {question.question}
-        </h2>
-        <time dateTime={question.created_at} className="text-sm text-muted-foreground tabular-nums">
-          נפתחה ב-{timeFormatter.format(new Date(question.created_at))}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-background px-3 py-1 text-xs font-bold text-muted-foreground tabular-nums">
+          #<bdi dir="ltr">{question.id.slice(0, 8).toUpperCase()}</bdi>
+        </span>
+        <StatusPill />
+        <span className="ms-auto text-sm font-bold text-primary">{fieldTitle(question.field)}</span>
+      </div>
+
+      <h2 id={`rep-question-${question.id}`} className="text-2xl font-extrabold leading-snug">
+        {question.question}
+      </h2>
+
+      {contextEntries.length > 0 && (
+        <div className="flex flex-col gap-4 rounded-2xl border border-border/70 p-4 sm:flex-row sm:items-center">
+          <span aria-hidden className="inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-mist text-primary">
+            <UserRound className="size-6" />
+          </span>
+          <dl className="grid flex-1 gap-3 sm:grid-cols-2">
+            {contextEntries.map(([key, value]) => (
+              <div key={key} className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold text-muted-foreground">{CONTEXT_LABELS[key] ?? key}</dt>
+                <dd className="text-sm font-bold break-words">
+                  <bdi>{value}</bdi>
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {requestedCar && (
+            <Image src="/brand/svg/car-silhouette.svg" alt="" width={340} height={175} className="h-auto w-28 shrink-0 max-sm:hidden" />
+          )}
+        </div>
+      )}
+
+      <div className="rounded-2xl rounded-ss-md bg-mist px-5 py-4">
+        <p className="text-sm leading-relaxed">
+          השאלה נפתחה אוטומטית על ידי יועץ הרכב: זה פרט שרק החברה יודעת, והיועץ לא מנחש. ברגע שתענו, ההשוואה
+          של העובד/ת תתעדכן אצלם מיד.
+        </p>
+        <time dateTime={question.created_at} className="mt-2 block text-xs text-muted-foreground tabular-nums">
+          {timeFormatter.format(new Date(question.created_at))}
         </time>
       </div>
 
-      {contextEntries.length > 0 && (
-        <dl className="grid gap-3 border-y border-border py-4 sm:grid-cols-2">
-          {contextEntries.map(([key, value]) => (
-            <div key={key} className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold text-muted-foreground">
-                {CONTEXT_LABELS[key] ?? key}
-              </dt>
-              <dd className="text-sm break-words">
-                <bdi>{value}</bdi>
-              </dd>
-            </div>
-          ))}
-        </dl>
-      )}
-
-      <AnswerForm questionId={question.id} />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(15rem,18rem)]">
+        <div className="rounded-2xl border border-border/70 p-4 lg:p-5">
+          <h3 className="mb-3 flex items-center gap-2 text-base font-extrabold">
+            <PencilLine aria-hidden className="size-4.5 text-primary" />
+            טיפול בבקשה
+          </h3>
+          <AnswerForm questionId={question.id} />
+        </div>
+        <div className="rounded-2xl border border-border/70 p-4 lg:p-5">
+          <h3 className="mb-3 flex items-center gap-2 text-base font-extrabold">
+            <History aria-hidden className="size-4.5 text-primary" />
+            היסטוריית טיפול
+          </h3>
+          <ol className="flex flex-col">
+            <TimelineStep tone="bg-brand-orange" icon={Clock} title="הבקשה נפתחה" note="על ידי יועץ הרכב">
+              <time dateTime={question.created_at} className="tabular-nums">
+                {timeFormatter.format(new Date(question.created_at))}
+              </time>
+            </TimelineStep>
+            <TimelineStep tone="bg-primary" icon={UserRound} title="בטיפול נציג" note="ממתינה לתשובה" />
+            <TimelineStep tone="bg-border" icon={Send} title="עדכון לעובד" note="נשלח מיד עם התשובה" last />
+          </ol>
+        </div>
+      </div>
     </section>
+  );
+}
+
+function TimelineStep({
+  tone,
+  icon: Icon,
+  title,
+  note,
+  last = false,
+  children,
+}: {
+  tone: string;
+  icon: LucideIcon;
+  title: string;
+  note: string;
+  last?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <li className="relative flex gap-3 pb-4 last:pb-0">
+      {!last && <span aria-hidden className="absolute start-[0.9rem] top-8 bottom-0 w-px bg-border" />}
+      <span aria-hidden className={cn("inline-flex size-7 shrink-0 items-center justify-center rounded-full text-white", tone)}>
+        <Icon className="size-3.5" />
+      </span>
+      <span className="flex flex-col text-sm">
+        <span className="font-bold">{title}</span>
+        <span className="text-xs text-muted-foreground">
+          {children ? <>{children} · </> : null}
+          {note}
+        </span>
+      </span>
+    </li>
   );
 }
 
@@ -268,7 +440,7 @@ function AnswerForm({ questionId }: { questionId: string }) {
           aria-invalid={error !== null || undefined}
           aria-describedby={error ? errorId : undefined}
           placeholder="לדוגמה: 350"
-          className="h-11 w-full border border-input bg-surface px-3 text-base text-foreground aria-invalid:border-error"
+          className="rounded-xl h-11 w-full border border-input bg-surface px-3 text-base text-foreground aria-invalid:border-error"
         />
       </div>
 
@@ -282,7 +454,7 @@ function AnswerForm({ questionId }: { questionId: string }) {
           type="date"
           disabled={disabled}
           dir="ltr"
-          className="h-11 w-full min-w-0 max-w-full border border-input bg-surface px-3 text-base text-foreground sm:max-w-xs"
+          className="rounded-xl h-11 w-full min-w-0 max-w-full border border-input bg-surface px-3 text-base text-foreground sm:max-w-xs"
         />
       </div>
 
@@ -290,7 +462,7 @@ function AnswerForm({ questionId }: { questionId: string }) {
         <p
           id={errorId}
           role="alert"
-          className="flex items-start gap-2 border border-error-border bg-error-surface px-3 py-2.5 text-sm text-error"
+          className="rounded-2xl flex items-start gap-2 border border-error-border bg-error-surface px-3 py-2.5 text-sm text-error"
         >
           <CircleX aria-hidden className="mt-0.5 size-4 shrink-0" />
           {error}
@@ -302,7 +474,8 @@ function AnswerForm({ questionId }: { questionId: string }) {
           {answer.isPending && (
             <LoaderCircle aria-hidden data-icon="inline-start" className="animate-spin" />
           )}
-          {locked && !answer.isPending ? "נשלח" : answer.isPending ? "שולחים…" : "שלח"}
+          {!answer.isPending && <Send aria-hidden data-icon="inline-start" className="rtl:-scale-x-100" />}
+          {locked && !answer.isPending ? "נשלח" : answer.isPending ? "שולחים…" : "שלח עדכון לעובד"}
         </Button>
         {locked && !answer.isPending && !error && (
           <p className="text-sm text-success" role="status">
@@ -312,6 +485,13 @@ function AnswerForm({ questionId }: { questionId: string }) {
       </div>
     </form>
   );
+}
+
+/** What the question is about, in words (the rep never sees field ids). */
+function fieldTitle(field: string): string {
+  if (field.startsWith("participation:")) return "אישור השתתפות ברכב";
+  if (field === "occupation") return "אישור עיסוק";
+  return "שאלה מיועץ הרכב";
 }
 
 function contextSummary(context: RepQuestionOut["context"]): string | null {

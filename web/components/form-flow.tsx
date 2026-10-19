@@ -1,5 +1,7 @@
 "use client";
 
+import { ArrowLeft } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
 import { ComparisonCard } from "@/components/comparison-card";
@@ -113,24 +115,41 @@ export function FormFlow() {
 
   return (
     <>
-      <Topbar step={stepForStage(stage)} />
+      <Topbar step={stepForStage(stage)} active="/form" />
       <main
         className={cn(
           "mx-auto flex w-full min-w-0 max-w-screen-xl flex-1 flex-col gap-6 overflow-x-clip px-4 py-8",
           "min-h-[calc(100dvh-var(--topbar-h))] sm:px-5 lg:px-8",
         )}
       >
-        <header className="max-w-2xl">
-          <h1 className="font-display text-3xl sm:text-4xl">מצב טופס</h1>
-          <p className="mt-2 text-muted-foreground">
-            אותו חישוב כמו בשיחה, בלי העוזר. בחרו עובד לדוגמה, בדקו את הפרופיל, בחרו רכב וצפו
-            בהשוואה.
-          </p>
-          {pickedName && stage !== "pick" && (
-            <p className="mt-2 text-sm">
-              עובד נבחר: <span className="font-semibold">{pickedName}</span>
+        <header className="relative isolate flex min-h-36 items-center gap-4 overflow-hidden rounded-3xl px-6 py-6 shadow-card lg:min-h-40 lg:px-8">
+          <Image
+            src="/brand/bg-corner-arcs.webp"
+            alt=""
+            fill
+            sizes="100vw"
+            className="-z-10 object-cover object-[50%_20%] dark:opacity-30"
+          />
+          <span aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-l from-surface/95 via-surface/80 to-surface/10" />
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display text-4xl sm:text-5xl">מצב טופס</h1>
+            <p className="mt-2 max-w-2xl text-foreground/80">
+              אותו חישוב כמו בשיחה, בלי העוזר. בחרו עובד לדוגמה, בדקו את הפרופיל, בחרו רכב וצפו
+              בהשוואה.
             </p>
-          )}
+            {pickedName && stage !== "pick" && (
+              <p className="mt-3 inline-flex rounded-full bg-mist px-3 py-1 text-sm">
+                עובד נבחר: <span className="ms-1 font-semibold">{pickedName}</span>
+              </p>
+            )}
+          </div>
+          <Image
+            src="/brand/mascot-guide.webp"
+            alt=""
+            width={514}
+            height={520}
+            className="h-auto w-28 shrink-0 drop-shadow-[0_10px_12px_rgb(23_50_72/0.18)] max-sm:hidden lg:w-36"
+          />
         </header>
 
         {session.loading && (
@@ -197,6 +216,14 @@ export function FormFlow() {
   );
 }
 
+const AVATAR_TONES = ["bg-brand-blue", "bg-brand-red", "bg-brand-green", "bg-brand-orange", "bg-brand-cyan", "bg-[#173248]"];
+
+/** "נועה לוי" -> "נ״ל" */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return parts.length > 1 ? `${parts[0][0]}״${parts[parts.length - 1][0]}` : (parts[0]?.[0] ?? "");
+}
+
 function EmployeePicker({
   disabled,
   pending,
@@ -210,33 +237,52 @@ function EmployeePicker({
 }) {
   return (
     <section aria-label="בחירת עובד לדוגמה" className="flex flex-col gap-3">
-      <h2 className="font-semibold">בחרו עובד לדוגמה</h2>
+      <h2 className="text-xl font-extrabold">בחרו עובד לדוגמה</h2>
       {pending && (
         <p className="text-sm text-muted-foreground" aria-live="polite">
           יוצרים שיחה…
         </p>
       )}
       {error && (
-        <p role="alert" className="border border-error-border bg-error-surface px-4 py-2 text-sm text-error">
+        <p role="alert" className="rounded-2xl border border-error-border bg-error-surface px-4 py-2 text-sm text-error">
           {error}
         </p>
       )}
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {SAMPLE_EMPLOYEES.map((employee) => (
+      <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {SAMPLE_EMPLOYEES.map((employee, index) => (
           <li key={employee.id}>
             <button
               type="button"
               disabled={disabled}
               onClick={() => onPick(employee)}
               className={cn(
-                "flex min-h-11 w-full flex-col gap-1 border border-border bg-surface px-4 py-4 text-start",
-                "hover:border-primary hover:bg-muted disabled:pointer-events-none disabled:opacity-50",
+                "group flex h-full w-full flex-col gap-3 rounded-3xl border border-border/70 bg-surface p-5 text-start shadow-card transition-all",
+                "hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lift disabled:pointer-events-none disabled:opacity-50 motion-reduce:hover:translate-y-0",
                 "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring",
               )}
             >
-              <span className="font-semibold">{employee.name}</span>
-              <span className="text-sm text-muted-foreground">{employee.occupation}</span>
-              <span className="mt-1 text-sm">{employee.question}</span>
+              <span className="flex items-center gap-3">
+                <span
+                  aria-hidden
+                  className={cn(
+                    "inline-flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-extrabold text-white",
+                    AVATAR_TONES[index % AVATAR_TONES.length],
+                  )}
+                >
+                  {initials(employee.name)}
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-lg font-extrabold">{employee.name}</span>
+                  <span className="text-sm text-muted-foreground">{employee.occupation}</span>
+                </span>
+              </span>
+              <span className="rounded-2xl rounded-ss-md bg-mist px-4 py-3 text-sm leading-relaxed">
+                {employee.question}
+              </span>
+              <span className="mt-auto inline-flex items-center gap-1 self-end text-sm font-bold text-primary">
+                בחירה
+                <ArrowLeft aria-hidden className="size-4 transition-transform group-hover:-translate-x-1" />
+              </span>
             </button>
           </li>
         ))}
@@ -352,7 +398,7 @@ function OptionsStage({
         </p>
       )}
       {compareError && (
-        <p role="alert" className="border border-error-border bg-error-surface px-4 py-2 text-sm text-error">
+        <p role="alert" className="rounded-2xl border border-error-border bg-error-surface px-4 py-2 text-sm text-error">
           {compareError}
         </p>
       )}
@@ -426,7 +472,7 @@ function ComparisonStage({
       {waitingRep && (
         <div
           role="status"
-          className="border border-pending-border bg-pending-surface px-4 py-3 text-sm"
+          className="rounded-2xl border border-pending-border bg-pending-surface px-4 py-3 text-sm"
         >
           <p className="font-bold">ממתינים לתשובת נציג התחבורה</p>
           {openQuestion && <p className="mt-1">{openQuestion}</p>}

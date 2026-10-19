@@ -22,8 +22,10 @@ test("landing through comparison shows requirement 23 and a matching waterfall",
   await expect(comparison.getByText("זכאי", { exact: true }).first()).toBeVisible();
   await expect(comparison.getByText(NOA_ATTO_REASON)).toBeVisible();
 
+  // The requirement-23 table; the waterfall below has its own table with similar row names.
+  const fields = comparison.getByRole("table", { name: "פירוט שדות ההשוואה" });
   for (const label of REQUIREMENT_23_ROWS) {
-    await expect(comparison.getByRole("row", { name: new RegExp(`^${label}`) })).toBeVisible();
+    await expect(fields.getByRole("row", { name: new RegExp(`^${label}`) })).toBeVisible();
   }
 
   // Two engine explanation lines. The block has no accessible name of its own.
@@ -33,7 +35,7 @@ test("landing through comparison shows requirement 23 and a matching waterfall",
   await expect(waterfall.getByRole("button", { name: "פירוק לפי סדר" })).toBeVisible();
   const total = normalizeMoney(await waterfall.locator("header bdi").first().innerText());
   const delta = normalizeMoney(
-    await comparison.getByRole("row", { name: /^ההפרש/ }).locator("bdi").first().innerText(),
+    await fields.getByRole("row", { name: /^ההפרש/ }).locator("bdi").first().innerText(),
   );
   expect(total.length).toBeGreaterThan(0);
   expect(total).toBe(delta);

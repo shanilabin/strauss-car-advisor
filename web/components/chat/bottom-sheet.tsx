@@ -100,7 +100,7 @@ export function BottomSheet({ open, title, onClose, children }: BottomSheetProps
             ref={closeRef}
             type="button"
             onClick={() => onCloseRef.current()}
-            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-border hover:bg-muted"
+            className="rounded-full inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-border hover:bg-muted"
             aria-label="סגירת הגיליון"
           >
             <X aria-hidden className="size-4" />

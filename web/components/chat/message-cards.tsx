@@ -50,7 +50,7 @@ export function MessageCardView({ card, onSelectOption, askedAt }: MessageCardVi
 
 function MissingMessageCard({ card }: { card: components["schemas"]["MissingCard"] }) {
   return (
-    <div className="mt-3 border border-border bg-surface px-4 py-3">
+    <div className="rounded-2xl mt-3 border border-border bg-surface px-4 py-3">
       <p className="text-xs font-bold text-muted-foreground">חסרים פרטים</p>
       <ul className="mt-2 flex flex-col gap-1.5 text-sm">
         {card.missing.map((m) => (
@@ -69,7 +69,7 @@ function RepPendingMessageCard({
   askedAt?: string;
 }) {
   return (
-    <div className="mt-3 border border-pending-border bg-pending-surface px-4 py-3">
+    <div className="rounded-2xl mt-3 border border-pending-border bg-pending-surface px-4 py-3">
       <p className="flex items-center gap-2 text-xs font-bold text-pending">
         <span
           aria-hidden

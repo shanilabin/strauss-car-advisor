@@ -4,12 +4,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* No depth effects anywhere: depth comes from composition, lines and contrast. */
+/* Strauss Drive - "Color in Motion" (docs/ui/brand-kit). White product surfaces on a pale sky
+   background; color lives in the brand graphics, the mascot and a few accents. Soft depth only. */
 @theme {
   --shadow-*: initial;
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
   --text-shadow-*: initial;
+  --shadow-card: 0 1px 2px rgb(23 50 72 / 0.05), 0 10px 28px -14px rgb(23 50 72 / 0.22);
+  --shadow-soft: 0 1px 2px rgb(23 50 72 / 0.04), 0 4px 14px -8px rgb(23 50 72 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(23 50 72 / 0.06), 0 18px 40px -18px rgb(23 50 72 / 0.32);
 }
 
 @theme inline {
@@ -19,6 +23,19 @@
   --font-heading: var(--font-heebo), system-ui, sans-serif;
   --font-display: var(--font-secular-one), var(--font-heebo), sans-serif;
 
+  /* brand */
+  --color-brand-red: var(--brand-red);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-green: var(--brand-green);
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-sky: var(--brand-sky);
+  --color-mist: var(--brand-mist);
+  --color-mint: var(--brand-mint);
+  --color-peach: var(--brand-peach);
+  --color-action: var(--action);
+  --color-action-foreground: var(--action-foreground);
+  /* earlier names, mapped onto the new palette */
   --color-cobalt: var(--brand-cobalt);
   --color-lime: var(--brand-lime);
   --color-navy: var(--brand-navy);
@@ -78,81 +95,93 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: var(--radius);
-  --radius-md: var(--radius);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: var(--radius);
-  --radius-2xl: var(--radius);
-  --radius-3xl: var(--radius);
-  --radius-4xl: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.25);
+  --radius-2xl: calc(var(--radius) * 1.5);
+  --radius-3xl: calc(var(--radius) * 2);
+  --radius-4xl: calc(var(--radius) * 2.5);
 }
 
 /*
  * Contrast notes (WCAG AA): text tokens are >= 4.5:1 on background, surface and their
  * own *-surface; --input, --ring and --nav-ring are >= 3:1 against what they sit on.
- * Lime is never a text color on light surfaces - only a fill behind navy text or a stripe.
+ * Brand orange, green, cyan and sky are graphics colors - never small text on white.
  */
 :root {
   color-scheme: light;
-  --radius: 0;
-  --topbar-h: 56px;
+  --radius: 1rem;
+  --topbar-h: 64px;
 
-  --brand-cobalt: #2247dd;
-  --brand-lime: #d4f45b;
-  --brand-navy: #142352;
+  --brand-red: #ee3028;
+  --brand-orange: #ff9326;
+  --brand-green: #78a82a;
+  --brand-cyan: #00b6d9;
+  --brand-blue: #007db5;
+  --brand-sky: #9bdaee;
+  --brand-mist: #eaf7fb;
+  --brand-mint: #eef6e3;
+  --brand-peach: #fff0e8;
+  --brand-cobalt: var(--brand-blue);
+  --brand-lime: #b4d66b;
+  --brand-navy: #173248;
 
-  --background: #f5f6fa;
-  --foreground: #142352;
+  --action: #d82721;
+  --action-foreground: #ffffff;
+  --action-hover: #b81f1a;
+
+  --background: #f3f8fd;
+  --foreground: #173248;
   --surface: #ffffff;
-  --surface-raised: #eef1f8;
-  --link: #2247dd;
+  --surface-raised: #eef5fa;
+  --link: #006a9a;
 
-  --nav: #142352;
-  --nav-foreground: #ffffff;
-  --nav-muted: #b4bed3;
-  --nav-border: #3a4a78;
-  --nav-hover: #22336b;
-  --nav-ring: #8fa6ff;
+  --nav: #ffffff;
+  --nav-foreground: #173248;
+  --nav-muted: #547082;
+  --nav-border: #dde8ed;
+  --nav-hover: #eef5fa;
+  --nav-ring: #007db5;
 
-  --success: #126941;
-  --success-surface: #e3f3e9;
-  --success-border: #8fcca8;
-  --error: #a73838;
-  --error-surface: #fbe9e7;
-  --error-border: #e5a5a0;
-  --warning: #885809;
-  --warning-surface: #fff0d5;
-  --warning-border: #e8c27a;
-  --info: #2247dd;
-  --info-surface: #e5ecff;
-  --info-border: #a9bcff;
-  --pending: #4b4a9a;
-  --pending-surface: #eeedfb;
-  --pending-border: #b9b6ea;
+  --success: #277449;
+  --success-surface: #eef6e3;
+  --success-border: #a9cf86;
+  --error: #b83e36;
+  --error-surface: #fdeeec;
+  --error-border: #eeb0aa;
+  --warning: #995b18;
+  --warning-surface: #fff1de;
+  --warning-border: #f0c88f;
+  --info: #006a9a;
+  --info-surface: #eaf7fb;
+  --info-border: #9bdaee;
+  --pending: #995b18;
+  --pending-surface: #fff1de;
+  --pending-border: #f0c88f;
 
   --card: var(--surface);
   --card-foreground: var(--foreground);
   --popover: var(--surface);
   --popover-foreground: var(--foreground);
-  --primary: var(--brand-cobalt);
+  --primary: #007db5;
   --primary-foreground: #ffffff;
-  --primary-hover: #1a38b4;
-  --secondary: #e6eaf5;
-  --secondary-foreground: #142352;
+  --primary-hover: #00689a;
+  --secondary: #e4f1f8;
+  --secondary-foreground: #173248;
   --muted: var(--surface-raised);
-  --muted-foreground: #556281;
-  /* shadcn "accent" is the subtle hover surface; brand lime is --color-lime. */
+  --muted-foreground: #547082;
   --accent: var(--surface-raised);
-  --accent-foreground: #142352;
+  --accent-foreground: #173248;
   --destructive: var(--error);
-  --border: #d8deeb;
-  --input: #7d88a6;
-  --ring: var(--brand-cobalt);
-  --chart-1: var(--brand-cobalt);
-  --chart-2: #7192e4;
-  --chart-3: var(--brand-navy);
-  --chart-4: #556281;
-  --chart-5: var(--brand-lime);
+  --border: #dde8ed;
+  --input: #8aa3b3;
+  --ring: #007db5;
+  --chart-1: #007db5;
+  --chart-2: #00b6d9;
+  --chart-3: #173248;
+  --chart-4: #547082;
+  --chart-5: #78a82a;
   --sidebar: var(--surface);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -166,48 +195,64 @@
 .dark {
   color-scheme: dark;
 
-  --background: #111a33;
-  --foreground: #ffffff;
-  --surface: #202d50;
-  --surface-raised: #2a3a63;
-  --link: #8fa6ff;
+  --brand-mist: #174354;
+  --brand-mint: #234537;
+  --brand-peach: #4a3226;
+  --brand-navy: #f4fafc;
 
-  --nav: #0d152b;
-  --nav-hover: #1c2a52;
+  --action: #ff6860;
+  --action-foreground: #2d1718;
+  --action-hover: #ff8a83;
 
-  --success: #8be3b0;
-  --success-surface: #1d4538;
+  --background: #102632;
+  --foreground: #f4fafc;
+  --surface: #193642;
+  --surface-raised: #21424f;
+  --link: #63cae9;
+
+  --nav: #142e3a;
+  --nav-foreground: #f4fafc;
+  --nav-muted: #bed2d9;
+  --nav-border: #365462;
+  --nav-hover: #21424f;
+  --nav-ring: #63cae9;
+
+  --success: #9de2b4;
+  --success-surface: #234537;
   --success-border: #3f7f62;
-  --error: #ff9d9d;
-  --error-surface: #4b2c37;
-  --error-border: #8a4a57;
-  --warning: #f8cf7d;
-  --warning-surface: #443c34;
+  --error: #ffaaa5;
+  --error-surface: #4b2c30;
+  --error-border: #8a4a50;
+  --warning: #ffc77e;
+  --warning-surface: #51402a;
   --warning-border: #85704f;
-  --info: #a9bcff;
-  --info-surface: #22336b;
-  --info-border: #4a62b0;
-  --pending: #c9c6ff;
-  --pending-surface: #322f5e;
-  --pending-border: #625da8;
+  --info: #63cae9;
+  --info-surface: #174354;
+  --info-border: #2d6f86;
+  --pending: #ffc77e;
+  --pending-surface: #51402a;
+  --pending-border: #85704f;
 
-  --primary-hover: #1a38b4;
-  --secondary: #2a3a63;
-  --secondary-foreground: #ffffff;
-  --muted-foreground: #b4bed3;
-  --accent-foreground: #ffffff;
-  --border: #3c4d6e;
-  --input: #6b7da3;
-  /* Pure cobalt is < 3:1 on the dark background, so focus uses the light cobalt. */
-  --ring: #8fa6ff;
-  --chart-2: #8fa6ff;
-  --chart-3: #b4bed3;
-  --chart-4: #6b7da3;
+  --primary: #63cae9;
+  --primary-foreground: #092733;
+  --primary-hover: #8ad8ef;
+  --secondary: #21424f;
+  --secondary-foreground: #f4fafc;
+  --muted-foreground: #bed2d9;
+  --accent-foreground: #f4fafc;
+  --border: #365462;
+  --input: #6f909d;
+  --ring: #63cae9;
+  --chart-1: #63cae9;
+  --chart-2: #00b6d9;
+  --chart-3: #bed2d9;
+  --chart-4: #6f909d;
+  --chart-5: #9de2b4;
 }
 
 @media (min-width: 1024px) {
   :root {
-    --topbar-h: 64px;
+    --topbar-h: 76px;
   }
 }
 
@@ -220,8 +265,8 @@
     outline-offset: 2px;
   }
   ::selection {
-    background-color: var(--brand-lime);
-    color: var(--brand-navy);
+    background-color: var(--brand-sky);
+    color: #173248;
   }
   html {
     @apply font-sans;
@@ -285,6 +330,57 @@
   .enter {
     animation: enter 280ms cubic-bezier(0.2, 0, 0, 1) both;
     animation-delay: calc(var(--enter-index, 0) * 70ms);
+  }
+}
+
+/* The mascot breathes a little - never when the person prefers less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .mascot-float {
+    animation: mascot-float 5s ease-in-out infinite;
+  }
+}
+
+@keyframes mascot-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -10px;
+  }
+}
+
+/* "Thinking" dots in the chat. */
+.typing-dots > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .typing-dots > span {
+    animation: typing 1.2s ease-in-out infinite;
+  }
+  .typing-dots > span:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .typing-dots > span:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+
+@keyframes typing {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    translate: 0 0;
+  }
+  40% {
+    opacity: 1;
+    translate: 0 -3px;
   }
 }
 

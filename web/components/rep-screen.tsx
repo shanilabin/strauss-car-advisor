@@ -23,7 +23,7 @@ export function RepScreen() {
   if (loading) {
     return (
       <>
-        <Topbar step={null} />
+        <Topbar step={null} area="rep" />
         <main className="flex flex-1 items-center justify-center px-5 py-16 text-muted-foreground">
           בודקים התחברות…
         </main>
@@ -34,9 +34,9 @@ export function RepScreen() {
   if (error) {
     return (
       <>
-        <Topbar step={null} />
+        <Topbar step={null} area="rep" />
         <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-4 px-5 py-16">
-          <p role="alert" className="border border-error-border bg-error-surface px-3 py-2.5 text-sm text-error">
+          <p role="alert" className="rounded-2xl border border-error-border bg-error-surface px-3 py-2.5 text-sm text-error">
             {error}
           </p>
         </main>
@@ -47,7 +47,7 @@ export function RepScreen() {
   if (!session) {
     return (
       <>
-        <Topbar step={null} />
+        <Topbar step={null} area="rep" />
         <main className="flex flex-1 items-center justify-center px-5 py-16 text-muted-foreground">
           מעבירים להתחברות…
         </main>
@@ -57,7 +57,7 @@ export function RepScreen() {
 
   return (
     <>
-      <Topbar step={null} />
+      <Topbar step={null} area="rep" />
       <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
         <RepQueue enabled />
       </main>

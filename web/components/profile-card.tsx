@@ -1,7 +1,24 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Check } from "lucide-react";
+import {
+  BadgePercent,
+  Briefcase,
+  CarFront,
+  Check,
+  CircleDot,
+  Coins,
+  Gift,
+  GraduationCap,
+  Layers,
+  type LucideIcon,
+  Pencil,
+  PiggyBank,
+  TrendingUp,
+  UserRound,
+  Users,
+  Wallet,
+} from "lucide-react";
 import {
   useEffect,
   useId,
@@ -284,18 +301,36 @@ export function ProfileCard({
     <section
       aria-label="פרופיל עובד"
       className={cn(
-        "flex min-h-0 min-w-0 flex-col overflow-x-clip overflow-y-auto border border-border bg-surface",
+        "flex min-h-0 min-w-0 flex-col overflow-x-clip overflow-y-auto rounded-3xl border border-border/70 bg-surface shadow-card",
         className,
       )}
     >
-      <header className="shrink-0 border-b border-border px-5 py-4">
-        <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-          EMPLOYEE PROFILE
-        </p>
-        <h2 className="mt-1 font-display text-2xl">הנתונים שלך</h2>
+      <header className="shrink-0 px-5 pt-5 pb-3">
+        <h2 className="flex items-center gap-2 text-xl font-extrabold">
+          <span className="inline-flex size-9 items-center justify-center rounded-full bg-mist text-primary">
+            <UserRound aria-hidden className="size-5" />
+          </span>
+          הפרטים שלי
+        </h2>
+        <div className="mt-4 flex flex-col items-center text-center">
+          <span className="inline-flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-brand-sky to-mist text-primary ring-4 ring-mist">
+            <UserRound aria-hidden className="size-9" />
+          </span>
+          <p className="mt-2 text-lg font-bold">עובד/ת שטראוס</p>
+          {missing.length > 0 ? (
+            <p className="mt-1 rounded-full bg-pending-surface px-3 py-0.5 text-sm font-semibold text-pending">
+              חסרים עוד {missing.length} פרטים
+            </p>
+          ) : (
+            <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-success-surface px-3 py-0.5 text-sm font-semibold text-success">
+              <Check aria-hidden className="size-4" strokeWidth={3} />
+              הפרופיל מלא
+            </p>
+          )}
+        </div>
       </header>
 
-      <div className="flex flex-col gap-0 px-5 py-2">
+      <div className="mx-4 mb-3 flex flex-col rounded-2xl border border-border/70 px-3">
         <ProfileRow
           label="עיסוק"
           missing={occupationMissing}
@@ -595,7 +630,7 @@ export function ProfileCard({
         ))}
       </div>
 
-      <div className="mt-auto shrink-0 border-t border-border px-5 py-3" aria-live="polite">
+      <div className="mt-auto shrink-0 border-t border-border/70 px-5 py-3" aria-live="polite">
         {saving && <p className="text-sm text-muted-foreground">שומר…</p>}
         {errorMessage && !saving && (
           <p role="alert" className="text-sm text-error">
@@ -609,6 +644,29 @@ export function ProfileCard({
         )}
       </div>
     </section>
+  );
+}
+
+const ROW_ICONS: Record<string, LucideIcon> = {
+  עיסוק: Briefcase,
+  קבוצת: Layers,
+  שכר: Wallet,
+  עמלות: TrendingUp,
+  בונוס: Gift,
+  פנסיה: PiggyBank,
+  קרן: GraduationCap,
+  נקודות: BadgePercent,
+  מספר: Users,
+  רכב: CarFront,
+  השתתפות: Coins,
+  default: CircleDot,
+};
+
+function RowIcon({ icon: Icon }: { icon: LucideIcon }) {
+  return (
+    <span aria-hidden className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-mist text-primary">
+      <Icon className="size-4" />
+    </span>
   );
 }
 
@@ -631,46 +689,45 @@ function ProfileRow({
   onStartEdit?: () => void;
   children?: ReactNode;
 }) {
-  const status = missing ? (
-    <span className="text-sm font-bold text-error">חסר</span>
-  ) : (
-    <span className="inline-flex items-center gap-1 text-sm text-success" aria-label="מולא">
-      <Check aria-hidden className="size-4" strokeWidth={3} />
-      <span className="sr-only">מולא</span>
+  const Icon = ROW_ICONS[label.split(" ")[0]] ?? ROW_ICONS.default;
+  const value = missing ? (
+    <span className="inline-flex items-center rounded-full bg-pending-surface px-2.5 py-0.5 text-xs font-bold text-pending">
+      חסר
     </span>
+  ) : (
+    <span className="font-semibold break-words">{display}</span>
   );
 
   return (
-    <div className="border-b border-border py-3 last:border-b-0">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+    <div className="border-b border-border/70 py-1 last:border-b-0">
+      {editing ? (
+        <div className="py-2">
+          <div className="flex items-center gap-3">
+            <RowIcon icon={Icon} />
             <span className="text-sm text-muted-foreground">{label}</span>
-            {status}
           </div>
-          {editing ? (
-            children
-          ) : readOnly || !onStartEdit ? (
-            <p className={cn("mt-1 font-semibold break-words", missing && "text-error")}>
-              {missing ? "חסר" : display}
-            </p>
-          ) : (
-            <button
-              type="button"
-              onClick={onStartEdit}
-              disabled={saving}
-              className={cn(
-                "mt-1 block min-h-11 w-full border-b border-transparent py-2 text-start font-semibold break-words",
-                "hover:border-border focus-visible:border-cobalt focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cobalt",
-                missing && "text-error",
-              )}
-              aria-label={`עריכת ${label}`}
-            >
-              {missing ? "חסר — לחצו למילוי" : display}
-            </button>
-          )}
+          {children}
         </div>
-      </div>
+      ) : readOnly || !onStartEdit ? (
+        <div className="flex min-h-12 items-center gap-3">
+          <RowIcon icon={Icon} />
+          <span className="flex-1 text-sm text-muted-foreground">{label}</span>
+          <span className="max-w-[55%] text-end">{value}</span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onStartEdit}
+          disabled={saving}
+          className="group/row flex min-h-12 w-full items-center gap-3 rounded-xl text-start transition-colors hover:bg-mist/60 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          aria-label={missing ? `מילוי ${label}` : `עריכת ${label}`}
+        >
+          <RowIcon icon={Icon} />
+          <span className="flex-1 text-sm text-muted-foreground">{label}</span>
+          <span className="max-w-[55%] text-end">{value}</span>
+          <Pencil aria-hidden className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-visible/row:opacity-100" />
+        </button>
+      )}
     </div>
   );
 }
@@ -750,7 +807,7 @@ function FieldEditor({
   }
 
   const fieldClass =
-    "mt-2 w-full min-w-0 max-w-full border-0 border-b-2 border-border bg-transparent py-2 text-base font-semibold focus-visible:border-cobalt focus-visible:outline-none";
+    "mt-2 w-full min-w-0 max-w-full rounded-xl border border-input bg-background px-3 py-2.5 text-base font-semibold focus-visible:border-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
   return (
     <div className="mt-1">
@@ -796,7 +853,7 @@ function FieldEditor({
           type="button"
           onClick={onSave}
           disabled={disabled}
-          className="min-h-11 border border-transparent bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-(--primary-hover) focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-45"
+          className="min-h-11 rounded-full border border-transparent bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-(--primary-hover) focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-45"
         >
           {disabled ? "שומר…" : "שמירה"}
         </button>
@@ -804,7 +861,7 @@ function FieldEditor({
           type="button"
           onClick={onCancel}
           disabled={disabled}
-          className="min-h-11 border border-border bg-surface px-4 text-sm font-semibold hover:bg-muted focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="min-h-11 rounded-full border border-border bg-surface px-5 text-sm font-semibold hover:bg-muted focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           ביטול
         </button>

@@ -10,7 +10,7 @@ import { getSupabase } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/supabase/errors";
 
 const inputClass =
-  "h-11 w-full min-w-0 border border-input bg-surface px-3 text-base text-foreground aria-invalid:border-error";
+  "h-12 w-full min-w-0 rounded-xl border border-input bg-background px-4 text-base text-foreground focus-visible:border-primary aria-invalid:border-error";
 
 export function RepLoginForm() {
   const router = useRouter();
@@ -95,7 +95,7 @@ export function RepLoginForm() {
         <p
           id="rep-login-error"
           role="alert"
-          className="flex items-start gap-2 border border-error-border bg-error-surface px-3 py-2.5 text-sm text-error"
+          className="rounded-2xl flex items-start gap-2 border border-error-border bg-error-surface px-3 py-2.5 text-sm text-error"
         >
           <CircleX aria-hidden className="mt-0.5 size-4 shrink-0" />
           {error}

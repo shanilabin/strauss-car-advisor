@@ -1,11 +1,15 @@
-import { Check } from "lucide-react";
+import { Check, MessageCircle, UserRound } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
-/** 1 = collecting details, 2 = options, 3 = comparison. Null hides the indicator. */
+/** 1 = collecting details, 2 = options, 3 = comparison. Null shows the site navigation instead. */
 export type Step = 1 | 2 | 3;
+
+/** "employee" pages never link to the rep area; the rep area has its own navigation. */
+type Area = "employee" | "rep";
 
 const STEPS: { step: Step; label: string }[] = [
   { step: 1, label: "הפרטים שלך" },
@@ -13,29 +17,102 @@ const STEPS: { step: Step; label: string }[] = [
   { step: 3, label: "ההשוואה" },
 ];
 
-export function Topbar({ step }: { step: Step | null }) {
+const EMPLOYEE_NAV = [
+  { href: "/", label: "דף הבית" },
+  { href: "/#how", label: "איך זה עובד" },
+  { href: "/#faq", label: "שאלות נפוצות" },
+  { href: "/form", label: "מצב טופס" },
+];
+
+export function Topbar({
+  step,
+  area = "employee",
+  active = "/",
+}: {
+  step: Step | null;
+  area?: Area;
+  /** Which navigation item is underlined (employee pages without a step). */
+  active?: string;
+}) {
   return (
-    <header className="fixed inset-x-0 top-0 z-40 h-(--topbar-h) overflow-x-clip border-b-2 border-lime bg-nav text-nav-foreground [--ring:var(--nav-ring)]">
-      <div className="mx-auto grid h-full max-w-screen-2xl grid-cols-[minmax(0,auto)_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:gap-3 sm:px-4 lg:grid-cols-[1fr_auto_1fr] lg:px-8">
+    <header className="fixed inset-x-0 top-0 z-40 h-(--topbar-h) overflow-x-clip border-b border-nav-border bg-nav/95 text-nav-foreground shadow-soft backdrop-blur-sm [--ring:var(--nav-ring)]">
+      <div className="mx-auto grid h-full max-w-screen-2xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 sm:px-5 lg:px-8">
         <Link
-          href="/"
-          aria-label="STRAUSS DRIVE - דף הבית"
-          className="inline-flex h-11 min-w-0 items-center justify-self-start truncate text-sm font-black tracking-normal lg:text-xl lg:tracking-wide"
+          href={area === "rep" ? "/rep" : "/"}
+          aria-label="Strauss Drive - דף הבית"
+          className="inline-flex h-12 shrink-0 items-center justify-self-start lg:h-14"
         >
-          <bdi dir="ltr">
-            STRAUSS <span className="text-lime">/</span> DRIVE
-          </bdi>
+          <Image
+            src="/brand/logo.webp"
+            alt=""
+            width={520}
+            height={267}
+            loading="eager"
+            className="h-full w-auto"
+          />
         </Link>
 
         <div className="flex min-w-0 justify-center overflow-hidden">
-          {step !== null && <StepIndicator current={step} />}
+          {step !== null ? (
+            <StepIndicator current={step} />
+          ) : area === "rep" ? (
+            <NavLinks items={[{ href: "/rep", label: "שאלות פתוחות" }]} active="/rep" />
+          ) : (
+            <NavLinks items={EMPLOYEE_NAV} active={active} />
+          )}
         </div>
 
-        <div className="flex items-center justify-self-end">
+        <div className="flex items-center gap-2 justify-self-end">
           <ThemeToggle />
+          {area === "rep" ? (
+            <span className="hidden h-11 items-center gap-2 rounded-full border border-nav-border bg-surface px-3 text-sm font-semibold sm:inline-flex">
+              <span className="inline-flex size-7 items-center justify-center rounded-full bg-mist text-primary">
+                <UserRound aria-hidden className="size-4" />
+              </span>
+              נציג/ת תחבורה
+            </span>
+          ) : (
+            step === null && (
+              <Link
+                href="/c/new"
+                className="hidden h-11 items-center gap-2 rounded-full border border-nav-border bg-surface px-4 text-sm font-semibold transition-colors hover:border-primary hover:bg-mist sm:inline-flex"
+              >
+                <MessageCircle aria-hidden className="size-4 text-primary" />
+                שיחה עם היועץ
+              </Link>
+            )
+          )}
         </div>
       </div>
     </header>
+  );
+}
+
+function NavLinks({ items, active }: { items: { href: string; label: string }[]; active: string }) {
+  return (
+    <nav aria-label="ניווט ראשי" className="max-md:hidden">
+      <ul className="flex items-center gap-1 lg:gap-3">
+        {items.map((item) => {
+          const current = item.href === active;
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={current ? "page" : undefined}
+                className={cn(
+                  "relative inline-flex h-11 items-center px-3 text-[0.95rem] font-medium transition-colors hover:text-primary",
+                  current && "font-bold",
+                  "after:absolute after:inset-x-3 after:bottom-1 after:h-[3px] after:rounded-full after:bg-brand-red after:transition-opacity",
+                  current ? "after:opacity-100" : "after:opacity-0 hover:after:opacity-40",
+                )}
+              >
+                {item.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 
@@ -48,25 +125,32 @@ function StepIndicator({ current }: { current: Step }) {
           return (
             <li key={step} className="flex min-w-0 items-center gap-1 sm:gap-2 lg:gap-3">
               {index > 0 && (
-                <span aria-hidden className="h-px w-2 shrink-0 bg-nav-border sm:w-3 lg:w-6" />
+                <span
+                  aria-hidden
+                  className={cn(
+                    "h-[3px] w-3 shrink-0 rounded-full sm:w-6 lg:w-10",
+                    step <= current ? "bg-primary" : "bg-nav-border",
+                  )}
+                />
               )}
               <span
                 aria-current={state === "current" ? "step" : undefined}
                 className={cn(
-                  "flex min-w-0 items-center gap-1 sm:gap-2",
-                  state === "current" ? "font-semibold text-nav-foreground" : "text-nav-muted",
+                  "flex min-w-0 items-center gap-1.5 rounded-full py-1 ps-1 pe-1 sm:pe-3",
+                  state === "current" && "bg-mist font-bold text-nav-foreground",
+                  state !== "current" && "text-nav-muted",
                 )}
               >
                 <span
                   aria-hidden
                   className={cn(
-                    "inline-flex size-6 shrink-0 items-center justify-center border text-xs font-bold",
-                    state === "current" && "border-lime bg-lime text-navy",
-                    state === "done" && "border-nav-muted",
-                    state === "upcoming" && "border-nav-border",
+                    "inline-flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                    state === "current" && "bg-primary text-primary-foreground",
+                    state === "done" && "bg-success text-white dark:text-[#102632]",
+                    state === "upcoming" && "border border-nav-border bg-surface",
                   )}
                 >
-                  {state === "done" ? <Check className="size-3.5" strokeWidth={3} /> : step}
+                  {state === "done" ? <Check className="size-4" strokeWidth={3} /> : step}
                 </span>
                 <span
                   className={cn(

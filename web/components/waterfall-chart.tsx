@@ -198,7 +198,7 @@ function ChartTooltip({
   const bar = payload[0]?.payload;
   if (!bar) return null;
   return (
-    <div className="border border-border bg-surface px-3 py-2 text-sm shadow-none">
+    <div className="rounded-xl shadow-card border border-border bg-surface px-3 py-2 text-sm">
       <p className="font-semibold">{bar.label}</p>
       <p className="mt-1 tabular-nums">
         <bdi dir="ltr">{amountLabel(bar)}</bdi>
@@ -229,7 +229,7 @@ export function WaterfallChart({ result, className, compact = false }: Waterfall
   if (!gate.ok) {
     return (
       <section
-        className={cn("border border-border bg-surface-raised px-4 py-3 text-sm text-muted-foreground", className)}
+        className={cn("rounded-2xl border border-border bg-surface-raised px-4 py-3 text-sm text-muted-foreground", className)}
         aria-label="גרף מפל"
         role="status"
       >
@@ -251,7 +251,7 @@ export function WaterfallChart({ result, className, compact = false }: Waterfall
 
   return (
     <section
-      className={cn("min-w-0 max-w-full border border-border bg-surface text-foreground", className)}
+      className={cn("min-w-0 max-w-full rounded-2xl border border-border/70 bg-surface text-foreground", className)}
       aria-label="גרף מפל"
     >
       <header

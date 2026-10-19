@@ -10,7 +10,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={() => saveTheme(currentTheme() === "dark" ? "light" : "dark")}
-      className="inline-flex size-11 items-center justify-center border border-nav-border text-nav-foreground transition-colors hover:bg-nav-hover"
+      className="inline-flex size-11 items-center justify-center rounded-full border border-nav-border bg-surface text-nav-foreground transition-colors hover:bg-nav-hover"
     >
       <Moon aria-hidden className="size-5 dark:hidden" />
       <Sun aria-hidden className="hidden size-5 dark:block" />

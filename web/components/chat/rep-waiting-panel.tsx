@@ -1,4 +1,5 @@
 import { Clock } from "lucide-react";
+import Image from "next/image";
 
 import type { components } from "@/lib/api/schema";
 import { formatDateTime } from "@/lib/format";
@@ -25,8 +26,10 @@ export function RepWaitingPanel({ questions, missing = [] }: RepWaitingPanelProp
   return (
     <section
       role="status"
-      className="border border-pending-border bg-pending-surface px-4 py-3 text-sm"
+      className="flex items-start gap-4 rounded-3xl border border-pending-border bg-pending-surface px-5 py-4 text-sm shadow-soft"
     >
+      <Image src="/brand/mascot-loading.webp" alt="" width={359} height={360} className="h-auto w-16 shrink-0" />
+      <div className="min-w-0 flex-1">
       <p className="flex items-center gap-2 font-bold text-foreground">
         <span
           aria-hidden
@@ -59,6 +62,7 @@ export function RepWaitingPanel({ questions, missing = [] }: RepWaitingPanelProp
           ))}
         </ul>
       )}
+      </div>
     </section>
   );
 }

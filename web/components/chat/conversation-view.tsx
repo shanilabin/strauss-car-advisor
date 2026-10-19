@@ -1,6 +1,7 @@
 "use client";
 
 import { PanelRight } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -217,7 +218,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
         className={cn(
           "mx-auto flex w-full min-w-0 max-w-screen-2xl flex-1 flex-col",
           "max-lg:min-h-0 max-lg:overflow-hidden",
-          "lg:min-h-[calc(100dvh-var(--topbar-h))]",
+          "lg:h-[calc(100dvh-var(--topbar-h))]",
         )}
       >
         {/* Desktop phase layouts */}
@@ -305,7 +306,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 border border-border px-3 text-sm font-semibold hover:bg-muted"
+              className="rounded-full inline-flex min-h-11 flex-1 items-center justify-center gap-2 border border-border px-3 text-sm font-semibold hover:bg-muted"
             >
               <PanelRight aria-hidden className="size-4" />
               {sideTitle}
@@ -500,11 +501,13 @@ function ComparisonDesktop({
           In RTL flex row: first item is on the right. So order: vehicles, comparison, chat. */}
       <VehicleList
         results={comparison.results}
+        bestOptionId={comparison.best_option_id}
         selectedId={selectedOptionId}
         onSelect={onSelect}
         className="shrink-0 self-stretch"
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto">
+        <ResultBanner />
         {waitingRep && (
           <RepWaitingPanel questions={openQuestions} missing={missing} />
         )}
@@ -606,6 +609,7 @@ function MobileSideContent({
       {waitingRep && <RepWaitingPanel questions={openQuestions} missing={missing} />}
       <VehicleList
         results={comparison.results}
+        bestOptionId={comparison.best_option_id}
         selectedId={selectedOptionId}
         onSelect={onSelect}
         fluid
@@ -642,7 +646,7 @@ function OptionsGalleryPanel({
     return (
       <div
         className={cn(
-          "flex items-center justify-center border border-border bg-surface p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-3xl border border-border/70 bg-surface p-8 text-sm text-muted-foreground shadow-card",
           className,
         )}
         aria-busy="true"
@@ -662,7 +666,7 @@ function OptionsGalleryPanel({
     return (
       <div
         className={cn(
-          "flex flex-col justify-center gap-2 border border-border bg-surface p-8",
+          "flex flex-col justify-center gap-2 rounded-3xl border border-border/70 bg-surface p-8 shadow-card",
           className,
         )}
       >
@@ -681,12 +685,12 @@ function OptionsGalleryPanel({
         </p>
       )}
       {selectingId && (
-        <p className="border border-border bg-surface-raised px-4 py-2 text-sm text-muted-foreground" aria-live="polite">
+        <p className="rounded-2xl border border-border bg-surface-raised px-4 py-2 text-sm text-muted-foreground" aria-live="polite">
           מחשבים השוואה…
         </p>
       )}
       {compareError && (
-        <p role="alert" className="border border-error-border bg-error-surface px-4 py-2 text-sm text-error">
+        <p role="alert" className="rounded-2xl border border-error-border bg-error-surface px-4 py-2 text-sm text-error">
           {compareError}
         </p>
       )}
@@ -697,6 +701,36 @@ function OptionsGalleryPanel({
         selectedId={selectedId}
         selectingId={selectingId}
         className="min-h-0 flex-1"
+      />
+    </div>
+  );
+}
+
+/** The mockup's "יש תוצאה!" banner above the comparison: brand sky, the celebrating mascot. */
+function ResultBanner() {
+  return (
+    <div className="relative isolate flex min-h-36 shrink-0 items-center overflow-hidden rounded-3xl px-6 py-5 shadow-card lg:min-h-44 lg:px-8">
+      <Image
+        src="/brand/bg-flowing-ribbons.webp"
+        alt=""
+        fill
+        sizes="60vw"
+        className="-z-10 object-cover object-[60%_30%] dark:opacity-30"
+      />
+      <span aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-l from-surface/90 via-surface/70 to-transparent" />
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-4xl leading-tight lg:text-5xl">יש תוצאה!</p>
+        <p className="font-display text-2xl leading-tight text-primary lg:text-3xl">הנה ההשוואה עבורך.</p>
+        <p className="mt-2 max-w-md text-sm text-foreground/80">
+          לפי הפרטים שמסרת, חישבנו את כל החלופות. למטה ההשוואה המלאה, עם פירוט מאיפה מגיע כל שקל.
+        </p>
+      </div>
+      <Image
+        src="/brand/mascot-celebrate.webp"
+        alt=""
+        width={520}
+        height={503}
+        className="mascot-float h-auto w-32 shrink-0 drop-shadow-[0_12px_14px_rgb(23_50_72/0.18)] lg:w-44"
       />
     </div>
   );

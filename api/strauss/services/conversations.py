@@ -6,7 +6,7 @@ today's car is re-read from the Tax Authority data by its key.
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import TypeAdapter
@@ -15,7 +15,7 @@ from strauss.agent.schemas import Card, TraceEvent
 from strauss.config.bundle import ConfigBundle
 from strauss.config.loader import load_sample_employees
 from strauss.config.samples import to_profile
-from strauss.domain.compare import compare
+from strauss.domain.compare import compare, rerun
 from strauss.domain.missing import missing_fields
 from strauss.domain.models import CarArrangement, Comparison, Profile
 from strauss.errors import ApiError
@@ -23,6 +23,7 @@ from strauss.http.schemas import (
     ConversationState,
     ConversationStatus,
     MessageOut,
+    MessageRole,
     ProfilePatch,
     RepQuestionOut,
 )
@@ -30,6 +31,15 @@ from strauss.ports.repositories import AuthUser, ConversationRecord, Conversatio
 
 CARDS = TypeAdapter(list[Card])
 TRACE = TypeAdapter(list[TraceEvent])
+# The details the employee edited, as the chat note names them
+FIELD_NAMES = {
+    "occupation": "עיסוק",
+    "group": "קבוצה",
+    "salary": "שכר",
+    "deductions": "פנסיה, השתלמות ונקודות זיכוי",
+    "children_under_23": "מספר ילדים",
+    "current": "הרכב של היום",
+}
 
 
 def not_found() -> ApiError:
@@ -116,10 +126,23 @@ class ConversationService:
             changes["current"] = self._official_car(changes["current"])
         updated = current.model_copy(update={**changes, "revision": current.revision + 1})
         questions = self._repo.open_questions(record.id)
-        status = status_for(updated, len(questions))
+        # A comparison already on screen is recomputed for the new details at once - the employee who
+        # edits a field sees the effect, exactly as when they tell the agent in the chat.
+        shown = self._repo.latest_comparison(record.id)
+        recompute = shown is not None and not missing_fields(updated)
+        status = status_for(updated, len(questions), presented=recompute)
         saved = self._repo.update_profile(record.id, updated, status, expected_revision=current.revision)
         if saved is None:  # someone else changed the profile between our read and our write
             raise stale_revision(current.revision, current.revision + 1)
+        if shown is not None and recompute:
+            comparison = rerun(shown, saved.profile, self._bundle)
+            option_ids = [r.option.id for r in comparison.results]
+            request = {"option_ids": option_ids, "revision": saved.profile.revision, "by": "profile_edit"}
+            self._repo.save_comparison(record.id, request, comparison)
+            changed = ", ".join(dict.fromkeys(FIELD_NAMES.get(name, name) for name in changes))
+            note = f"עדכנת בכרטיס הפרטים: {changed}. ההשוואה חושבה מחדש לפי הפרטים החדשים."
+            row = {"role": MessageRole.SYSTEM_EVENT, "content": note, "payload": {}}
+            self._repo.add_messages(record.id, [{**row, "created_at": datetime.now(UTC).isoformat()}])
         return self.state(saved, questions)
 
     def options(self, user: AuthUser, conversation_id: str) -> Comparison:

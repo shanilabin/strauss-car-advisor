@@ -262,6 +262,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
           {displayPhase === "comparison" && (
             comparison ? (
               <ComparisonDesktop
+                conversationId={conversationId}
+                profile={data.profile}
+                profileMissing={data.missing}
                 messages={messages}
                 quickReplies={quickReplies}
                 thinking={sendMessage.isPending}
@@ -481,6 +484,9 @@ function OptionsDesktop({
 }
 
 function ComparisonDesktop({
+  conversationId,
+  profile,
+  profileMissing,
   messages,
   quickReplies,
   thinking,
@@ -498,6 +504,9 @@ function ComparisonDesktop({
   openQuestions,
   missing,
 }: {
+  conversationId: string;
+  profile: ConversationState["profile"];
+  profileMissing: ConversationState["missing"];
   messages: ChatMessage[];
   quickReplies: string[];
   thinking: boolean;
@@ -516,21 +525,37 @@ function ComparisonDesktop({
   missing: NonNullable<ConversationState["missing"]>;
 }) {
   const [chatExpanded, setChatExpanded] = useState(false);
+  const [rail, setRail] = useState<"options" | "details">("options");
 
   return (
     <div className="flex min-h-0 flex-1 gap-4 p-6">
       {/* RTL: visual order is chat (end/left) · comparison · vehicles (start/right).
           Spec: vehicles on the right, comparison center, chat on the left.
-          In RTL flex row: first item is on the right. So order: vehicles, comparison, chat. */}
-      <VehicleList
-        results={comparison.results}
-        bestOptionId={comparison.best_option_id}
-        selectedId={selectedOptionId}
-        onSelect={onSelect}
-        className="shrink-0 self-stretch"
-      />
+          In RTL flex row: first item is on the right. So order: vehicles, comparison, chat.
+          The right rail also holds the employee's details: an edit there recomputes the comparison
+          in the middle (PATCH /profile), the same as telling the agent in the chat. */}
+      <div className="flex min-h-0 shrink-0 flex-col gap-2 self-stretch">
+        <RailTabs value={rail} onChange={setRail} />
+        {rail === "options" ? (
+          <VehicleList
+            results={comparison.results}
+            bestOptionId={comparison.best_option_id}
+            selectedId={selectedOptionId}
+            onSelect={onSelect}
+            className="min-h-0 flex-1"
+          />
+        ) : (
+          <ProfileCard
+            conversationId={conversationId}
+            profile={profile}
+            missing={profileMissing}
+            recalculates
+            className="min-h-0 w-[320px] flex-1"
+          />
+        )}
+      </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto">
-        <ResultBanner />
+        <ResultBanner onEditDetails={() => setRail("details")} />
         {waitingRep && (
           <RepWaitingPanel questions={openQuestions} missing={missing} />
         )}
@@ -641,6 +666,12 @@ function MobileSideContent({
         optionId={selectedOptionId}
         onChangeCar={onChangeCar}
       />
+      <ProfileCard
+        conversationId={data.id}
+        profile={data.profile}
+        missing={data.missing}
+        recalculates
+      />
     </div>
   );
 }
@@ -728,8 +759,42 @@ function OptionsGalleryPanel({
   );
 }
 
+/** Right rail of the comparison: the alternatives, or the employee's own details to edit. */
+function RailTabs({
+  value,
+  onChange,
+}: {
+  value: "options" | "details";
+  onChange: (value: "options" | "details") => void;
+}) {
+  const tabs = [
+    { id: "options", label: "החלופות" },
+    { id: "details", label: "הפרטים שלי" },
+  ] as const;
+  return (
+    <div role="tablist" aria-label="מה להציג בצד" className="flex gap-1 rounded-full bg-mist p-1">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          role="tab"
+          aria-selected={value === tab.id}
+          onClick={() => onChange(tab.id)}
+          className={cn(
+            "min-h-9 flex-1 rounded-full px-3 text-sm font-bold transition-colors",
+            "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring",
+            value === tab.id ? "bg-surface text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** The mockup's "יש תוצאה!" banner above the comparison: brand sky, the celebrating mascot. */
-function ResultBanner() {
+function ResultBanner({ onEditDetails }: { onEditDetails: () => void }) {
   return (
     <div className="relative isolate flex min-h-36 shrink-0 items-center overflow-hidden rounded-3xl px-6 py-5 shadow-card lg:min-h-44 lg:px-8">
       <Image
@@ -745,6 +810,15 @@ function ResultBanner() {
         <p className="font-display text-2xl leading-tight text-primary lg:text-3xl">הנה ההשוואה עבורך.</p>
         <p className="mt-2 max-w-md text-sm text-foreground/80">
           לפי הפרטים שמסרת, חישבנו את כל החלופות. למטה ההשוואה המלאה, עם פירוט מאיפה מגיע כל שקל.
+          משהו השתנה? כתבו לי בצ&apos;אט, או{" "}
+          <button
+            type="button"
+            onClick={onEditDetails}
+            className="font-bold text-primary underline underline-offset-4 hover:no-underline"
+          >
+            ערכו את הפרטים
+          </button>
+          , וההשוואה תחושב מחדש.
         </p>
       </div>
       <Image

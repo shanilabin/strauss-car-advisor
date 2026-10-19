@@ -201,3 +201,21 @@ def test_a_model_that_gets_stuck_still_answers_and_keeps_what_it_learned(model: 
     assert body["reply"]["text"] == STUCK_REPLY
     assert body["state"]["profile"]["occupation"] == "מנהל/ת מוצר"
     assert body["trace"][-1]["name"] == "stuck"
+
+
+def test_a_change_told_in_the_chat_after_a_comparison_recomputes_it(model: ModelSlot) -> None:
+    conversation_id = start("E-006")  # Eli; a recalculation never asks the rep again
+    shown = client.post(
+        f"/v1/conversations/{conversation_id}/compare", json={"option_ids": ["CAR-14"]}, headers=AS_NOA
+    ).json()
+    model.factory = lambda: scripted(
+        ("update_profile", {"children_under_23": 0}), say("עדכנתי וחישבתי מחדש.", "למה הנטו משתנה?")
+    )
+    body = send(conversation_id, "אין לי ילדים מתחת לגיל 23").json()
+    (card,) = body["reply"]["cards"]
+    assert card["kind"] == "comparison"
+    assert [r["option"]["id"] for r in card["comparison"]["results"]] == ["CAR-14"]
+    state = body["state"]
+    assert state["latest_comparison"]["id"] == card["comparison"]["id"] != shown["id"]
+    assert state["latest_comparison"]["profile_snapshot"]["revision"] == state["profile"]["revision"]
+    assert state["status"] == "PRESENTED"

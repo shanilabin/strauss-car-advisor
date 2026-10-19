@@ -305,7 +305,7 @@ Prefix `/v1` · Auth: `Authorization: Bearer <Supabase JWT>` · שגיאות: `{
 | POST | `/v1/conversations` | שיחה חדשה (אופציה: `sample_employee_id`) | עובד |
 | GET | `/v1/conversations/{id}` | מצב מלא: profile, status, messages, open questions | בעלים |
 | POST | `/v1/conversations/{id}/messages` | תור סוכן ← `AgentReply` + trace | בעלים |
-| PATCH | `/v1/conversations/{id}/profile` | תיקון נתונים ← חישוב מחדש | בעלים |
+| PATCH | `/v1/conversations/{id}/profile` | תיקון נתונים ← ההשוואה שעל המסך מחושבת מחדש (אותן חלופות) + הודעת מערכת בצ'אט | בעלים |
 | GET | `/v1/conversations/{id}/options` | מפת כל האפשרויות | בעלים |
 | POST | `/v1/conversations/{id}/compare` | השוואה לחלופות נבחרות | בעלים |
 | POST | `/v1/compare` | השוואה **חסרת מצב** (מצב טופס, בדיקות) | כולם |

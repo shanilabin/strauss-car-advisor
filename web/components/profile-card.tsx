@@ -51,6 +51,8 @@ type ProfileCardProps = {
   conversationId: string;
   profile: Profile;
   missing?: MissingField[];
+  /** A comparison is on screen: saving a field recomputes it (the footer says so). */
+  recalculates?: boolean;
   className?: string;
 };
 
@@ -119,6 +121,7 @@ export function ProfileCard({
   conversationId,
   profile,
   missing = [],
+  recalculates = false,
   className,
 }: ProfileCardProps) {
   const patchProfile = usePatchProfile(conversationId);
@@ -275,7 +278,13 @@ export function ProfileCard({
   }
 
   const occupationMissing = isFieldMissing(keys, "occupation", Boolean(profile.occupation));
-  const groupMissing = isFieldMissing(keys, "group", Boolean(profile.group));
+  // The engine takes the group from the occupation table (a stated group is never trusted), so the
+  // card shows that one - also when profile.group was never set.
+  const group =
+    occupations.data?.find((o) => o.name === profile.occupation)?.group ??
+    profile.group ??
+    null;
+  const groupMissing = isFieldMissing(keys, "group", Boolean(group));
   const baseMissing = isFieldMissing(keys, "salary.base", salary != null);
   const commissionsMissing = salary == null;
   const bonusMissing = salary == null;
@@ -361,7 +370,7 @@ export function ProfileCard({
           label="קבוצת רכב"
           missing={groupMissing}
           readOnly
-          display={profile.group ? formatGroupLabel(profile.group) : null}
+          display={group ? formatGroupLabel(group) : null}
         />
 
         <ProfileRow
@@ -640,6 +649,7 @@ export function ProfileCard({
         {!saving && !errorMessage && (
           <p className="text-xs text-muted-foreground">
             לחצו על שדה כדי לערוך. Enter לשמירה, Escape לביטול.
+            {recalculates && " כל שינוי מחשב מחדש את ההשוואה."}
           </p>
         )}
       </div>

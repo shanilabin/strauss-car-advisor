@@ -373,3 +373,51 @@ def test_options_on_an_incomplete_profile_say_nothing_was_shown() -> None:
     result = run(deps_for(Profile(occupation="מנהל/ת מוצר")), ("list_options", {}), FINAL)
     returned = tool_returns(result)[0].content
     assert returned["shown_to_employee"] is False and "do NOT say" in returned["tell_employee"]
+
+
+# ── After the comparison: recommendation, "why?", and a change recomputes ────
+
+
+def noa() -> Profile:
+    return to_profile(next(e for e in load_sample_employees() if e.id == "E-001"), BUNDLE)
+
+
+def test_a_comparison_comes_with_a_recommendation_and_the_reasons_in_words() -> None:
+    deps = deps_for(noa())
+    result = run(deps, ("compare", {"option_ids": ["CAR-10"]}), FINAL)
+    (returned,) = [p.content for p in tool_returns(result) if p.tool_name == "compare"]
+    assert "leaves the most" in returned["recommendation"]  # Noa's net goes up with the ATTO 3
+    (atto,) = returned["results"]
+    assert atto["because"] and all(("raises" in b or "lowers" in b) for b in atto["because"])
+    assert not MONEY.search(json.dumps(returned, ensure_ascii=False))
+    assert deps.shown is not None and deps.shown.results[0].option.id == "CAR-10"
+
+
+def test_a_detail_changed_in_the_chat_recomputes_the_comparison_on_screen() -> None:
+    first = deps_for(noa())
+    run(first, ("compare", {"option_ids": ["CAR-10"]}), FINAL)
+    deps = deps_for(noa())
+    deps.shown = first.shown  # the next turn starts from what is on screen
+    result = run(deps, ("update_profile", {"base_salary": 25000}), FINAL, prompt="השכר שלי עלה ל-25000")
+    (returned,) = [p.content for p in tool_returns(result) if p.tool_name == "update_profile"]
+    assert returned["recalculated"]["shown_to_employee"] is True
+    (card,) = to_reply(result.output, deps).cards
+    assert isinstance(card, ComparisonCard)
+    (atto,) = card.comparison.results
+    assert atto.option.id == "CAR-10" and atto.net_today != 11032  # the same car, the new salary
+    assert deps.shown is card.comparison
+
+
+def test_nothing_is_recomputed_before_anything_was_shown() -> None:
+    deps = deps_for(noa())
+    result = run(deps, ("update_profile", {"base_salary": 25000}), FINAL)
+    (returned,) = [p.content for p in tool_returns(result) if p.tool_name == "update_profile"]
+    assert "recalculated" not in returned and to_reply(result.output, deps).cards == []
+
+
+def test_the_state_block_says_what_is_on_screen() -> None:
+    deps = deps_for(noa())
+    assert '"on_screen": null' in state_block(deps)
+    run(deps, ("compare", {"option_ids": ["CAR-10", "waiver"]}), FINAL)
+    block = state_block(deps)
+    assert '"on_screen"' in block and '"id": "CAR-10"' in block and "best_for_net" in block

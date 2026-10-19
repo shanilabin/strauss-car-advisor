@@ -16,7 +16,7 @@ from pydantic_ai import ModelRetry, RunContext
 
 from strauss.agent.deps import AgentDeps, RepRequest
 from strauss.agent.schemas import ComparisonCard, MissingCard, OptionsCard
-from strauss.domain.compare import IncompleteProfile, UnknownOption
+from strauss.domain.compare import IncompleteProfile, UnknownOption, rerun
 from strauss.domain.compare import compare as run_compare
 from strauss.domain.eligibility import check_eligibility as run_eligibility
 from strauss.domain.missing import missing_fields, rep_question
@@ -226,6 +226,8 @@ def update_profile(
     result: dict[str, Any] = {"saved": sorted(saved), "still_missing": _missing_text(updated)}
     if not_saved:
         result["not_saved"] = not_saved
+    if saved and (recalculated := _recalculate(deps)):
+        result["recalculated"] = recalculated
     return result
 
 
@@ -371,13 +373,19 @@ def set_current_car(
         }
     )
     deps.turn.profile_changed = True
-    return {"saved": f"{vehicle.commercial_name} ({reg_year})", "still_missing": _missing_text(deps.profile)}
+    result: dict[str, Any] = {
+        "saved": f"{vehicle.commercial_name} ({reg_year})",
+        "still_missing": _missing_text(deps.profile),
+    }
+    if recalculated := _recalculate(deps):
+        result["recalculated"] = recalculated
+    return result
 
 
 # ── Options, eligibility, comparison ─────────────────────────────────────────
 
 
-def _describe(result: OptionResult) -> dict[str, Any]:
+def describe(result: OptionResult) -> dict[str, Any]:
     """A result in words only."""
     item: dict[str, Any] = {"id": result.option.id, "label": result.option.label}
     if not result.eligibility.eligible:
@@ -391,6 +399,9 @@ def _describe(result: OptionResult) -> dict[str, Any]:
         item["ask_rep_field"] = [m.field for m in result.missing if m.ask == "rep"]
         return item
     item["net_change"] = "up" if result.delta > 0 else "down" if result.delta < 0 else "no change"
+    # What moves the net, biggest first - in words, so "why?" and "what if?" get a real answer
+    steps = sorted((s for s in result.waterfall if s.delta), key=lambda s: -abs(s.delta))
+    item["because"] = [f"{s.label} ({'raises' if s.delta > 0 else 'lowers'} the net)" for s in steps[:3]]
     if result.participation_status == ParticipationStatus.DEFAULT_PENDING:
         item["participation"] = "default - waiting for the transport rep to confirm"
         item["ask_rep_field"] = f"participation:{result.option.id}"
@@ -414,6 +425,44 @@ def _run(deps: AgentDeps, option_ids: list[str] | None) -> Comparison | dict[str
         raise ModelRetry(f"unknown option ids: {unknown} - use ids from list_options") from unknown
 
 
+def _recommendation(outcome: Comparison) -> str:
+    """What to tell the employee after a comparison, in words - the model never ranks options itself."""
+    best = next((r for r in outcome.results if r.option.id == outcome.best_option_id), None)
+    if best is None:
+        return "no alternative could be calculated yet - say what is missing"
+    if best.delta is not None and best.delta > 0:
+        return (
+            f"'{best.option.label}' leaves the most in the employee's net pay (see 'because'). Recommend it "
+            "in one sentence, add that the choice also depends on what car they need, and offer what-if "
+            "questions as quick replies"
+        )
+    return (
+        "none of the compared alternatives leaves more in the net than today's arrangement. Say so in one "
+        "sentence (for the net, today is better) and offer other alternatives or what-if questions as quick "
+        "replies"
+    )
+
+
+def _recalculate(deps: AgentDeps) -> dict[str, Any] | None:
+    """After a change to the details, the comparison already on screen is recomputed at once (same
+    alternatives). None if nothing was shown yet or the profile is no longer complete."""
+    if deps.shown is None or missing_fields(deps.profile):
+        return None
+    try:
+        outcome = rerun(deps.shown, deps.profile, deps.bundle)
+    except (IncompleteProfile, UnknownOption):
+        return None
+    deps.shown = outcome
+    deps.turn.cards.append(ComparisonCard(comparison=outcome))
+    return {
+        "shown_to_employee": True,
+        "tell_employee": "the comparison on screen was recalculated with the new details - say so and what "
+        "changed, in words. Do not call compare again for it",
+        "recommendation": _recommendation(outcome),
+        "results": [describe(r) for r in outcome.results],
+    }
+
+
 @traced
 def list_options(ctx: RunContext[AgentDeps]) -> dict[str, Any]:
     """Show the employee every alternative they may choose, ranked by net impact. The numbers appear on
@@ -422,8 +471,14 @@ def list_options(ctx: RunContext[AgentDeps]) -> dict[str, Any]:
     if not isinstance(outcome, Comparison):
         return outcome
     ctx.deps.turn.cards.append(OptionsCard(comparison=outcome))
+    ctx.deps.shown = outcome
     best = next((r.option.label for r in outcome.results if r.option.id == outcome.best_option_id), None)
-    return {"shown_to_employee": True, "best": best, "options": [_describe(r) for r in outcome.results]}
+    return {
+        "shown_to_employee": True,
+        "best": best,
+        "recommendation": _recommendation(outcome),
+        "options": [describe(r) for r in outcome.results],
+    }
 
 
 @traced
@@ -440,12 +495,13 @@ def compare(ctx: RunContext[AgentDeps], option_ids: list[str]) -> dict[str, Any]
     if not isinstance(outcome, Comparison):
         return outcome
     deps.turn.cards.append(ComparisonCard(comparison=outcome))
-    described = [_describe(r) for r in outcome.results]
+    deps.shown = outcome
+    described = [describe(r) for r in outcome.results]
     for item in described:  # the employee asked about this car - the company must confirm its participation
         field = item.pop("ask_rep_field", None)
         if isinstance(field, str) and _send_to_rep(deps, field):
             item["participation"] = "default - the transport rep was asked to confirm; say so"
-    return {"shown_to_employee": True, "results": described}
+    return {"shown_to_employee": True, "recommendation": _recommendation(outcome), "results": described}
 
 
 @traced

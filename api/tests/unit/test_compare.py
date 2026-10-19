@@ -9,9 +9,16 @@ import pytest
 from strauss.config.bundle import ConfigBundle
 from strauss.config.loader import load_bundle, load_sample_employees
 from strauss.config.samples import to_profile
-from strauss.domain.compare import IncompleteProfile, UnknownOption, compare
+from strauss.domain.compare import IncompleteProfile, UnknownOption, compare, rerun
 from strauss.domain.explain import MINUS
-from strauss.domain.models import CarArrangement, Comparison, ParticipationStatus, Profile, WaiverArrangement
+from strauss.domain.models import (
+    CarArrangement,
+    Comparison,
+    ParticipationStatus,
+    Profile,
+    SalaryInput,
+    WaiverArrangement,
+)
 from strauss.domain.options import vehicle_from_catalog
 
 BUNDLE = load_bundle()
@@ -301,3 +308,16 @@ def test_leaving_the_family_track_is_explained() -> None:
     )
     niro = result(compare(on_track, BUNDLE), "CAR-05")
     assert "בלי חלק העובד במסלול (1,150 ₪ היום)" in niro.explanation[1]
+
+
+def test_rerun_keeps_the_alternatives_on_screen() -> None:
+    bundle = load_bundle()
+    noa = to_profile(next(e for e in load_sample_employees() if e.id == "E-001"), bundle)
+    richer = noa.model_copy(update={"salary": SalaryInput(base=noa.salary.base + 5000)})  # type: ignore[union-attr]
+
+    one = rerun(compare(noa, bundle, ["CAR-10"]), richer, bundle)
+    assert [r.option.id for r in one.results] == ["CAR-10"]
+    assert one.profile_snapshot == richer
+
+    every = compare(noa, bundle)
+    assert {r.option.id for r in rerun(every, richer, bundle).results} == {r.option.id for r in every.results}

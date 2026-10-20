@@ -219,3 +219,13 @@ def test_a_change_told_in_the_chat_after_a_comparison_recomputes_it(model: Model
     assert state["latest_comparison"]["id"] == card["comparison"]["id"] != shown["id"]
     assert state["latest_comparison"]["profile_snapshot"]["revision"] == state["profile"]["revision"]
     assert state["status"] == "PRESENTED"
+
+
+def test_stuck_after_a_calculation_says_the_result_is_on_screen(model: ModelSlot) -> None:
+    """QA B02: "I could not complete it" next to a comparison that was completed."""
+    conversation_id = start()
+    calls = [("compare", {"option_ids": ["waiver"]})] * 13  # past the request limit
+    model.factory = lambda: scripted(*calls)
+    body = send(conversation_id, "מה אם אוותר על הרכב?").json()
+    assert body["reply"]["text"] == turn_service.STUCK_AFTER_RESULT
+    assert [c["kind"] for c in body["reply"]["cards"]] == ["comparison"]  # one, not thirteen

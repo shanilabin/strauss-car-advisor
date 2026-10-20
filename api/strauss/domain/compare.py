@@ -142,8 +142,9 @@ def compare(
         unknown = [i for i in option_ids if i not in known]
         if unknown:
             raise UnknownOption(", ".join(unknown))
-        options = [o for o in options if o.id in option_ids]
 
+    # Every alternative is computed, even when only some were asked about: "the best one" is always
+    # measured against all the eligible alternatives AND today - never just among the compared ones.
     results = [_option_result(profile, option, occupation, group, today, bundle) for option in options]
     # computed options best-first, then eligible ones still waiting for data, then ineligible ones;
     # sorted() is stable, so ties keep catalog order
@@ -155,7 +156,10 @@ def compare(
             -(r.delta if r.delta is not None else ZERO),
         ),
     )
-    best = next((r.option.id for r in ranked if r.delta is not None and r.complete), None)
+    # None when no alternative leaves more in the net than today - staying as is is then the best
+    best = next((r.option.id for r in ranked if r.delta is not None and r.complete and r.delta > 0), None)
+    if option_ids is not None:
+        ranked = [r for r in ranked if r.option.id in option_ids]
     rules = bundle.rules
     return Comparison(
         id=comparison_id or str(uuid.uuid4()),

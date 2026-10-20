@@ -22,6 +22,7 @@ from strauss.agent.schemas import ComparisonCard, MissingCard, OptionsCard
 from strauss.config.loader import load_bundle, load_sample_employees
 from strauss.config.samples import to_profile
 from strauss.domain.models import CarArrangement, Profile, WaiverArrangement
+from strauss.services.turn import latest_cards
 from strauss.settings import Settings
 from tests.conftest import _tax_authority_repo
 from tests.scripted import say, scripted
@@ -386,7 +387,8 @@ def test_a_comparison_comes_with_a_recommendation_and_the_reasons_in_words() -> 
     deps = deps_for(noa())
     result = run(deps, ("compare", {"option_ids": ["CAR-10"]}), FINAL)
     (returned,) = [p.content for p in tool_returns(result) if p.tool_name == "compare"]
-    assert "leaves the most" in returned["recommendation"]  # Noa's net goes up with the ATTO 3
+    # the ATTO 3 raises Noa's net, but giving up the car raises it more - and that is what she is told
+    assert "(id waiver), leaves more" in returned["recommendation"]
     (atto,) = returned["results"]
     assert atto["because"] and all(("raises" in b or "lowers" in b) for b in atto["because"])
     assert not MONEY.search(json.dumps(returned, ensure_ascii=False))
@@ -421,3 +423,54 @@ def test_the_state_block_says_what_is_on_screen() -> None:
     run(deps, ("compare", {"option_ids": ["CAR-10", "waiver"]}), FINAL)
     block = state_block(deps)
     assert '"on_screen"' in block and '"id": "CAR-10"' in block and "best_for_net" in block
+
+
+# ── QA report: no loops, no copies, the right recommendation ─────────────────
+
+
+def returned_by(result: Any, tool: str) -> list[Any]:
+    return [p.content for p in tool_returns(result) if p.tool_name == tool]
+
+
+def test_the_best_of_all_alternatives_is_recommended_when_it_is_on_screen() -> None:
+    deps = deps_for(noa())
+    result = run(deps, ("compare", {"option_ids": ["CAR-10", "waiver"]}), FINAL)
+    (returned,) = returned_by(result, "compare")
+    assert "leaves the most" in returned["recommendation"] and "ויתור" in returned["recommendation"]
+
+
+def test_saving_the_same_value_again_recomputes_nothing() -> None:
+    """QA B01: the model "saved" the same salary over and over, and every save added a comparison."""
+    deps = deps_for(noa())
+    run(deps, ("compare", {"option_ids": ["CAR-10"]}), FINAL)
+    shown = deps.shown
+    result = run(deps, ("update_profile", {"base_salary": 18500}), FINAL)  # Noa's salary already
+    (returned,) = returned_by(result, "update_profile")
+    assert returned["saved"] == [] and returned["already_saved"] == ["salary"]
+    assert "recalculated" not in returned and deps.shown is shown
+
+
+def test_what_if_i_give_up_the_car_never_overwrites_todays_car() -> None:
+    """QA B01: "what if I give up the car?" was saved as "I have no car today"."""
+    deps = deps_for(noa())
+    result = run(deps, ("update_profile", {"current_is_waiver": True}), FINAL)
+    (returned,) = returned_by(result, "update_profile")
+    assert "compare" in returned["not_saved"]["current"]
+    assert isinstance(deps.profile.current, CarArrangement)  # the Corolla Cross is still today's car
+    corrected = run(deps, ("update_profile", {"current_is_waiver": True, "replaces_todays_car": True}), FINAL)
+    assert returned_by(corrected, "update_profile")[0]["saved"] == ["current"]
+    assert isinstance(deps.profile.current, WaiverArrangement)
+
+
+def test_a_reply_carries_one_comparison_however_often_the_model_compared() -> None:
+    deps = deps_for(noa())
+    run(
+        deps,
+        ("compare", {"option_ids": ["waiver"]}),
+        ("compare", {"option_ids": ["waiver"]}),
+        ("compare", {"option_ids": ["CAR-10", "waiver"]}),
+        FINAL,
+    )
+    assert len(deps.turn.cards) == 3
+    (card,) = latest_cards(deps.turn.cards)
+    assert isinstance(card, ComparisonCard) and len(card.comparison.results) == 2  # the last one

@@ -226,7 +226,8 @@ def test_every_comparison_adds_up_on_screen(profile: Profile) -> None:
         assert len(result.explanation) == 2
     computed = [r for r in comparison.results if r.delta is not None]
     if computed:
-        assert comparison.best_option_id == computed[0].option.id
+        top = computed[0]
+        assert comparison.best_option_id == (top.option.id if top.delta > 0 else None)  # else: today
         assert [r.delta for r in computed] == sorted((r.delta for r in computed), reverse=True)
 
 

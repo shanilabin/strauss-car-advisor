@@ -1,6 +1,7 @@
 """A conversation turn through the API (A4.2): the agent runs on the stored state with a scripted model,
 and everything it did is saved - profile, comparisons, both messages with cards and trace."""
 
+import time
 from typing import Any
 
 import pytest
@@ -244,3 +245,30 @@ def test_a_missing_card_says_what_is_missing_at_the_end_of_the_turn(model: Model
     assert card["kind"] == "missing"
     fields = [m["field"] for m in card["missing"]]
     assert "occupation" not in fields and "salary.base" not in fields and "current" in fields
+
+
+def test_a_slow_busy_answer_is_not_retried(model: ModelSlot, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Providers that time out already took long: one more round would outlast the browser's request.
+    The same script that a quick "busy" saves (see above) now ends in form mode."""
+    monkeypatch.setattr(turn_service, "BUSY_WAIT_SECONDS", 0)
+    monkeypatch.setattr(turn_service, "RETRY_ONLY_WITHIN_SECONDS", -1)  # every failure counts as slow
+    conversation_id = start()
+    model.factory = lambda: scripted(rate_limited, say("שלום! במה אפשר לעזור?"))
+    response = send(conversation_id, "שלום")
+    assert response.status_code == 503 and response.json()["error"]["details"]["mode"] == "form"
+
+
+def test_a_chain_that_runs_out_of_time_answers_form_mode(
+    model: ModelSlot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A model that hangs (times every model in the chain) must not keep the browser waiting for minutes."""
+    monkeypatch.setattr(turn_service, "TURN_DEADLINE_SECONDS", 0.2)
+    conversation_id = start()
+
+    def hangs(_messages: Any) -> Any:
+        time.sleep(1)
+        return say("מאוחר מדי")
+
+    model.factory = lambda: scripted(hangs)
+    response = send(conversation_id, "שלום")
+    assert response.status_code == 503 and response.json()["error"]["details"]["mode"] == "form"

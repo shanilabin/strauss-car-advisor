@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { BottomSheet } from "@/components/chat/bottom-sheet";
 import { ChatPanel, type ChatMessage } from "@/components/chat/chat-panel";
+import { type PayslipApply, PayslipUpload } from "@/components/chat/payslip-upload";
 import { RepWaitingPanel } from "@/components/chat/rep-waiting-panel";
 import { VehicleList } from "@/components/chat/vehicle-list";
 import { ComparisonCard } from "@/components/comparison-card";
@@ -23,6 +24,7 @@ import {
   type ConversationState,
 } from "@/lib/api/use-conversation";
 import { OptionsFetchError, useOptions } from "@/lib/api/use-options";
+import { PatchProfileError, usePatchProfile } from "@/lib/api/use-patch-profile";
 import { SendMessageError, useSendMessage } from "@/lib/api/use-send-message";
 import { useConversationRealtime } from "@/lib/realtime/use-conversation-realtime";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
@@ -37,6 +39,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   const conversation = useConversation(conversationId);
   const sendMessage = useSendMessage(conversationId);
   const compare = useCompare(conversationId);
+  const patchProfile = usePatchProfile(conversationId);
+  // A new upload box after each saved payslip (the review closes; the message goes to the advisor)
+  const [payslipRound, setPayslipRound] = useState(0);
 
   // Remount via key={id} on the page resets this state when the conversation changes.
   const [draft, setDraft] = useState("");
@@ -159,6 +164,30 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     setBrowsingOptions(true);
   }
 
+  /**
+   * The payslip values the employee confirmed: salary and deductions are saved (PATCH, like a manual
+   * edit), then the advisor is told the car and its value of use - it finds the exact variant and asks
+   * only what is still missing.
+   */
+  function handlePayslip(apply: PayslipApply) {
+    const send = () => {
+      setPayslipRound((round) => round + 1);
+      handleSend(apply.message);
+    };
+    if (!apply.salary && !apply.deductions) {
+      send();
+      return;
+    }
+    patchProfile.mutate(
+      {
+        expected_revision: data?.profile.revision,
+        ...(apply.salary ? { salary: apply.salary } : {}),
+        ...(apply.deductions ? { deductions: apply.deductions } : {}),
+      },
+      { onSuccess: send },
+    );
+  }
+
   // When no model can answer (free-tier quota, provider down) the employee stays in the chat: the
   // message is kept, and the form - the same calculation, no AI - is one click away.
   const modelBusy = isFormModeFallback(sendMessage.error);
@@ -226,6 +255,23 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   }
 
   const sideTitle = sideSheetTitle(displayPhase);
+  // While details are missing, the payslip upload sits above the message box
+  const payslip =
+    (data.missing?.length ?? 0) > 0 ? (
+      <PayslipUpload
+        key={payslipRound}
+        disabled={sendMessage.isPending}
+        applying={patchProfile.isPending || sendMessage.isPending}
+        applyError={
+          patchProfile.error instanceof PatchProfileError
+            ? patchProfile.error.message
+            : patchProfile.error
+              ? "שמירת הפרטים נכשלה. נסו שוב."
+              : null
+        }
+        onApply={handlePayslip}
+      />
+    ) : null;
   const waitingRep = data.status === "WAITING_REP";
 
   return (
@@ -248,6 +294,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               conversationId={conversationId}
               profile={data.profile}
               missing={data.missing}
+              toolbar={payslip}
               messages={transcript}
               quickReplies={quickReplies}
               thinking={sendMessage.isPending}
@@ -339,6 +386,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
             onSend={handleSend}
             onSelectOption={handleSelectOption}
             openQuestions={data.open_questions ?? []}
+            toolbar={payslip}
             className="min-h-0 min-w-0 flex-1 border-0 border-b"
           />
           <div className="flex shrink-0 gap-2 border-t border-border bg-surface px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
@@ -381,6 +429,7 @@ function CollectingDesktop({
   conversationId,
   profile,
   missing,
+  toolbar = null,
   messages,
   quickReplies,
   thinking,
@@ -395,6 +444,7 @@ function CollectingDesktop({
   conversationId: string;
   profile: ConversationState["profile"];
   missing: ConversationState["missing"];
+  toolbar?: ReactNode;
   messages: ChatMessage[];
   quickReplies: string[];
   thinking: boolean;
@@ -419,6 +469,7 @@ function CollectingDesktop({
         onSend={onSend}
         onSelectOption={onSelectOption}
         openQuestions={openQuestions}
+        toolbar={toolbar}
         className="min-h-0"
       />
       <ProfileCard

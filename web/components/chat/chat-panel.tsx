@@ -42,6 +42,8 @@ type ChatPanelProps = {
   openQuestions?: readonly RepQuestionOut[];
   /** True while a narrow chat has an AI-actions timeline open, so the parent can widen it. */
   onTraceOpenChange?: (open: boolean) => void;
+  /** Shown right above the message box (e.g. the payslip upload while details are missing). */
+  toolbar?: ReactNode;
   className?: string;
 };
 
@@ -59,6 +61,7 @@ export function ChatPanel({
   onSelectOption,
   openQuestions,
   onTraceOpenChange,
+  toolbar = null,
   className,
 }: ChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
@@ -158,7 +161,7 @@ export function ChatPanel({
             <Image src="/brand/mascot-guide.webp" alt="" width={514} height={520} className="h-auto w-36" />
             <p className="text-lg font-bold">שלום! אני יועץ הרכב של שטראוס.</p>
             <p className="text-sm text-muted-foreground">
-              ספרו לי על התפקיד, השכר והרכב שלכם, ואראה לכם מה יקרה לנטו בכל חלופה.
+              ספרו לי על התפקיד, השכר והרכב שלכם, או העלו תלוש שכר, ואראה לכם מה יקרה לנטו בכל חלופה.
             </p>
           </div>
         )}
@@ -290,6 +293,8 @@ export function ChatPanel({
           ))}
         </div>
       )}
+
+      {toolbar}
 
       <form
         onSubmit={handleSubmit}

@@ -36,6 +36,7 @@ EXPECTED_OPERATIONS = {
     ("get", "/v1/config"),
     ("get", "/v1/rep/questions"),
     ("post", "/v1/rep/questions/{question_id}/answer"),
+    ("post", "/v1/payslip/parse"),
 }
 
 

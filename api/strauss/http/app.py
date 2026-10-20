@@ -5,7 +5,7 @@ from fastapi.routing import APIRoute
 
 from strauss import __version__
 from strauss.http.errors import install_error_handlers
-from strauss.http.routers import compare, config, conversations, health, rep, vehicles
+from strauss.http.routers import compare, config, conversations, health, payslip, rep, vehicles
 
 
 def _operation_id(route: APIRoute) -> str:
@@ -22,5 +22,5 @@ app = FastAPI(
 
 install_error_handlers(app)
 
-for module in (health, conversations, compare, vehicles, config, rep):
+for module in (health, conversations, compare, vehicles, config, rep, payslip):
     app.include_router(module.router)

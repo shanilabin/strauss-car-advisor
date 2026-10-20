@@ -313,7 +313,7 @@ Prefix `/v1` · Auth: `Authorization: Bearer <Supabase JWT>` · שגיאות: `{
 | GET | `/v1/vehicles/value-of-use?…5 שדות` | שווי שימוש | כולם |
 | GET | `/v1/catalog` · `/v1/occupations` | מהקונפיג | כולם |
 | GET | `/v1/config` | הכללים הפעילים + hash + מקורות (לחלון "למה?") | כולם |
-| POST | `/v1/payslip/parse` ⭐ | תמונה/PDF ← שדות (לא נשמר) | עובד |
+| POST | `/v1/payslip/parse` | תלוש (PDF או תמונה) ← שדות כפי שמודפסים, לאישור העובד. לא נשמר. PDF עם טקסט: כל מספר נבדק מול הטקסט; ת״ז מוסתרת | עובד |
 | GET | `/v1/rep/questions?status=open` | תור הנציג (הקשר מינימלי) | נציג |
 | POST | `/v1/rep/questions/{id}/answer` | מענה חד-פעמי + המשך השיחה | נציג |
 

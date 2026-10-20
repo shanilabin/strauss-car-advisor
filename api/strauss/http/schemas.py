@@ -2,10 +2,11 @@
 
 from datetime import date, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from strauss.agent.payslip import PayslipReading
 from strauss.agent.schemas import AgentReply, Card, TraceEvent
 from strauss.config.models import GroupBudget
 from strauss.domain.models import (
@@ -155,3 +156,25 @@ class ErrorBody(ApiModel):
 
 class ErrorResponse(ApiModel):
     error: ErrorBody
+
+
+# ── Payslip ──────────────────────────────────────────────────────────────────
+
+
+class PayslipParseRequest(ApiModel):
+    """The file as base64 (a payslip is small; JSON keeps the client simple). Never stored."""
+
+    content_type: Literal["application/pdf", "image/png", "image/jpeg", "image/webp"]
+    data_base64: str = Field(min_length=1, max_length=4_300_000)
+
+
+class PayslipParseResponse(ApiModel):
+    reading: PayslipReading = Field(description="Values as printed; null = not on the payslip")
+    read_from: Literal["text", "image"] = Field(
+        description="text: from the PDF's text, every number checked against it. image: read from the "
+        "picture - the employee must confirm every value"
+    )
+    not_confirmed: list[str] = Field(
+        default_factory=list,
+        description="Fields the model returned but the payslip's text does not contain - dropped, ask them",
+    )

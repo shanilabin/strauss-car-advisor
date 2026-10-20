@@ -9,6 +9,7 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-ai-slim[google,openai]>=1.0",
     "pydantic-settings>=2.6",
+    "pypdf>=6.21.1",
 ]
 
 [dependency-groups]

@@ -223,6 +223,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payslip/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse Payslip
+         * @description Read a payslip (PDF or image) into profile fields, as printed - for the employee to confirm before
+         *     anything is saved. The file is not stored, and the reading has no name, ID number or bank details.
+         *     A PDF with text is read from its text and every number is checked against it; an image is read by a
+         *     model that reads images. 422 'payslip_unreadable' / 503 'payslip_unavailable' -> fill in by chat.
+         */
+        post: operations["payslip_parse_payslip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/rep/questions": {
         parameters: {
             query?: never;
@@ -718,6 +741,61 @@ export interface components {
          * @enum {string}
          */
         ParticipationStatus: "CONFIRMED" | "DEFAULT_PENDING" | "UNKNOWN";
+        /**
+         * PayslipParseRequest
+         * @description The file as base64 (a payslip is small; JSON keeps the client simple). Never stored.
+         */
+        PayslipParseRequest: {
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "application/pdf" | "image/png" | "image/jpeg" | "image/webp";
+            /** Data Base64 */
+            data_base64: string;
+        };
+        /** PayslipParseResponse */
+        PayslipParseResponse: {
+            /**
+             * Not Confirmed
+             * @description Fields the model returned but the payslip's text does not contain - dropped, ask them
+             */
+            not_confirmed?: string[];
+            /**
+             * Read From
+             * @description text: from the PDF's text, every number checked against it. image: read from the picture - the employee must confirm every value
+             * @enum {string}
+             */
+            read_from: "text" | "image";
+            /** @description Values as printed; null = not on the payslip */
+            reading: components["schemas"]["PayslipReading"];
+        };
+        /**
+         * PayslipReading
+         * @description What was read from the payslip, as printed. null = not on the payslip.
+         */
+        PayslipReading: {
+            /** Base Salary */
+            base_salary?: number | null;
+            /** Bonus */
+            bonus?: number | null;
+            /** Car Participation */
+            car_participation?: number | null;
+            /** Car Text */
+            car_text?: string | null;
+            /** Commissions */
+            commissions?: number | null;
+            /** Credit Points */
+            credit_points?: number | null;
+            /** Month */
+            month?: string | null;
+            /** Pension Pct */
+            pension_pct?: number | null;
+            /** Study Fund Pct */
+            study_fund_pct?: number | null;
+            /** Value Of Use */
+            value_of_use?: number | null;
+        };
         /**
          * Profile
          * @description Everything known about the employee. None means "not provided yet" - never a guess.
@@ -1579,6 +1657,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Occupation"][];
+                };
+            };
+        };
+    };
+    payslip_parse_payslip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayslipParseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayslipParseResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict (stale revision, already answered) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid input */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Data service or chat model unavailable (details.mode = form) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -1136,6 +1136,186 @@
         "title": "ParticipationStatus",
         "type": "string"
       },
+      "PayslipParseRequest": {
+        "additionalProperties": false,
+        "description": "The file as base64 (a payslip is small; JSON keeps the client simple). Never stored.",
+        "properties": {
+          "content_type": {
+            "enum": [
+              "application/pdf",
+              "image/png",
+              "image/jpeg",
+              "image/webp"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "data_base64": {
+            "maxLength": 4300000,
+            "minLength": 1,
+            "title": "Data Base64",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content_type",
+          "data_base64"
+        ],
+        "title": "PayslipParseRequest",
+        "type": "object"
+      },
+      "PayslipParseResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "not_confirmed": {
+            "description": "Fields the model returned but the payslip's text does not contain - dropped, ask them",
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Confirmed",
+            "type": "array"
+          },
+          "read_from": {
+            "description": "text: from the PDF's text, every number checked against it. image: read from the picture - the employee must confirm every value",
+            "enum": [
+              "text",
+              "image"
+            ],
+            "title": "Read From",
+            "type": "string"
+          },
+          "reading": {
+            "$ref": "#/components/schemas/PayslipReading",
+            "description": "Values as printed; null = not on the payslip"
+          }
+        },
+        "required": [
+          "reading",
+          "read_from"
+        ],
+        "title": "PayslipParseResponse",
+        "type": "object"
+      },
+      "PayslipReading": {
+        "additionalProperties": false,
+        "description": "What was read from the payslip, as printed. null = not on the payslip.",
+        "properties": {
+          "base_salary": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Salary"
+          },
+          "bonus": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bonus"
+          },
+          "car_participation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Car Participation"
+          },
+          "car_text": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Car Text"
+          },
+          "commissions": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commissions"
+          },
+          "credit_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Points"
+          },
+          "month": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "pension_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pension Pct"
+          },
+          "study_fund_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Study Fund Pct"
+          },
+          "value_of_use": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Of Use"
+          }
+        },
+        "title": "PayslipReading",
+        "type": "object"
+      },
       "Profile-Input": {
         "additionalProperties": false,
         "description": "Everything known about the employee. None means \"not provided yet\" - never a guess.",
@@ -2674,6 +2854,93 @@
         "summary": "Get Occupations",
         "tags": [
           "config"
+        ]
+      }
+    },
+    "/v1/payslip/parse": {
+      "post": {
+        "description": "Read a payslip (PDF or image) into profile fields, as printed - for the employee to confirm before\nanything is saved. The file is not stored, and the reading has no name, ID number or bank details.\nA PDF with text is read from its text and every number is checked against it; an image is read by a\nmodel that reads images. 422 'payslip_unreadable' / 503 'payslip_unavailable' -> fill in by chat.",
+        "operationId": "payslip_parse_payslip",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayslipParseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayslipParseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict (stale revision, already answered)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid input"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Data service or chat model unavailable (details.mode = form)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Parse Payslip",
+        "tags": [
+          "payslip"
         ]
       }
     },

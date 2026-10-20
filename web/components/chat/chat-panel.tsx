@@ -7,6 +7,7 @@ import {
   useId,
   useRef,
   useState,
+  type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -42,7 +43,10 @@ type ChatPanelProps = {
   openQuestions?: readonly RepQuestionOut[];
   /** True while a narrow chat has an AI-actions timeline open, so the parent can widen it. */
   onTraceOpenChange?: (open: boolean) => void;
+  /** Shown right above the message box (e.g. the payslip upload while details are missing). */
+  toolbar?: ReactNode;
   className?: string;
+  style?: CSSProperties;
 };
 
 export function ChatPanel({
@@ -59,7 +63,9 @@ export function ChatPanel({
   onSelectOption,
   openQuestions,
   onTraceOpenChange,
+  toolbar = null,
   className,
+  style,
 }: ChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -70,11 +76,15 @@ export function ChatPanel({
     onTraceOpenChange?.(openTraces.size > 0);
   }, [openTraces, onTraceOpenChange]);
 
+  // Down to the newest message only when one is ADDED (or the advisor starts/stops thinking) - never on a
+  // mere refresh of the same conversation, which would yank back someone reading earlier messages.
+  const count = messages.length;
+  const lastId = messages[count - 1]?.id;
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages, thinking]);
+  }, [count, lastId, thinking]);
 
   function submit(text: string) {
     const trimmed = text.trim();
@@ -109,6 +119,7 @@ export function ChatPanel({
         "flex min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-border/70 bg-surface shadow-card",
         className,
       )}
+      style={style}
     >
       {narrow ? (
         <header className="flex shrink-0 items-center gap-3 border-b border-border/70 bg-mist/60 px-4 py-3">
@@ -158,7 +169,7 @@ export function ChatPanel({
             <Image src="/brand/mascot-guide.webp" alt="" width={514} height={520} className="h-auto w-36" />
             <p className="text-lg font-bold">שלום! אני יועץ הרכב של שטראוס.</p>
             <p className="text-sm text-muted-foreground">
-              ספרו לי על התפקיד, השכר והרכב שלכם, ואראה לכם מה יקרה לנטו בכל חלופה.
+              ספרו לי על התפקיד, השכר והרכב שלכם, או העלו תלוש שכר, ואראה לכם מה יקרה לנטו בכל חלופה.
             </p>
           </div>
         )}
@@ -290,6 +301,8 @@ export function ChatPanel({
           ))}
         </div>
       )}
+
+      {toolbar}
 
       <form
         onSubmit={handleSubmit}

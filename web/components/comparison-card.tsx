@@ -139,7 +139,8 @@ function DeltaHero({
   return (
     <div
       className={cn(
-        "rounded-2xl px-5 py-6 text-center",
+        // a size container: the number below scales with this box, not the screen, so it always fits
+        "@container rounded-2xl px-5 py-6 text-center",
         positive && "bg-success-surface ring-1 ring-success-border",
         negative && "bg-error-surface ring-1 ring-error-border",
         !positive && !negative && "bg-surface-raised ring-1 ring-border",
@@ -147,7 +148,7 @@ function DeltaHero({
     >
       <p
         className={cn(
-          "flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 text-5xl font-black tracking-tight break-words sm:text-6xl",
+          "flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[clamp(2rem,18cqi,3.75rem)] font-black tracking-tight break-words",
           positive && "text-success",
           negative && "text-error",
           !positive && !negative && "text-foreground",
@@ -155,7 +156,7 @@ function DeltaHero({
         aria-label={`${formatDelta(delta)} בחודש, ${word}`}
       >
         <bdi dir="ltr">{formatDelta(delta)}</bdi>
-        <Icon aria-hidden className="size-9 shrink-0" strokeWidth={2.6} />
+        <Icon aria-hidden className="size-[0.6em] shrink-0" strokeWidth={2.6} />
       </p>
       <p className="mt-2 text-base font-bold text-foreground">
         {estimated ? "הפרש נטו חודשי משוער" : "הפרש נטו חודשי"}
@@ -287,7 +288,8 @@ export function ComparisonCard({
           {isBest && eligible && !compact && (
             <p className="inline-flex items-center gap-2 self-start rounded-full bg-success px-4 py-1.5 text-sm font-bold text-white shadow-soft dark:text-[#102632]">
               <Star aria-hidden className="size-4 fill-current" />
-              החלופה המשתלמת ביותר עבורך
+              {/* A best built on a default participation is said to be an estimate until the rep confirms */}
+              {waitingRep ? "המשתלמת ביותר לפי הערכה, עד אישור הנציג" : "החלופה המשתלמת ביותר עבורך"}
             </p>
           )}
           {!eligible ? (

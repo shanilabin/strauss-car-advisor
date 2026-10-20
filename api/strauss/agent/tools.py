@@ -286,6 +286,11 @@ def find_vehicle(
                 "candidates": [],
                 "hint": "no variant has that value of use - check the payslip line, the year and the name",
             }
+        # Several variants can share a value of use; a company car is the catalog's one
+        catalog_keys = {v.key for v in in_catalog}
+        if len(found) > 1 and (in_both := [v for v in found if v.key in catalog_keys]):
+            found = in_both
+            hint = "matches the payslip and is in the company catalog - confirm with the employee, then save"
     elif in_catalog:
         found = in_catalog
         hint = "in the company catalog, so most likely the employee's car - confirm with them, then save"
@@ -453,10 +458,16 @@ def _recommendation(outcome: Comparison, deps: AgentDeps) -> str:
         )
     best = next((r for r in outcome.results if r.option.id == best_id), None)
     if best is not None:
+        estimate = (
+            " Its participation is still the catalog default: say the recommendation is an estimate until "
+            "the transport rep confirms."
+            if best.participation_status == ParticipationStatus.DEFAULT_PENDING
+            else ""
+        )
         return (
             f"'{best.option.label}' leaves the most in the employee's net pay of all the alternatives (see "
             "'because'). Recommend it in one sentence, add that the choice also depends on what car they "
-            "need, and offer what-if questions as quick replies"
+            f"need, and offer what-if questions as quick replies.{estimate}"
         )
     label = next((o.label for o in build_options(deps.profile, deps.bundle) if o.id == best_id), best_id)
     return (

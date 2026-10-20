@@ -1,8 +1,10 @@
 "use client";
 
 import { Ban, ChevronLeft, ChevronRight, Star, TrendingDown, TrendingUp } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
+import { carImage } from "@/lib/car-images";
 import { formatDelta } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { components } from "@/lib/api/schema";
@@ -76,6 +78,7 @@ export function VehicleList({
             const eligible = result.eligibility.eligible;
             const best = result.option.id === bestOptionId;
             const delta = eligible ? result.delta : null;
+            const photo = carImage(result.option.catalog_id);
             return (
               <li key={result.option.id}>
                 <button
@@ -88,6 +91,11 @@ export function VehicleList({
                     !eligible && "bg-background opacity-75 shadow-none",
                   )}
                 >
+                  {photo && (
+                    <span className="relative h-10 w-16 shrink-0" title={`תמונה להמחשה · מקור: ${photo.credit}`}>
+                      <Image src={photo.src} alt="" fill sizes="64px" className={cn("object-contain", !eligible && "grayscale")} />
+                    </span>
+                  )}
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     {best && (
                       <span className="mb-1 inline-flex w-fit items-center gap-1 rounded-full bg-success px-2 py-0.5 text-[0.7rem] font-bold text-white dark:text-[#102632]">

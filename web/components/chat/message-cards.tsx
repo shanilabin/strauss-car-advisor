@@ -1,9 +1,8 @@
-import { Clock } from "lucide-react";
+import { Clock, Star } from "lucide-react";
 
-import { ComparisonCard } from "@/components/comparison-card";
-import { OptionsMap } from "@/components/options-map";
 import type { components } from "@/lib/api/schema";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatDelta } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 type MessageCard = NonNullable<components["schemas"]["MessageOut"]["cards"]>[number];
 
@@ -20,25 +19,11 @@ type MessageCardViewProps = {
  */
 export function MessageCardView({ card, onSelectOption, askedAt }: MessageCardViewProps) {
   switch (card.kind) {
+    // The full comparison is in the middle of the screen - the chat keeps a short summary (QA UX03)
     case "comparison":
-      return (
-        <ComparisonCard
-          comparison={card.comparison}
-          optionId={card.comparison.best_option_id}
-          compact
-          className="mt-3"
-        />
-      );
+      return <ResultSummary comparison={card.comparison} title="ההשוואה" onSelect={onSelectOption} />;
     case "options":
-      return (
-        <OptionsMap
-          results={card.comparison.results}
-          bestOptionId={card.comparison.best_option_id}
-          onSelect={onSelectOption}
-          compact
-          className="mt-3"
-        />
-      );
+      return <ResultSummary comparison={card.comparison} title="האפשרויות" onSelect={onSelectOption} />;
     case "missing":
       return <MissingMessageCard card={card} />;
     case "rep_pending":
@@ -46,6 +31,75 @@ export function MessageCardView({ card, onSelectOption, askedAt }: MessageCardVi
     default:
       return null;
   }
+}
+
+const SUMMARY_ROWS = 3;
+
+/** The top alternatives of a comparison in one line each - numbers straight from the DTO. */
+function ResultSummary({
+  comparison,
+  title,
+  onSelect,
+}: {
+  comparison: components["schemas"]["Comparison"];
+  title: string;
+  onSelect?: (optionId: string) => void;
+}) {
+  const computed = comparison.results.filter((r) => r.delta != null);
+  const rows = (computed.length > 0 ? computed : comparison.results).slice(0, SUMMARY_ROWS);
+  const more = comparison.results.length - rows.length;
+  return (
+    <div className="mt-3 rounded-2xl border border-border bg-surface px-3 py-3">
+      <p className="px-1 text-xs font-bold text-muted-foreground">{title}</p>
+      <ul className="mt-2 flex flex-col gap-1.5">
+        {rows.map((r) => {
+          const row = (
+            <>
+              <span className="flex min-w-0 flex-1 items-center gap-1.5 font-semibold">
+                {r.option.id === comparison.best_option_id && (
+                  <Star aria-label="מומלץ" className="size-3.5 shrink-0 fill-current text-success" />
+                )}
+                <bdi className="truncate">{r.option.label}</bdi>
+              </span>
+              {r.delta != null ? (
+                <bdi
+                  dir="ltr"
+                  className={cn(
+                    "shrink-0 font-extrabold tabular-nums",
+                    r.delta > 0 ? "text-success" : r.delta < 0 ? "text-error" : "text-muted-foreground",
+                  )}
+                >
+                  {formatDelta(r.delta)}
+                </bdi>
+              ) : (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {r.eligibility.eligible ? "ממתין לנתונים" : "לא זכאי"}
+                </span>
+              )}
+            </>
+          );
+          return (
+            <li key={r.option.id}>
+              {onSelect ? (
+                <button
+                  type="button"
+                  onClick={() => onSelect(r.option.id)}
+                  className="flex min-h-9 w-full items-center gap-2 rounded-xl px-1 text-start text-sm hover:bg-mist"
+                >
+                  {row}
+                </button>
+              ) : (
+                <div className="flex min-h-9 items-center gap-2 px-1 text-sm">{row}</div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-2 px-1 text-xs text-muted-foreground">
+        {more > 0 ? `ועוד ${more}. ` : ""}הפירוט המלא בכרטיס ההשוואה.
+      </p>
+    </div>
+  );
 }
 
 function MissingMessageCard({ card }: { card: components["schemas"]["MissingCard"] }) {

@@ -28,8 +28,9 @@ from strauss.agent.agent import ReplyDraft, default_agent, to_reply
 from strauss.agent.deps import AgentDeps, TurnLog
 from strauss.agent.guard import mask_ids
 from strauss.agent.models_chain import AgentUnavailable
-from strauss.agent.schemas import Card, ComparisonCard, OptionsCard, RepPendingCard
+from strauss.agent.schemas import Card, ComparisonCard, MissingCard, OptionsCard, RepPendingCard
 from strauss.config.bundle import ConfigBundle
+from strauss.domain.missing import missing_fields
 from strauss.domain.models import Comparison, Profile
 from strauss.errors import ApiError
 from strauss.http.schemas import ConversationStatus, MessageRole, TurnResponse
@@ -98,6 +99,17 @@ def latest_cards(cards: list[Card]) -> list[Card]:
     return [c for i, c in enumerate(cards) if isinstance(c, RepPendingCard) or last[type(c)] == i]
 
 
+def current_missing(cards: list[Card], profile: Profile) -> list[Card]:
+    """A "still missing" card says what is missing at the END of the turn: a model that compared before
+    saving today's car must not leave a question about the car next to the comparison (QA B06)."""
+    still = missing_fields(profile)
+    return [
+        MissingCard(missing=still) if isinstance(c, MissingCard) else c
+        for c in cards
+        if not (isinstance(c, MissingCard) and not still)
+    ]
+
+
 def _stamped(card: Card, saved: Profile) -> Card:
     """A comparison the agent computed on the profile it just saved carries that save's revision (the
     revision only moves when the profile is stored, after the tools ran)."""
@@ -134,7 +146,7 @@ class TurnService:
         shown = self._repo.latest_comparison(record.id)
         deps = AgentDeps(profile=record.profile, bundle=self._bundle, value_of_use=self._vou, shown=shown)
         draft = self._think(record, deps, text, shown)
-        deps.turn.cards = latest_cards(deps.turn.cards)
+        deps.turn.cards = current_missing(latest_cards(deps.turn.cards), deps.profile)
 
         record = self._save_profile(record, deps)
         deps.turn.cards = [_stamped(card, record.profile) for card in deps.turn.cards]

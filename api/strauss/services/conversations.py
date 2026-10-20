@@ -17,7 +17,7 @@ from strauss.config.loader import load_sample_employees
 from strauss.config.samples import to_profile
 from strauss.domain.compare import compare, rerun
 from strauss.domain.missing import missing_fields
-from strauss.domain.models import CarArrangement, Comparison, Profile
+from strauss.domain.models import CarArrangement, Comparison, ParticipationStatus, Profile
 from strauss.errors import ApiError
 from strauss.http.schemas import (
     ConversationState,
@@ -180,10 +180,31 @@ class ConversationService:
         return comparison
 
     def _official_car(self, arrangement: CarArrangement) -> CarArrangement:
+        """Today's car as the server knows it: the vehicle re-read by its key, matched to the company catalog
+        by the same key, and the participation the employee stated counted as confirmed."""
         official = self._vou.get(arrangement.vehicle.key)
         if official is None:
             raise ApiError(404, "vehicle_not_found", "הרכב לא נמצא במאגר שווי השימוש לפי המפתח שנמסר")
-        return arrangement.model_copy(update={"vehicle": official})
+        key = official.key
+        catalog_id = next(
+            (
+                c.id
+                for c in self._bundle.catalog
+                if (c.maker_code, c.model_code, c.reg_year, c.vehicle_type_code)
+                == (key.maker_code, key.model_code, key.reg_year, key.vehicle_type_code)
+            ),
+            None,
+        )
+        stated = arrangement.participation is not None
+        return arrangement.model_copy(
+            update={
+                "vehicle": official,
+                "catalog_id": catalog_id,
+                "participation_status": ParticipationStatus.CONFIRMED
+                if stated
+                else ParticipationStatus.UNKNOWN,
+            }
+        )
 
     @staticmethod
     def _message(row: dict[str, Any]) -> MessageOut:

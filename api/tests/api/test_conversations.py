@@ -251,3 +251,16 @@ def test_an_edit_before_any_comparison_computes_nothing() -> None:
     ).json()
     assert patched["latest_comparison"] is None and patched["messages"] == []
     assert patched["status"] == "READY"
+
+
+def test_a_car_chosen_in_the_card_is_matched_to_the_catalog_by_the_server() -> None:
+    """QA UX06: today's car can be changed from the details card - the server decides what it is."""
+    state = start("E-003")  # Rachel, on maintenance today
+    noa_car = start()["profile"]["current"]  # a Corolla Cross from the catalog
+    sent = {**noa_car, "catalog_id": "CAR-99", "participation": 400, "participation_status": "UNKNOWN"}
+    patched = client.patch(
+        f"/v1/conversations/{state['id']}/profile", json={"current": sent}, headers=AS_NOA
+    ).json()
+    current = patched["profile"]["current"]
+    assert current["kind"] == "car" and current["catalog_id"] == noa_car["catalog_id"] != "CAR-99"
+    assert current["participation_status"] == "CONFIRMED"  # the employee stated it

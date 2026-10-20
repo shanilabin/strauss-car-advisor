@@ -13,6 +13,7 @@ import {
   Sparkles,
   Star,
   TrendingUp,
+  Users,
   Wallet,
   Zap,
 } from "lucide-react";
@@ -117,6 +118,11 @@ function WaitingValue() {
   return <span className="text-muted-foreground">ממתין לנתונים</span>;
 }
 
+/** A field that does not exist for this alternative (no company car after a waiver) - not "missing". */
+function NotApplicable({ children }: { children: ReactNode }) {
+  return <span className="font-normal text-muted-foreground">{children}</span>;
+}
+
 function DeltaHero({
   delta,
   estimated,
@@ -186,6 +192,10 @@ export function ComparisonCard({
   const todayVou = comparison.today.value_of_use;
   const waitingRep = result.participation_status === "DEFAULT_PENDING";
   const isBest = comparison.best_option_id === option.id;
+  // A computed waiver has no car: its car fields are "not applicable", shown from the engine's breakdown
+  const waiverDone = option.kind === "WAIVER" && result.delta != null;
+  // The family track's share is charged on top of the participation (QA UX05: show it, don't hide it)
+  const trackShare = result.breakdown?.track_employee_share ?? null;
   const participationMeta =
     result.participation_status != null
       ? participationStatusLabel(result.participation_status)
@@ -358,6 +368,8 @@ export function ComparisonCard({
                     <Money amount={result.group_budget} />
                     <Why sources={result.sources} field="group_budget" fieldValue={result.group_budget} fieldLabel="תקציב הקבוצה" />
                   </span>
+                ) : waiverDone ? (
+                  <NotApplicable>לא חל: אין רכב חברה</NotApplicable>
                 ) : (
                   <WaitingValue />
                 )}
@@ -369,6 +381,11 @@ export function ComparisonCard({
                     <span className="inline-flex items-center">
                       <Money amount={result.participation} />
                       <Why sources={result.sources} field="participation" fieldValue={result.participation} fieldLabel="השתתפות העובד" />
+                    </span>
+                  ) : waiverDone && result.breakdown ? (
+                    <span className="inline-flex flex-wrap items-baseline gap-x-2">
+                      <Money amount={result.breakdown.participation} />
+                      <NotApplicable>אין רכב, אין השתתפות</NotApplicable>
                     </span>
                   ) : (
                     <WaitingValue />
@@ -384,18 +401,37 @@ export function ComparisonCard({
                 </span>
               </FactRow>
 
+              {trackShare != null && trackShare > 0 && (
+                <FactRow icon={Users} label="חלק העובד במסלול">
+                  <span className="inline-flex flex-wrap items-center gap-x-2">
+                    <span className="inline-flex items-center">
+                      <Money amount={trackShare} />
+                      <Why sources={result.sources} field="track_employee_share" fieldValue={trackShare} fieldLabel="חלק העובד במסלול" />
+                    </span>
+                    <NotApplicable>בנוסף להשתתפות, יורד מהנטו בכל חודש</NotApplicable>
+                  </span>
+                </FactRow>
+              )}
+
               <FactRow icon={CarFront} label="שווי שימוש">
-                {result.value_of_use != null ? (
+                {result.value_of_use != null || (waiverDone && result.breakdown) ? (
                   <span className="inline-flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     <Money amount={todayVou} />
                     <span aria-hidden className="text-muted-foreground">
                       ←
                     </span>
                     <span className="sr-only">בחלופה </span>
-                    <span className="inline-flex items-center">
-                      <Money amount={result.value_of_use} />
-                      <Why sources={result.sources} field="value_of_use" fieldValue={result.value_of_use} fieldLabel="שווי שימוש" />
-                    </span>
+                    {result.value_of_use != null ? (
+                      <span className="inline-flex items-center">
+                        <Money amount={result.value_of_use} />
+                        <Why sources={result.sources} field="value_of_use" fieldValue={result.value_of_use} fieldLabel="שווי שימוש" />
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-baseline gap-x-2">
+                        <Money amount={result.breakdown?.value_of_use ?? 0} />
+                        <NotApplicable>אין רכב, אין שווי שימוש</NotApplicable>
+                      </span>
+                    )}
                   </span>
                 ) : (
                   <WaitingValue />

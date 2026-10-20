@@ -229,3 +229,18 @@ def test_stuck_after_a_calculation_says_the_result_is_on_screen(model: ModelSlot
     body = send(conversation_id, "מה אם אוותר על הרכב?").json()
     assert body["reply"]["text"] == turn_service.STUCK_AFTER_RESULT
     assert [c["kind"] for c in body["reply"]["cards"]] == ["comparison"]  # one, not thirteen
+
+
+def test_a_missing_card_says_what_is_missing_at_the_end_of_the_turn(model: ModelSlot) -> None:
+    """QA B06: compared before saving the car, then saved it - no question about the car is left."""
+    conversation_id = start(sample=None)
+    model.factory = lambda: scripted(
+        ("compare", {"option_ids": ["CAR-10"]}),  # nothing known yet -> a "missing" card
+        ("update_profile", {"occupation": "מנהל/ת מוצר", "base_salary": 18500}),
+        say("שמרתי. מה אחוז הפנסיה שלך?"),
+    )
+    body = send(conversation_id, "אני מנהלת מוצר ומרוויחה 18500").json()
+    (card,) = body["reply"]["cards"]
+    assert card["kind"] == "missing"
+    fields = [m["field"] for m in card["missing"]]
+    assert "occupation" not in fields and "salary.base" not in fields and "current" in fields

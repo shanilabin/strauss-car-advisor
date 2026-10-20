@@ -98,6 +98,13 @@ export function OptionsMap({
         {countLabel}
       </p>
 
+      {/* best_option_id is null when no alternative beats today (QA UX02) - say so, don't leave it blank */}
+      {bestOptionId == null && results.some((r) => r.delta != null) && (
+        <p className={cn("rounded-2xl bg-mist px-4 py-2 text-sm font-semibold text-primary", compact ? "mx-3 mt-3" : "mx-4 mt-4")}>
+          לנטו, המצב של היום עדיף: אף חלופה לא משאירה יותר בנטו. אפשר עדיין לבחור חלופה ולראות כמה היא עולה.
+        </p>
+      )}
+
       <div
         className={cn(
           "min-h-0 flex-1 overflow-y-auto",
@@ -135,7 +142,7 @@ export function OptionsMap({
                   <button
                     type="button"
                     disabled={!interactive || selectingId != null}
-                    aria-pressed={interactive ? selected : undefined}
+                    aria-current={selected || undefined}
                     aria-busy={selecting || undefined}
                     onClick={() => onSelect?.(id)}
                     className={cn(
@@ -206,10 +213,17 @@ export function OptionsMap({
                       </span>
                     </span>
 
-                    {selecting && (
+                    {selecting ? (
                       <span className="text-sm font-medium text-muted-foreground">
                         טוען השוואה…
                       </span>
+                    ) : (
+                      interactive && (
+                        // A card is an action - it opens the comparison - and says so (QA UX07)
+                        <span className="mt-auto pt-1 text-sm font-bold text-link">
+                          להשוואה המלאה ←
+                        </span>
+                      )
                     )}
                   </button>
                 </li>

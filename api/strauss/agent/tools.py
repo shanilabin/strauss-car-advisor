@@ -286,6 +286,11 @@ def find_vehicle(
                 "candidates": [],
                 "hint": "no variant has that value of use - check the payslip line, the year and the name",
             }
+        # Several variants can share a value of use; a company car is the catalog's one
+        catalog_keys = {v.key for v in in_catalog}
+        if len(found) > 1 and (in_both := [v for v in found if v.key in catalog_keys]):
+            found = in_both
+            hint = "matches the payslip and is in the company catalog - confirm with the employee, then save"
     elif in_catalog:
         found = in_catalog
         hint = "in the company catalog, so most likely the employee's car - confirm with them, then save"

@@ -474,3 +474,19 @@ def test_a_reply_carries_one_comparison_however_often_the_model_compared() -> No
     assert len(deps.turn.cards) == 3
     (card,) = latest_cards(deps.turn.cards)
     assert isinstance(card, ComparisonCard) and len(card.comparison.results) == 2  # the last one
+
+
+def test_the_payslips_value_of_use_pins_the_exact_car() -> None:
+    """After a payslip upload: "Corolla Cross 2025, value of use 4070". Three variants share that value;
+    the company car is the catalog's one."""
+    no_car = noa().model_copy(update={"current": None})
+    deps = deps_for(no_car)
+    result = run(
+        deps,
+        ("find_vehicle", {"query": "corolla cross", "reg_year": 2025, "payslip_value_of_use": 4070}),
+        FINAL,
+        prompt="העליתי את תלוש השכר שלי. הרכב שלי לפי התלוש: טויוטה קורולה קרוס 2025. שווי שימוש: 4070 ₪.",
+    )
+    (found,) = returned_by(result, "find_vehicle")
+    (candidate,) = found["candidates"]
+    assert candidate["key"] == {"tax_year": 2026, **COROLLA_CROSS_2025}

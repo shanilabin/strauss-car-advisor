@@ -43,10 +43,15 @@ HISTORY_MESSAGES = 12
 SAVE_ATTEMPTS = 3
 LIMITS = UsageLimits(request_limit=12)  # a runaway tool loop ends here instead of burning the free quota
 # Low thinking keeps a turn in seconds; the timeout hands a stuck provider over to the next in the chain.
-SETTINGS = ModelSettings(temperature=0.2, thinking="low", timeout=30)
-NO_MODEL = (AgentUnavailable, ModelAPIError, FallbackExceptionGroup)  # -> form mode
+SETTINGS = ModelSettings(temperature=0.2, thinking="low", timeout=20)
+# -> form mode. TimeoutError: the whole chain ran out of time (see TURN_DEADLINE_SECONDS)
+NO_MODEL = (AgentUnavailable, ModelAPIError, FallbackExceptionGroup, TimeoutError)
 BUSY_RETRIES = 1  # one more try when every model is rate-limited
 BUSY_WAIT_SECONDS = 6
+RETRY_ONLY_WITHIN_SECONDS = 12
+# However many models the chain has, a turn answers within this - a model that hangs until its own
+# timeout, times every model in the chain, must not keep the employee (and the browser) waiting minutes.
+TURN_DEADLINE_SECONDS = 45
 STUCK_REPLY = "סליחה, לא הצלחתי להשלים את הבקשה. אפשר לנסח אותה אחרת?"
 # Stuck after the tools already calculated: the result on screen is right, only the wording failed
 STUCK_AFTER_RESULT = (
@@ -71,7 +76,7 @@ def _agent_loop() -> asyncio.AbstractEventLoop:
     return loop
 
 
-def _run[T](coroutine: Coroutine[Any, Any, T]) -> T:
+def run_on_agent_loop[T](coroutine: Coroutine[Any, Any, T]) -> T:
     return asyncio.run_coroutine_threadsafe(coroutine, _agent_loop()).result()
 
 
@@ -191,14 +196,17 @@ class TurnService:
         past = history(self._repo.messages(record.id))
         for attempt in range(1 + BUSY_RETRIES):
             try:
-                result = _run(
-                    default_agent().run(
-                        text,
-                        deps=deps,
-                        model=model,
-                        message_history=past,
-                        model_settings=SETTINGS,
-                        usage_limits=LIMITS,
+                result = run_on_agent_loop(
+                    asyncio.wait_for(
+                        default_agent().run(
+                            text,
+                            deps=deps,
+                            model=model,
+                            message_history=past,
+                            model_settings=SETTINGS,
+                            usage_limits=LIMITS,
+                        ),
+                        TURN_DEADLINE_SECONDS,
                     )
                 )
                 break
@@ -206,7 +214,12 @@ class TurnService:
                 # Free tiers limit requests and tokens per MINUTE: every model busy now is often free
                 # again a few seconds later. Wait once before sending the employee to the form.
                 logger.warning("no model answered (%s, try %d): %r", record.id, attempt + 1, exc)
-                if attempt == BUSY_RETRIES:
+                # Retry only a quick "busy" (rate limits answer at once). Providers that time out already
+                # took long - another round would outlast the browser's request.
+                slow = (
+                    isinstance(exc, TimeoutError) or time.perf_counter() - started > RETRY_ONLY_WITHIN_SECONDS
+                )
+                if attempt == BUSY_RETRIES or slow:
                     raise agent_unavailable() from exc
                 deps.profile, deps.shown, deps.turn = record.profile, shown, TurnLog()  # a clean retry
                 time.sleep(BUSY_WAIT_SECONDS)

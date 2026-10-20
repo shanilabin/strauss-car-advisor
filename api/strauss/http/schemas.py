@@ -108,6 +108,7 @@ class ProfilePatch(ApiModel):
     expected_revision: int | None = Field(
         default=None, description="If set and stale, the update is rejected with 409"
     )
+    first_name: str | None = Field(default=None, min_length=1, max_length=30)
     occupation: str | None = None
     group: str | None = None
     salary: SalaryInput | None = None

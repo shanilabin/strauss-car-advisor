@@ -19,7 +19,7 @@ from strauss.services.conversations import ConversationService
 from strauss.services.payslip import PayslipService
 from strauss.services.rep import RepService
 from strauss.services.turn import TurnService
-from strauss.settings import get_settings
+from strauss.settings import get_settings, payslip_settings
 
 
 @lru_cache
@@ -91,11 +91,22 @@ RepServiceDep = Annotated[RepService, Depends(get_rep_service)]
 
 
 @lru_cache
+def payslip_text_model() -> Model:
+    """Reads a PDF's text: the whole chain, on the payslip key if one is set (its own quota)."""
+    return build_model(payslip_settings(get_settings()))
+
+
+@lru_cache
 def vision_model() -> Model:
-    """The chain's models that read images (Gemini). None of them -> AgentUnavailable -> 503."""
-    settings = get_settings()
+    """Reads an image: only the chain's models that read images (Gemini), on the payslip key if set.
+    None of them -> AgentUnavailable -> 503."""
+    settings = payslip_settings(get_settings())
     google = [e for e in settings.llm_chain.split(",") if e.strip().partition(":")[0] in GOOGLE]
     return build_model(settings.model_copy(update={"llm_chain": ",".join(google)}))
+
+
+def get_payslip_text_model() -> Callable[[], Model]:
+    return payslip_text_model
 
 
 def get_vision_model() -> Callable[[], Model]:
@@ -103,7 +114,7 @@ def get_vision_model() -> Callable[[], Model]:
 
 
 def get_payslip_service(
-    text_model: Annotated[Callable[[], Model], Depends(get_agent_model)],
+    text_model: Annotated[Callable[[], Model], Depends(get_payslip_text_model)],
     image_model: Annotated[Callable[[], Model], Depends(get_vision_model)],
 ) -> PayslipService:
     return PayslipService(text_model, image_model)

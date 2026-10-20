@@ -10,7 +10,7 @@ def test_health_ok() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert set(body["configured"]) == {"supabase", "gemini", "openrouter", "groq"}
+    assert set(body["configured"]) == {"supabase", "gemini", "payslip_gemini", "openrouter", "groq"}
     assert body["config_version"] and len(body["config_hash"]) == 64
 
 

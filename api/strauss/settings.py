@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_secret_key: str = ""
     gemini_api_key: str = ""
+    # Optional: a key from a SEPARATE Google project, used only to read payslips, so reading payslips never
+    # spends the chat's quota (and the other way round). Empty -> payslips use GEMINI_API_KEY.
+    payslip_gemini_api_key: str = ""
     openrouter_api_key: str = ""
     groq_api_key: str = ""
     # Gemini's free quota is per model (about 20 requests a day), so several are chained before Groq
@@ -30,6 +33,7 @@ class Settings(BaseSettings):
             # a dashboard link or a typo is "not configured", not healthy
             "supabase": bool(API_URL.match(self.supabase_url) and self.supabase_secret_key),
             "gemini": bool(self.gemini_api_key),
+            "payslip_gemini": bool(self.payslip_gemini_api_key),
             "openrouter": bool(self.openrouter_api_key),
             "groq": bool(self.groq_api_key),
         }
@@ -38,3 +42,10 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def payslip_settings(settings: Settings) -> Settings:
+    """The chain for reading payslips: the same models, on the payslip key when there is one."""
+    if not settings.payslip_gemini_api_key:
+        return settings
+    return settings.model_copy(update={"gemini_api_key": settings.payslip_gemini_api_key})

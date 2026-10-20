@@ -97,6 +97,7 @@ def _missing_text(profile: Profile) -> list[str]:
 @traced
 def update_profile(
     ctx: RunContext[AgentDeps],
+    first_name: str | None = None,
     occupation: str | None = None,
     base_salary: float | None = None,
     commissions: float | None = None,
@@ -113,6 +114,7 @@ def update_profile(
     """Save what the employee just told you. Pass only the fields they gave.
 
     Args:
+        first_name: What the employee asked to be called, as they wrote it. Optional - only if they gave it.
         occupation: The occupation exactly as written in the occupations list of the conversation state.
         base_salary: Monthly base salary, gross, in shekels.
         commissions: Monthly commissions, in shekels (0 if none).
@@ -134,6 +136,9 @@ def update_profile(
     # A field that can't be saved never blocks the others: it is reported back with what to ask, so one
     # unclear answer (an occupation that isn't listed, a half-given pair) doesn't sink the whole turn.
     not_saved: dict[str, str] = {}
+
+    if first_name is not None and first_name.strip():
+        changes["first_name"] = first_name.strip()[:30]
 
     if occupation is not None:
         names = [o.name for o in deps.bundle.occupations]
@@ -241,7 +246,8 @@ def update_profile(
         result["tell"] = "these were saved already - do not call update_profile for them again"
     if not_saved:
         result["not_saved"] = not_saved
-    if saved and (recalculated := _recalculate(deps)):
+    # a name changes no number: only a real detail recomputes what is on screen
+    if set(saved) - {"first_name"} and (recalculated := _recalculate(deps)):
         result["recalculated"] = recalculated
     return result
 

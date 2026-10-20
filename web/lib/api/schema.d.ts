@@ -818,6 +818,11 @@ export interface components {
             /** Current */
             current?: (components["schemas"]["CarArrangement"] | components["schemas"]["WaiverArrangement"]) | null;
             deductions?: components["schemas"]["Deductions-Input"] | null;
+            /**
+             * First Name
+             * @description What the employee asked to be called - optional, never required for a calculation
+             */
+            first_name?: string | null;
             /** Group */
             group?: string | null;
             /** Occupation */
@@ -847,6 +852,11 @@ export interface components {
             /** Current */
             current?: (components["schemas"]["CarArrangement"] | components["schemas"]["WaiverArrangement"]) | null;
             deductions?: components["schemas"]["Deductions-Output"] | null;
+            /**
+             * First Name
+             * @description What the employee asked to be called - optional, never required for a calculation
+             */
+            first_name?: string | null;
             /** Group */
             group?: string | null;
             /** Occupation */
@@ -874,6 +884,8 @@ export interface components {
              * @description If set and stale, the update is rejected with 409
              */
             expected_revision?: number | null;
+            /** First Name */
+            first_name?: string | null;
             /** Group */
             group?: string | null;
             /** Occupation */

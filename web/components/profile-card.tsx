@@ -60,6 +60,7 @@ type ProfileCardProps = {
 };
 
 type FieldKey =
+  | "first_name"
   | "occupation"
   | "group"
   | "salary.base"
@@ -211,6 +212,14 @@ export function ProfileCard({
     const expected_revision = profile.revision;
     const trimmed = raw.trim();
 
+    if (field === "first_name") {
+      if (!trimmed) {
+        setLocalError("נא להזין שם, או לבטל.");
+        return null;
+      }
+      return { expected_revision, first_name: trimmed.slice(0, 30) };
+    }
+
     if (field === "occupation") {
       if (!trimmed) {
         setLocalError("נא לבחור עיסוק.");
@@ -346,7 +355,9 @@ export function ProfileCard({
             <span className="inline-flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-brand-sky to-mist text-primary ring-4 ring-mist">
               <UserRound aria-hidden className="size-9" />
             </span>
-            <p className="mt-2 text-lg font-bold">עובד/ת שטראוס</p>
+            <p className="mt-2 text-lg font-bold">
+              <bdi>{profile.first_name ?? "עובד/ת שטראוס"}</bdi>
+            </p>
             {missing.length > 0 ? (
               <p className="mt-1 rounded-full bg-pending-surface px-3 py-0.5 text-sm font-semibold text-pending">
                 חסרים עוד {missing.length} פרטים
@@ -361,6 +372,29 @@ export function ProfileCard({
         </header>
 
         <div className="mx-4 mb-3 flex flex-col rounded-2xl border border-border/70 px-3">
+          <ProfileRow
+            label="שם (לא חובה)"
+            missing={false}
+            editing={editing === "first_name"}
+            saving={saving}
+            onStartEdit={() => startEdit("first_name", profile.first_name ?? "")}
+            display={
+              profile.first_name ? <bdi>{profile.first_name}</bdi> : <span className="text-muted-foreground">—</span>
+            }
+          >
+            {editing === "first_name" ? (
+              <FieldEditor
+                kind="text"
+                label="שם"
+                value={draft}
+                disabled={saving}
+                onChange={setDraft}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+              />
+            ) : null}
+          </ProfileRow>
+
           <ProfileRow
             label="עיסוק"
             missing={occupationMissing}
@@ -701,6 +735,7 @@ export function ProfileCard({
 }
 
 const ROW_ICONS: Record<string, LucideIcon> = {
+  שם: UserRound,
   עיסוק: Briefcase,
   קבוצת: Layers,
   שכר: Wallet,

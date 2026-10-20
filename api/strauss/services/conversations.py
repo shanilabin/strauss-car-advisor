@@ -33,6 +33,7 @@ CARDS = TypeAdapter(list[Card])
 TRACE = TypeAdapter(list[TraceEvent])
 # The details the employee edited, as the chat note names them
 FIELD_NAMES = {
+    "first_name": "שם",
     "occupation": "עיסוק",
     "group": "קבוצה",
     "salary": "שכר",
@@ -129,8 +130,10 @@ class ConversationService:
         # A comparison already on screen is recomputed for the new details at once - the employee who
         # edits a field sees the effect, exactly as when they tell the agent in the chat.
         shown = self._repo.latest_comparison(record.id)
-        recompute = shown is not None and not missing_fields(updated)
-        status = status_for(updated, len(questions), presented=recompute)
+        presented = shown is not None and not missing_fields(updated)  # the comparison stays on screen
+        # a new name changes no number - nothing to recompute, nothing to announce
+        recompute = presented and any(name != "first_name" for name in changes)
+        status = status_for(updated, len(questions), presented=presented)
         saved = self._repo.update_profile(record.id, updated, status, expected_revision=current.revision)
         if saved is None:  # someone else changed the profile between our read and our write
             raise stale_revision(current.revision, current.revision + 1)

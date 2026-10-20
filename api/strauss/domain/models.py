@@ -88,6 +88,12 @@ class Profile(DomainModel):
     """Everything known about the employee. None means "not provided yet" - never a guess."""
 
     revision: int = Field(default=0, ge=0, description="Incremented on every change")
+    first_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=30,
+        description="What the employee asked to be called - optional, never required for a calculation",
+    )
     occupation: str | None = None
     group: str | None = None
     salary: SalaryInput | None = None

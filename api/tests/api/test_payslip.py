@@ -5,11 +5,13 @@ import base64
 from pathlib import Path
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
 from index import app
 from strauss.agent.payslip import PayslipReading, only_printed, pdf_text
-from strauss.http.deps import get_vision_model
+from strauss.http.deps import get_payslip_text_model, get_vision_model
+from strauss.settings import Settings, payslip_settings
 from tests.api.conftest import AS_NOA, ModelSlot
 from tests.scripted import scripted
 
@@ -27,6 +29,11 @@ AS_PRINTED = {  # what payslip-demo-1 shows
     "car_participation": 300,
     "car_text": "טויוטה קורולה קרוס 2025",
 }
+
+
+@pytest.fixture(autouse=True)
+def payslip_reads_on_the_scripted_model(model: ModelSlot) -> None:
+    app.dependency_overrides[get_payslip_text_model] = lambda: model
 
 
 def read(
@@ -98,3 +105,10 @@ def test_only_printed_numbers_survive() -> None:
 def test_something_that_is_not_a_pdf_has_no_text() -> None:
     assert pdf_text(b"plain bytes") is None
     assert pdf_text(PNG) is None
+
+
+def test_a_separate_payslip_key_keeps_the_chat_quota_apart() -> None:
+    both = Settings(gemini_api_key="chat", payslip_gemini_api_key="payslip")
+    assert payslip_settings(both).gemini_api_key == "payslip" and both.gemini_api_key == "chat"
+    only_chat = Settings(gemini_api_key="chat", payslip_gemini_api_key="")
+    assert payslip_settings(only_chat).gemini_api_key == "chat"

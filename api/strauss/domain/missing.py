@@ -4,6 +4,7 @@ Profile-level gaps are asked from the employee. Option-level gaps (children for 
 participation only the company knows) are reported on the option itself by compare().
 """
 
+from strauss.config.bundle import ConfigBundle
 from strauss.domain.models import CarArrangement, MissingField, Profile
 
 QUESTIONS: dict[str, str] = {
@@ -43,3 +44,17 @@ def missing_fields(profile: Profile) -> list[MissingField]:
     elif isinstance(profile.current, CarArrangement) and profile.current.participation is None:
         missing.append(employee_question("current.participation"))
     return missing
+
+
+def rep_context(profile: Profile, bundle: ConfigBundle, requested_car: str | None = None) -> dict[str, str]:
+    """The minimum the transport rep needs beside a question: the occupation, the group IT implies (from
+    the occupations table - a stated group is never trusted), today's car and the car asked about.
+    No salary, no ID."""
+    listed = next((o for o in bundle.occupations if o.name == profile.occupation), None)
+    context = {"occupation": profile.occupation or "", "group": listed.group if listed else ""}
+    if requested_car:
+        context["requested_car"] = requested_car
+    if isinstance(profile.current, CarArrangement):
+        vehicle = profile.current.vehicle
+        context["current_car"] = f"{vehicle.commercial_name} ({vehicle.key.reg_year})"
+    return context

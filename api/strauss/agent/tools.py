@@ -19,7 +19,7 @@ from strauss.agent.schemas import ComparisonCard, MissingCard, OptionsCard
 from strauss.domain.compare import IncompleteProfile, UnknownOption, rerun
 from strauss.domain.compare import compare as run_compare
 from strauss.domain.eligibility import check_eligibility as run_eligibility
-from strauss.domain.missing import missing_fields, rep_question
+from strauss.domain.missing import missing_fields, rep_context, rep_question
 from strauss.domain.models import (
     CarArrangement,
     Comparison,
@@ -594,14 +594,7 @@ def _send_to_rep(deps: AgentDeps, field: str) -> bool:
     if asked is None:
         return False
     question, requested_car = asked
-    profile = deps.profile
-    context = {"occupation": profile.occupation or "", "group": profile.group or ""}
-    if requested_car:
-        context["requested_car"] = requested_car
-    if isinstance(profile.current, CarArrangement):
-        context["current_car"] = (
-            f"{profile.current.vehicle.commercial_name} ({profile.current.vehicle.key.reg_year})"
-        )
+    context = rep_context(deps.profile, deps.bundle, requested_car)
     deps.turn.rep_requests.append(RepRequest(field=field, question=question, context=context))
     return True
 

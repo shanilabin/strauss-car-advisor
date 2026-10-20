@@ -5,7 +5,7 @@ import { RepLoginForm } from "@/components/rep-login-form";
 import { Topbar } from "@/components/topbar";
 
 export const metadata: Metadata = {
-  title: "כניסת נציג | יועץ הרכב של שטראוס",
+  title: "כניסת נציג | Strauss Drive",
   robots: { index: false, follow: false },
 };
 

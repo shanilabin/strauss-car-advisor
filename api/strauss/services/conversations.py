@@ -16,7 +16,7 @@ from strauss.config.bundle import ConfigBundle
 from strauss.config.loader import load_sample_employees
 from strauss.config.samples import to_profile
 from strauss.domain.compare import compare, rerun
-from strauss.domain.missing import missing_fields
+from strauss.domain.missing import missing_fields, rep_context, rep_question
 from strauss.domain.models import CarArrangement, Comparison, ParticipationStatus, Profile
 from strauss.errors import ApiError
 from strauss.http.schemas import (
@@ -177,10 +177,31 @@ class ConversationService:
         comparison = compare(record.profile, self._bundle, option_ids)
         request = {"option_ids": option_ids, "revision": record.profile.revision}
         self._repo.save_comparison(record.id, request, comparison)
+        if option_ids is not None:  # the employee chose these cars - not a browse of all of them
+            self._ask_rep_about_defaults(record, comparison)
         status = status_for(record.profile, len(self._repo.open_questions(record.id)), presented=True)
         if status != record.status:
             self._repo.set_status(record.id, status)
         return comparison
+
+    def _ask_rep_about_defaults(self, record: ConversationRecord, comparison: Comparison) -> None:
+        """A chosen car whose participation is still the catalog default: the transport rep is asked, the
+        same as when the employee asks the advisor in the chat (a car picked in the gallery or the form
+        showed "waiting for the rep" while no rep was ever asked). One open question per car."""
+        already = {q["field"] for q in self._repo.open_questions(record.id)}
+        for result in comparison.results:
+            if (
+                not result.eligibility.eligible
+                or result.participation_status != ParticipationStatus.DEFAULT_PENDING
+            ):
+                continue
+            field = f"participation:{result.option.id}"
+            if field in already:
+                continue
+            question = rep_question(field, "participation", car=result.option.label).question
+            context = rep_context(record.profile, self._bundle, result.option.label)
+            self._repo.open_question(record.id, field, question, context, record.profile.revision)
+            already.add(field)
 
     def _official_car(self, arrangement: CarArrangement) -> CarArrangement:
         """Today's car as the server knows it: the vehicle re-read by its key, matched to the company catalog

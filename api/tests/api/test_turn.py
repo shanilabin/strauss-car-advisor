@@ -219,7 +219,7 @@ def test_a_change_told_in_the_chat_after_a_comparison_recomputes_it(model: Model
     state = body["state"]
     assert state["latest_comparison"]["id"] == card["comparison"]["id"] != shown["id"]
     assert state["latest_comparison"]["profile_snapshot"]["revision"] == state["profile"]["revision"]
-    assert state["status"] == "PRESENTED"
+    assert state["status"] == "WAITING_REP"  # the Tesla's default participation was sent to the rep
 
 
 def test_stuck_after_a_calculation_says_the_result_is_on_screen(model: ModelSlot) -> None:

@@ -9,6 +9,7 @@ import { BottomSheet } from "@/components/chat/bottom-sheet";
 import { ChatPanel, type ChatMessage } from "@/components/chat/chat-panel";
 import { type PayslipApply, PayslipUpload } from "@/components/chat/payslip-upload";
 import { RepWaitingPanel } from "@/components/chat/rep-waiting-panel";
+import { ResizeHandle, useResizableWidth } from "@/components/chat/resize-handle";
 import { VehicleList } from "@/components/chat/vehicle-list";
 import { ComparisonCard } from "@/components/comparison-card";
 import { OptionsMap } from "@/components/options-map";
@@ -517,14 +518,13 @@ function OptionsDesktop({
   compareError: string | null;
   openQuestions: NonNullable<ConversationState["open_questions"]>;
 }) {
-  const [chatExpanded, setChatExpanded] = useState(false);
+  // The employee can drag the chat wider at the expense of the gallery (and it is remembered)
+  const [chatWidth, setChatWidth] = useResizableWidth("strauss-chat-width-options", 320);
 
   return (
     <div
-      className={cn(
-        "grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-4 p-6",
-        chatExpanded ? "grid-cols-[440px_minmax(0,1fr)]" : "grid-cols-[280px_minmax(0,1fr)]",
-      )}
+      className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-2 p-6"
+      style={{ gridTemplateColumns: `${chatWidth}px auto minmax(0,1fr)` }}
     >
       <ChatPanel
         messages={messages}
@@ -537,10 +537,11 @@ function OptionsDesktop({
         onSend={onSend}
         onSelectOption={onSelectOption}
         openQuestions={openQuestions}
-        narrow={!chatExpanded}
-        onTraceOpenChange={setChatExpanded}
-        className="min-h-0 min-w-0 transition-[width] duration-300 ease-out motion-reduce:transition-none"
+        narrow={chatWidth < 400}
+        onTraceOpenChange={(open) => open && chatWidth < 440 && setChatWidth(440)}
+        className="min-h-0 min-w-0"
       />
+      <ResizeHandle width={chatWidth} onWidth={setChatWidth} grows="left" />
       <OptionsGalleryPanel
         galleryComparison={galleryComparison}
         optionsPending={optionsPending}
@@ -596,7 +597,7 @@ function ComparisonDesktop({
   openQuestions: NonNullable<ConversationState["open_questions"]>;
   missing: NonNullable<ConversationState["missing"]>;
 }) {
-  const [chatExpanded, setChatExpanded] = useState(false);
+  const [chatWidth, setChatWidth] = useResizableWidth("strauss-chat-width-comparison", 300, 0.3);
   const [rail, setRail] = useState<"options" | "details">("options");
 
   return (
@@ -635,9 +636,12 @@ function ComparisonDesktop({
           comparison={comparison}
           optionId={selectedOptionId}
           onChangeCar={onChangeCar}
-          className="min-h-0 flex-1"
+          // its own height inside the scrolling column - squeezed to the screen, its background ended
+          // mid-content (the "white rectangle" testers saw)
+          className="shrink-0"
         />
       </div>
+      <ResizeHandle width={chatWidth} onWidth={setChatWidth} grows="right" />
       <ChatPanel
         messages={messages}
         quickReplies={quickReplies}
@@ -649,12 +653,10 @@ function ComparisonDesktop({
         onSend={onSend}
         onSelectOption={onSelectOption}
         openQuestions={openQuestions}
-        narrow={!chatExpanded}
-        onTraceOpenChange={setChatExpanded}
-        className={cn(
-          "shrink-0 self-stretch transition-[width] duration-300 ease-out motion-reduce:transition-none",
-          chatExpanded ? "w-[min(440px,42vw)]" : "w-[280px]",
-        )}
+        narrow={chatWidth < 400}
+        onTraceOpenChange={(open) => open && chatWidth < 440 && setChatWidth(440)}
+        className="shrink-0 self-stretch"
+        style={{ width: chatWidth }}
       />
     </div>
   );

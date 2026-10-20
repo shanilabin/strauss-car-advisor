@@ -458,10 +458,16 @@ def _recommendation(outcome: Comparison, deps: AgentDeps) -> str:
         )
     best = next((r for r in outcome.results if r.option.id == best_id), None)
     if best is not None:
+        estimate = (
+            " Its participation is still the catalog default: say the recommendation is an estimate until "
+            "the transport rep confirms."
+            if best.participation_status == ParticipationStatus.DEFAULT_PENDING
+            else ""
+        )
         return (
             f"'{best.option.label}' leaves the most in the employee's net pay of all the alternatives (see "
             "'because'). Recommend it in one sentence, add that the choice also depends on what car they "
-            "need, and offer what-if questions as quick replies"
+            f"need, and offer what-if questions as quick replies.{estimate}"
         )
     label = next((o.label for o in build_options(deps.profile, deps.bundle) if o.id == best_id), best_id)
     return (

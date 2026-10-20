@@ -490,3 +490,13 @@ def test_the_payslips_value_of_use_pins_the_exact_car() -> None:
     (found,) = returned_by(result, "find_vehicle")
     (candidate,) = found["candidates"]
     assert candidate["key"] == {"tax_year": 2026, **COROLLA_CROSS_2025}
+
+
+def test_a_recommendation_built_on_a_default_participation_says_it_is_an_estimate() -> None:
+    """Reviewers' point: "the best" may rest on a participation the rep has not confirmed yet.
+    David's best is the MG4, whose participation is still the catalog default."""
+    david = to_profile(next(e for e in load_sample_employees() if e.id == "E-002"), BUNDLE)
+    result = run(deps_for(david), ("compare", {"option_ids": ["CAR-06"]}), FINAL)
+    (returned,) = returned_by(result, "compare")
+    assert "leaves the most" in returned["recommendation"]
+    assert "an estimate until the transport rep confirms" in returned["recommendation"]

@@ -91,19 +91,20 @@ export function VehicleList({
                     !eligible && "bg-background opacity-75 shadow-none",
                   )}
                 >
-                  {photo && (
-                    <span className="relative h-10 w-16 shrink-0" title={`תמונה להמחשה · מקור: ${photo.credit}`}>
-                      <Image src={photo.src} alt="" fill sizes="64px" className={cn("object-contain", !eligible && "grayscale")} />
-                    </span>
-                  )}
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    {/* The photo sits above the name - beside it, a narrow rail left the name a letter wide */}
+                    {photo && (
+                      <span className="relative mb-1 h-10 w-20" title={`תמונה להמחשה · מקור: ${photo.credit}`}>
+                        <Image src={photo.src} alt="" fill sizes="80px" className={cn("object-contain object-right", !eligible && "grayscale")} />
+                      </span>
+                    )}
                     {best && (
                       <span className="mb-1 inline-flex w-fit items-center gap-1 rounded-full bg-success px-2 py-0.5 text-[0.7rem] font-bold text-white dark:text-[#102632]">
                         <Star aria-hidden className="size-3 fill-current" />
                         מומלץ
                       </span>
                     )}
-                    <span className="text-sm font-extrabold">
+                    <span className="text-sm font-extrabold [overflow-wrap:normal] [word-break:normal]">
                       <bdi>{result.option.label}</bdi>
                     </span>
                     <span className="text-xs text-muted-foreground">

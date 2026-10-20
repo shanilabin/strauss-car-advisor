@@ -1,53 +1,69 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import type { components } from "@/lib/api/schema";
 import { cn } from "@/lib/utils";
 
 type TraceEvent = components["schemas"]["TraceEvent"];
 
-const HEBREW = /[\u0590-\u05FF]/;
-
-/** Short Hebrew status for the event kind. Not a description of what the tool did. */
-const KIND_STATUS: Record<TraceEvent["kind"], string> = {
-  tool_call: "קריאה",
-  tool_result: "תוצאה",
-  guard: "בדיקה",
-  model: "מודל",
+/** What each step of the advisor did, in the employee's words. The technical name stays beside it. */
+const TOOL_TEXT: Record<string, string> = {
+  update_profile: "שמר את הפרטים שמסרת",
+  find_vehicle: "חיפש את הרכב שלך במאגר רשות המסים",
+  set_current_car: "שמר את הרכב שלך",
+  list_options: "חישב את כל החלופות במנוע החישוב",
+  compare: "חישב את ההשוואה במנוע החישוב",
+  check_eligibility: "בדק זכאות לפי כללי רכב החברה",
+  ask_representative: "שלח שאלה לנציג התחבורה",
+  rep_answer: "החיל את תשובת נציג התחבורה",
 };
 
-function stringField(data: TraceEvent["data"], key: string): string | null {
-  if (!data) return null;
-  const value = data[key];
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
+type Step = { key: string; text: string; detail: string | null; tech: string; ok: boolean };
 
-/** A Hebrew label only when the event payload itself carries one. */
-function hebrewLabel(data: TraceEvent["data"]): string | null {
-  for (const key of ["label", "label_he", "title"]) {
-    const value = stringField(data, key);
-    if (value && HEBREW.test(value)) return value;
-  }
-  return null;
-}
-
-/**
- * Status from the DTO: an explicit status string, a guard pass/fail, otherwise the kind.
- * Numeric payload fields and raw data are never rendered.
- */
-function statusText(event: TraceEvent): string {
-  const explicit = stringField(event.data, "status");
-  if (explicit) return explicit;
-  const kind = KIND_STATUS[event.kind];
-  const passed = event.data?.passed;
-  if (typeof passed === "boolean") {
-    return `${kind} · ${passed ? "עבר" : "לא עבר"}`;
-  }
-  return kind;
+/** One line per step: a tool call with its outcome, the number check, the model that phrased the reply. */
+function stepsOf(events: TraceEvent[]): Step[] {
+  const steps: Step[] = [];
+  events.forEach((event, index) => {
+    const key = `${event.at}-${event.kind}-${event.name}-${index}`;
+    const data = event.data ?? {};
+    if (event.kind === "tool_call") {
+      const result = events.slice(index + 1).find((e) => e.kind === "tool_result" && e.name === event.name);
+      const retried = result?.data != null && "retry" in result.data;
+      steps.push({
+        key,
+        text: TOOL_TEXT[event.name] ?? event.name,
+        detail: retried ? "הכלי ביקש תיקון, והיועץ ניסה שוב" : null,
+        tech: event.name,
+        ok: !retried,
+      });
+    } else if (event.kind === "tool_result" && event.name === "rep_answer") {
+      steps.push({ key, text: TOOL_TEXT.rep_answer, detail: null, tech: event.name, ok: true });
+    } else if (event.kind === "guard") {
+      const passed = data.passed === true;
+      const detail = passed
+        ? "כל מספר בתשובה הגיע מהמנוע או ממה שמסרת"
+        : data.action === "retry"
+          ? "נמצא מספר שלא הגיע מהמנוע, והיועץ התבקש לנסח מחדש בלי מספרים"
+          : "התשובה הוחלפה בנוסח קבוע, כי היה בה מספר שלא אומת";
+      steps.push({ key, text: "בדיקת אמינות למספרים", detail, tech: event.name, ok: passed });
+    } else if (event.kind === "model") {
+      if (event.name === "stuck") {
+        steps.push({ key, text: "היועץ לא הצליח לנסח תשובה", detail: null, tech: event.name, ok: false });
+        return;
+      }
+      const ms = typeof data.ms === "number" ? data.ms : null;
+      steps.push({
+        key,
+        text: "ניסח את התשובה במילים",
+        detail: ms != null ? `תוך ${(ms / 1000).toFixed(1)} שניות` : null,
+        tech: event.name,
+        ok: true,
+      });
+    }
+  });
+  return steps;
 }
 
 type AgentActionsProps = {
@@ -56,14 +72,23 @@ type AgentActionsProps = {
   onOpenChange?: (open: boolean) => void;
 };
 
-/** Collapsed timeline of one assistant message's server trace. Hidden when the trace is empty. */
+/**
+ * "What the advisor did": one assistant message's server trace as plain steps - which tools ran, that
+ * the engine (not the AI) calculated, and that every number passed the check. Hidden when empty.
+ */
 export function AgentActions({ trace, messageId, onOpenChange }: AgentActionsProps) {
   const events = trace ?? [];
   const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLOListElement>(null);
+  // Opened at the bottom of the chat, the steps would sit below the fold - bring them into view
+  useEffect(() => {
+    if (open) panelRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [open]);
   const reactId = useId();
   const panelId = `agent-actions-${messageId}-${reactId.replace(/:/g, "")}`;
 
-  if (events.length === 0) return null;
+  const steps = stepsOf(events);
+  if (steps.length === 0) return null;
 
   function toggle() {
     const next = !open;
@@ -80,7 +105,7 @@ export function AgentActions({ trace, messageId, onOpenChange }: AgentActionsPro
         onClick={toggle}
         className="inline-flex min-h-9 max-w-full items-center gap-2 rounded-full border border-border bg-surface px-3.5 text-xs font-semibold text-muted-foreground shadow-soft hover:border-primary hover:text-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11"
       >
-        הצג פעולות AI
+        מה היועץ עשה מאחורי הקלעים
         <ChevronDown
           aria-hidden
           className={cn(
@@ -90,30 +115,36 @@ export function AgentActions({ trace, messageId, onOpenChange }: AgentActionsPro
         />
       </button>
       <ol
+        ref={panelRef}
         id={panelId}
         className={cn(
           "mt-2 max-w-full min-w-0 rounded-2xl border border-border/70 bg-background px-4 py-1",
           !open && "hidden",
         )}
       >
-        {events.map((event, index) => {
-          const label = hebrewLabel(event.data);
-          return (
-            <li
-              key={`${event.at}-${event.kind}-${event.name}-${index}`}
-              className="min-w-0 border-b border-border py-2 last:border-b-0"
+        <li className="border-b border-border py-2 text-xs text-muted-foreground">
+          ה-AI רק מנהל את השיחה. כל חישוב נעשה במנוע החישוב של החברה, וכל מספר בתשובה נבדק לפני שהוא מוצג.
+        </li>
+        {steps.map((step, index) => (
+          <li key={step.key} className="flex min-w-0 gap-2 border-b border-border py-2 last:border-b-0">
+            <span
+              aria-hidden
+              className={cn(
+                "mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[0.7rem] font-bold",
+                step.ok ? "bg-success-surface text-success" : "bg-pending-surface text-pending",
+              )}
             >
-              <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-                <span className="font-semibold text-muted-foreground tabular-nums">{index + 1}</span>
-                <span className="min-w-0 font-semibold break-all">
-                  <bdi dir="ltr">{event.name}</bdi>
-                </span>
-                <span className="text-muted-foreground">{statusText(event)}</span>
-              </p>
-              {label ? <p className="mt-0.5 text-sm break-words">{label}</p> : null}
-            </li>
-          );
-        })}
+              {index + 1}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">{step.text}</span>
+              {step.detail && <span className="block text-xs text-muted-foreground">{step.detail}</span>}
+              <bdi dir="ltr" className="block font-mono text-[0.68rem] break-all text-muted-foreground/70">
+                {step.tech}
+              </bdi>
+            </span>
+          </li>
+        ))}
       </ol>
     </div>
   );

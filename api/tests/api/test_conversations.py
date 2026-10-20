@@ -264,3 +264,17 @@ def test_a_car_chosen_in_the_card_is_matched_to_the_catalog_by_the_server() -> N
     current = patched["profile"]["current"]
     assert current["kind"] == "car" and current["catalog_id"] == noa_car["catalog_id"] != "CAR-99"
     assert current["participation_status"] == "CONFIRMED"  # the employee stated it
+
+
+def test_a_name_is_saved_and_changes_no_number() -> None:
+    """The employee's name is optional and personal - it recomputes nothing and keeps the comparison."""
+    conversation_id = start()["id"]
+    shown = client.post(
+        f"/v1/conversations/{conversation_id}/compare", json={"option_ids": ["CAR-10"]}, headers=AS_NOA
+    ).json()
+    patched = client.patch(
+        f"/v1/conversations/{conversation_id}/profile", json={"first_name": "נועה"}, headers=AS_NOA
+    ).json()
+    assert patched["profile"]["first_name"] == "נועה"
+    assert patched["latest_comparison"]["id"] == shown["id"] and patched["messages"] == []
+    assert patched["status"] == "PRESENTED"

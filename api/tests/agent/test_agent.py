@@ -6,18 +6,23 @@ import re
 from typing import Any
 
 import pytest
+from pydantic_ai import Agent
+from pydantic_ai.exceptions import FallbackExceptionGroup, ModelHTTPError
 from pydantic_ai.messages import (
     ModelRequest,
+    ModelResponse,
+    TextPart,
     ToolReturnPart,
 )
 from pydantic_ai.models.fallback import FallbackModel
+from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIChatModel
 
 from strauss.agent.agent import build_agent, employee_replies, state_block, to_reply
 from strauss.agent.deps import AgentDeps
 from strauss.agent.guard import FALLBACK_WITH_CARDS
-from strauss.agent.models_chain import AgentUnavailable, build_model
+from strauss.agent.models_chain import AgentUnavailable, Cooldowns, CoolingModel, build_model
 from strauss.agent.schemas import ComparisonCard, MissingCard, OptionsCard
 from strauss.config.loader import load_bundle, load_sample_employees
 from strauss.config.samples import to_profile
@@ -214,10 +219,11 @@ def test_one_key_gives_one_model_two_keys_give_a_fallback_chain() -> None:
 def test_the_default_chain_tries_several_gemini_models_then_groq_without_sdk_retries() -> None:
     chain = build_model(Settings(gemini_api_key="g", groq_api_key="q", openrouter_api_key=""))
     assert isinstance(chain, FallbackModel)
-    names = [m.model_name for m in chain.models]
+    members = [m.wrapped for m in chain.models]  # each wrapped in a CoolingModel
+    names = [m.model_name for m in members]
     assert sum(name.startswith("gemini") for name in names) >= 3
     # Groq limits tokens per minute per model, so several Groq models follow the Gemini ones
-    groq = [m for m in chain.models if isinstance(m, OpenAIChatModel)]
+    groq = [m for m in members if isinstance(m, OpenAIChatModel)]
     assert len(groq) >= 2 and names.index(groq[0].model_name) > 2
     assert all(m.client.max_retries == 0 for m in groq)  # hand over at once
 
@@ -500,3 +506,54 @@ def test_a_recommendation_built_on_a_default_participation_says_it_is_an_estimat
     (returned,) = returned_by(result, "compare")
     assert "leaves the most" in returned["recommendation"]
     assert "an estimate until the transport rep confirms" in returned["recommendation"]
+
+
+# ── A chain remembers which models are exhausted ─────────────────────────────
+
+
+def _counting(name: str, calls: list[str], fail: int | None = None) -> FunctionModel:
+    def respond(_messages: Any, _info: Any) -> ModelResponse:
+        calls.append(name)
+        if fail is not None:
+            raise ModelHTTPError(fail, name)
+        return ModelResponse(parts=[TextPart("שלום")])
+
+    return FunctionModel(respond, model_name=name)
+
+
+def test_a_model_out_of_quota_is_skipped_on_the_next_requests() -> None:
+    """Every turn makes several requests: an exhausted model must not be knocked on before each one."""
+    calls: list[str] = []
+    board = Cooldowns()
+    chain = FallbackModel(
+        CoolingModel(_counting("exhausted", calls, fail=429), "a", board),
+        CoolingModel(_counting("fresh", calls), "b", board),
+    )
+    agent: Agent[None, str] = Agent(chain)
+    for _ in range(3):
+        assert agent.run_sync("שלום").output == "שלום"
+    assert calls == ["exhausted", "fresh", "fresh", "fresh"]
+
+
+def test_when_every_model_is_resting_they_are_tried_anyway() -> None:
+    calls: list[str] = []
+    board = Cooldowns()
+    chain = FallbackModel(
+        CoolingModel(_counting("one", calls, fail=429), "a", board),
+        CoolingModel(_counting("two", calls, fail=503), "b", board),
+    )
+    agent: Agent[None, str] = Agent(chain)
+    for _ in range(2):
+        with pytest.raises(FallbackExceptionGroup):
+            agent.run_sync("שלום")
+    assert calls == ["one", "two", "one", "two"]  # nothing left to skip to - better to try than to give up
+
+
+def test_a_name_told_in_the_chat_is_saved_and_recomputes_nothing() -> None:
+    deps = deps_for(noa())
+    run(deps, ("compare", {"option_ids": ["CAR-10"]}), FINAL)
+    shown = deps.shown
+    result = run(deps, ("update_profile", {"first_name": "נועה"}), FINAL, prompt="קוראים לי נועה")
+    (returned,) = returned_by(result, "update_profile")
+    assert returned["saved"] == ["first_name"] and "recalculated" not in returned
+    assert deps.profile.first_name == "נועה" and deps.shown is shown

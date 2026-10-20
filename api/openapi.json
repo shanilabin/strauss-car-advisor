@@ -1388,6 +1388,20 @@
               }
             ]
           },
+          "first_name": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the employee asked to be called - optional, never required for a calculation",
+            "title": "First Name"
+          },
           "group": {
             "anyOf": [
               {
@@ -1490,6 +1504,20 @@
                 "type": "null"
               }
             ]
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the employee asked to be called - optional, never required for a calculation",
+            "title": "First Name"
           },
           "group": {
             "anyOf": [
@@ -1597,6 +1625,19 @@
             ],
             "description": "If set and stale, the update is rejected with 409",
             "title": "Expected Revision"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
           },
           "group": {
             "anyOf": [

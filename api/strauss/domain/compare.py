@@ -146,6 +146,7 @@ def compare(
     # Every alternative is computed, even when only some were asked about: "the best one" is always
     # measured against all the eligible alternatives AND today - never just among the compared ones.
     results = [_option_result(profile, option, occupation, group, today, bundle) for option in options]
+    results = [_with_break_even(r, profile, occupation, group, today, bundle) for r in results]
     # computed options best-first, then eligible ones still waiting for data, then ineligible ones;
     # sorted() is stable, so ties keep catalog order
     ranked = sorted(
@@ -175,6 +176,33 @@ def compare(
         results=ranked,
         best_option_id=best,
     )
+
+
+def _with_break_even(
+    result: OptionResult,
+    profile: Profile,
+    occupation: Occupation | None,
+    group: str | None,
+    today: _Priced,
+    bundle: ConfigBundle,
+) -> OptionResult:
+    """When does this car stop paying off? The participation is a net-only deduction - it changes neither
+    the taxable income nor the electric gross-up - so each shekel of it moves net by exactly one shekel,
+    and the net of today is reached at participation + delta. That amount is not trusted on the formula:
+    the option is recomputed at it, and kept only if the delta there really is zero."""
+    catalog_id = result.option.catalog_id
+    if catalog_id is None or result.delta is None or result.participation is None:
+        return result
+    candidate = result.participation + result.delta
+    if candidate < ZERO:  # even with no participation at all, today stays better
+        return result
+    probe = profile.model_copy(
+        update={"confirmed_participation": {**profile.confirmed_participation, catalog_id: candidate}}
+    )
+    check = _option_result(probe, result.option, occupation, group, today, bundle)
+    if check.delta != ZERO:
+        return result
+    return result.model_copy(update={"break_even_participation": candidate})
 
 
 def rerun(previous: Comparison, profile: Profile, bundle: ConfigBundle) -> Comparison:

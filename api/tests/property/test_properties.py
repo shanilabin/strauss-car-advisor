@@ -237,3 +237,23 @@ def test_the_same_profile_always_gives_the_same_comparison(profile: Profile) -> 
     first = compare(profile, BUNDLE, comparison_id="x")
     second = compare(profile, BUNDLE, comparison_id="x")
     assert first == second
+
+
+@settings(max_examples=100, deadline=None)
+@given(employees())
+def test_the_break_even_participation_really_is_the_break_even(profile: Profile) -> None:
+    """For any employee and any car with a break-even: at it the car leaves exactly today's net, a shekel
+    more and today wins by a shekel, a shekel less and the car wins by a shekel - recomputed by the engine."""
+    comparison = compare(profile, BUNDLE)
+    for result in comparison.results:
+        point = result.break_even_participation
+        if point is None:
+            continue
+        assert result.option.catalog_id is not None and point >= 0
+        for shift, expected in ((0, 0), (1, -1), (-1, 1)):
+            if point + shift < 0:
+                continue
+            confirmed = {**profile.confirmed_participation, result.option.catalog_id: point + shift}
+            probe = profile.model_copy(update={"confirmed_participation": confirmed})
+            (again,) = compare(probe, BUNDLE, [result.option.id]).results
+            assert again.delta == expected, (result.option.id, point, shift, again.delta)

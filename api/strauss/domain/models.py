@@ -194,6 +194,12 @@ class OptionResult(DomainModel):
     waterfall: list[WaterfallStep] = Field(default_factory=list)
     explanation: list[str] = Field(default_factory=list, max_length=2)
     sources: list[Source] = Field(default_factory=list)
+    break_even_participation: Money | None = Field(
+        default=None,
+        description="The monthly participation in this car at which it leaves exactly the net of today: "
+        "below it the car pays off, above it today does. Verified by recomputing the option at that "
+        "participation; null when there is no such amount (no car, nothing computed, or below zero).",
+    )
 
 
 class CalculationContext(DomainModel):

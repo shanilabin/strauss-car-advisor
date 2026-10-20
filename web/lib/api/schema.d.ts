@@ -691,6 +691,11 @@ export interface components {
          * @description One alternative versus today. Numbers are None when the option is not eligible or incomplete.
          */
         OptionResult: {
+            /**
+             * Break Even Participation
+             * @description The monthly participation in this car at which it leaves exactly the net of today: below it the car pays off, above it today does. Verified by recomputing the option at that participation; null when there is no such amount (no car, nothing computed, or below zero).
+             */
+            break_even_participation?: number | null;
             breakdown?: components["schemas"]["NetBreakdown"] | null;
             /** Complete */
             complete: boolean;

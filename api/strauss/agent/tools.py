@@ -422,6 +422,11 @@ def describe(result: OptionResult) -> dict[str, Any]:
     # What moves the net, biggest first - in words, so "why?" and "what if?" get a real answer
     steps = sorted((s for s in result.waterfall if s.delta), key=lambda s: -abs(s.delta))
     item["because"] = [f"{s.label} ({'raises' if s.delta > 0 else 'lowers'} the net)" for s in steps[:3]]
+    if result.break_even_participation is not None:
+        item["break_even"] = (
+            "the card shows up to which monthly participation this car still pays off (above it, today "
+            "is better) - point to it for 'when does it change?', without the amount"
+        )
     if result.participation_status == ParticipationStatus.DEFAULT_PENDING:
         item["participation"] = "default - waiting for the transport rep to confirm"
         item["ask_rep_field"] = f"participation:{result.option.id}"

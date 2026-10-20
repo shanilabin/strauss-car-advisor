@@ -395,7 +395,7 @@ export function WaterfallChart({ result, className, compact = false }: Waterfall
           aria-controls={tableId}
           onClick={() => setShowBreakdown((v) => !v)}
         >
-          פירוק לפי סדר
+          {showBreakdown ? "הסתרת הטבלה" : "מה הזיז את הנטו? הצגה בטבלה"}
           <ChevronDown
             aria-hidden
             data-icon="inline-end"
@@ -494,7 +494,8 @@ function OrderedBreakdownTable({
       aria-label="פירוק לפי סדר"
     >
       <caption className="mb-2 text-start text-xs font-semibold text-muted-foreground">
-        פירוק לפי סדר — אותם צעדים כמו בגרף, בסדר המנוע
+        כל שורה היא שינוי אחד (שווי שימוש, החזר חשמל, השתתפות…) והשפעתו על הנטו, לפי הסדר שבו מנוע
+        החישוב מחשב. סכום השינויים שווה בדיוק להפרש.
       </caption>
       <thead>
         <tr className="border-b border-border text-start text-muted-foreground">

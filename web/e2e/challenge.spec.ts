@@ -114,7 +114,7 @@ async function runChallenge(employee: Page, rep: Page): Promise<void> {
   await expect(definitions.nth(3)).toHaveText(CHALLENGE.context.currentCar);
 
   const answerForm = panel.locator("form");
-  await answerForm.getByLabel("תשובה").fill(REP_PARTICIPATION_ANSWER);
+  await answerForm.getByLabel(/השתתפות חודשית/).fill(REP_PARTICIPATION_ANSWER);
   const submit = answerForm.getByRole("button");
   await submit.click();
   await expect(submit).toBeDisabled();

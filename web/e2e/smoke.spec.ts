@@ -32,7 +32,7 @@ test("landing through comparison shows requirement 23 and a matching waterfall",
   await expect(comparison.locator("div.border-s-4 > p")).toHaveCount(2);
 
   const waterfall = comparison.getByRole("region", { name: "גרף מפל" });
-  await expect(waterfall.getByRole("button", { name: "פירוק לפי סדר" })).toBeVisible();
+  await expect(waterfall.getByRole("button", { name: /הצגה בטבלה/ })).toBeVisible();
   const total = normalizeMoney(await waterfall.locator("header bdi").first().innerText());
   const delta = normalizeMoney(
     await fields.getByRole("row", { name: /^ההפרש/ }).locator("bdi").first().innerText(),

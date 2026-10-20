@@ -940,6 +940,18 @@
         "additionalProperties": false,
         "description": "One alternative versus today. Numbers are None when the option is not eligible or incomplete.",
         "properties": {
+          "break_even_participation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The monthly participation in this car at which it leaves exactly the net of today: below it the car pays off, above it today does. Verified by recomputing the option at that participation; null when there is no such amount (no car, nothing computed, or below zero).",
+            "title": "Break Even Participation"
+          },
           "breakdown": {
             "anyOf": [
               {

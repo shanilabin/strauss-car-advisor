@@ -10,6 +10,7 @@ import {
   type LucideIcon,
   Minus,
   RefreshCw,
+  Scale,
   Sparkles,
   Star,
   TrendingUp,
@@ -112,6 +113,34 @@ function Why({
       fieldValue={fieldValue}
       fieldLabel={fieldLabel}
     />
+  );
+}
+
+/**
+ * "When does this change?" - the participation at which this car leaves exactly today's net. The amount
+ * comes from the engine, which verified it by recomputing the option at it (OptionResult.break_even).
+ */
+function BreakEven({ amount, delta, pending }: { amount: number; delta: number; pending: boolean }) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface px-4 py-3 text-[0.95rem]">
+      <p className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+        <Scale aria-hidden className="size-4" />
+        מתי זה משתנה?
+      </p>
+      <p className="mt-1 leading-relaxed">
+        {delta > 0 ? (
+          <>
+            החלופה משתלמת כל עוד ההשתתפות בה היא עד <Money amount={amount} /> בחודש. מעל זה, המצב של היום
+            משאיר יותר בנטו.
+          </>
+        ) : (
+          <>
+            החלופה תשתלם רק אם ההשתתפות בה תרד מתחת ל-<Money amount={amount} /> בחודש.
+          </>
+        )}
+        {pending && <span className="text-muted-foreground"> שימו לב: ההשתתפות עוד ממתינה לאישור הנציג.</span>}
+      </p>
+    </div>
   );
 }
 
@@ -350,6 +379,9 @@ export function ComparisonCard({
                 </p>
               ))}
             </div>
+          )}
+          {eligible && result.break_even_participation != null && result.delta != null && result.delta !== 0 && (
+            <BreakEven amount={result.break_even_participation} delta={result.delta} pending={waitingRep} />
           )}
         </section>
       </div>

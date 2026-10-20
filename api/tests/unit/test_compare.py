@@ -337,3 +337,21 @@ def test_when_nothing_beats_today_there_is_no_best_option() -> None:
     rachel = full("E-003")
     assert all(r.delta < 0 for r in rachel.results if r.delta is not None)
     assert rachel.best_option_id is None
+
+
+def test_noa_and_the_atto_3_break_even_at_the_participation_plus_the_gain() -> None:
+    """ATTO 3 for Noa: +661 at a participation of 300 -> worth it up to 961 a month, not beyond."""
+    noa = full("E-001")
+    atto = next(r for r in noa.results if r.option.id == "CAR-10")
+    assert (atto.participation, atto.delta, atto.break_even_participation) == (300, 661, 961)
+
+
+def test_there_is_no_break_even_when_even_a_free_car_loses() -> None:
+    """Rachel: every car lowers her net by more than its whole participation."""
+    rachel = full("E-003")
+    assert all(r.break_even_participation is None for r in rachel.results)
+
+
+def test_a_waiver_has_no_break_even() -> None:
+    waiver = next(r for r in full("E-001").results if r.option.id == "waiver")
+    assert waiver.break_even_participation is None

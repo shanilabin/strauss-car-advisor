@@ -24,6 +24,7 @@ import {
 } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useOccupations } from "@/lib/api/use-config";
 import {
   RepAnswerError,
   RepQuestionsFetchError,
@@ -321,7 +322,7 @@ function QuestionPanel({ question }: { question: RepQuestionOut }) {
             <PencilLine aria-hidden className="size-4.5 text-primary" />
             טיפול בבקשה
           </h3>
-          <AnswerForm questionId={question.id} />
+          <AnswerForm questionId={question.id} field={question.field} />
         </div>
         <div className="rounded-2xl border border-border/70 p-4 lg:p-5">
           <h3 className="mb-3 flex items-center gap-2 text-base font-extrabold">
@@ -375,7 +376,15 @@ function TimelineStep({
   );
 }
 
-function AnswerForm({ questionId }: { questionId: string }) {
+/**
+ * The answer's input follows the question (QA: a free-text box for an occupation was refused by the
+ * server): an occupation is picked from the company's occupations table - which also decides the group -
+ * and a participation is an amount in shekels with the date it applies from.
+ */
+function AnswerForm({ questionId, field }: { questionId: string; field: string }) {
+  const kind: "occupation" | "participation" | "other" =
+    field === "occupation" ? "occupation" : field.startsWith("participation:") ? "participation" : "other";
+  const occupations = useOccupations();
   const formId = useId();
   const valueId = `${formId}-value`;
   const dateId = `${formId}-effective-from`;
@@ -396,8 +405,15 @@ function AnswerForm({ questionId }: { questionId: string }) {
     const effectiveFromRaw = String(form.get("effective_from") ?? "").trim();
 
     if (!value) {
-      setError("הזינו תשובה לפני השליחה.");
+      setError(kind === "occupation" ? "בחרו עיסוק מהטבלה לפני השליחה." : "הזינו תשובה לפני השליחה.");
       return;
+    }
+    if (kind === "participation") {
+      const amount = Number(value.replaceAll(",", ""));
+      if (!Number.isFinite(amount) || amount < 0) {
+        setError("ההשתתפות היא סכום חודשי בשקלים, למשל 350.");
+        return;
+      }
     }
 
     setLocked(true);
@@ -428,35 +444,71 @@ function AnswerForm({ questionId }: { questionId: string }) {
     <form onSubmit={onSubmit} noValidate aria-busy={answer.isPending} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <label htmlFor={valueId} className="text-sm font-semibold">
-          תשובה
+          {kind === "occupation"
+            ? "העיסוק מטבלת העיסוקים"
+            : kind === "participation"
+              ? "השתתפות חודשית של העובד (₪)"
+              : "תשובה"}
         </label>
-        <input
-          id={valueId}
-          name="value"
-          type="text"
-          required
-          maxLength={500}
-          disabled={disabled}
-          aria-invalid={error !== null || undefined}
-          aria-describedby={error ? errorId : undefined}
-          placeholder="לדוגמה: 350"
-          className="rounded-xl h-11 w-full border border-input bg-surface px-3 text-base text-foreground aria-invalid:border-error"
-        />
+        {kind === "occupation" ? (
+          <>
+            <select
+              id={valueId}
+              name="value"
+              required
+              disabled={disabled || occupations.isPending}
+              aria-invalid={error !== null || undefined}
+              aria-describedby={error ? errorId : undefined}
+              defaultValue=""
+              className="rounded-xl h-11 w-full border border-input bg-surface px-3 text-base text-foreground aria-invalid:border-error"
+            >
+              <option value="" disabled>
+                {occupations.isPending ? "טוען את טבלת העיסוקים…" : "בחרו את העיסוק המתאים"}
+              </option>
+              {(occupations.data ?? []).map((o) => (
+                <option key={o.name} value={o.name}>
+                  {o.name} · קבוצה {o.group}
+                  {o.car_required ? " · רכב חובה" : ""}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              העיסוק קובע את קבוצת הזכאות. אם אף עיסוק לא מתאים, יש לעדכן קודם את טבלת העיסוקים.
+            </p>
+          </>
+        ) : (
+          <input
+            id={valueId}
+            name="value"
+            type="text"
+            inputMode={kind === "participation" ? "decimal" : undefined}
+            dir={kind === "participation" ? "ltr" : undefined}
+            required
+            maxLength={500}
+            disabled={disabled}
+            aria-invalid={error !== null || undefined}
+            aria-describedby={error ? errorId : undefined}
+            placeholder={kind === "participation" ? "לדוגמה: 350" : undefined}
+            className="rounded-xl h-11 w-full border border-input bg-surface px-3 text-base text-foreground aria-invalid:border-error"
+          />
+        )}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <label htmlFor={dateId} className="text-sm font-semibold">
-          בתוקף מ־ <span className="font-normal text-muted-foreground">(אופציונלי)</span>
-        </label>
-        <input
-          id={dateId}
-          name="effective_from"
-          type="date"
-          disabled={disabled}
-          dir="ltr"
-          className="rounded-xl h-11 w-full min-w-0 max-w-full border border-input bg-surface px-3 text-base text-foreground sm:max-w-xs"
-        />
-      </div>
+      {kind === "participation" && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor={dateId} className="text-sm font-semibold">
+            בתוקף מ־ <span className="font-normal text-muted-foreground">(אופציונלי)</span>
+          </label>
+          <input
+            id={dateId}
+            name="effective_from"
+            type="date"
+            disabled={disabled}
+            dir="ltr"
+            className="rounded-xl h-11 w-full min-w-0 max-w-full border border-input bg-surface px-3 text-base text-foreground sm:max-w-xs"
+          />
+        </div>
+      )}
 
       {error && (
         <p

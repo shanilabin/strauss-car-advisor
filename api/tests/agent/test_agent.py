@@ -557,3 +557,11 @@ def test_a_name_told_in_the_chat_is_saved_and_recomputes_nothing() -> None:
     (returned,) = returned_by(result, "update_profile")
     assert returned["saved"] == ["first_name"] and "recalculated" not in returned
     assert deps.profile.first_name == "נועה" and deps.shown is shown
+
+
+def test_the_state_says_whether_the_employee_may_give_up_the_car() -> None:
+    """A car-required role (field sales, drivers) is never offered a waiver, not even as a quick reply."""
+    driver = noa().model_copy(update={"occupation": "נהג/ת הפצה"})
+    assert '"may_give_up_car": false' in state_block(deps_for(driver))
+    assert '"may_give_up_car": true' in state_block(deps_for(noa()))
+    assert '"may_give_up_car": null' in state_block(deps_for())

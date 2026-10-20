@@ -227,7 +227,8 @@ def test_editing_a_detail_after_a_comparison_recomputes_it(conversations: Memory
     assert [r["option"]["id"] for r in after["results"]] == ["CAR-10"]  # the same alternative
     assert after["results"][0]["net_today"] != before["results"][0]["net_today"]
     assert after["profile_snapshot"]["revision"] == 1
-    assert patched["status"] == "PRESENTED"  # still on the comparison, not back to the options
+    # still on the comparison, not back to the options (the ATTO 3's default participation is with the rep)
+    assert patched["status"] == "WAITING_REP"
     note = patched["messages"][-1]
     assert note["role"] == "system_event" and "שכר" in note["text"] and "חושבה מחדש" in note["text"]
     request, _ = conversations.comparisons[conversation_id][-1]
@@ -277,4 +278,28 @@ def test_a_name_is_saved_and_changes_no_number() -> None:
     ).json()
     assert patched["profile"]["first_name"] == "נועה"
     assert patched["latest_comparison"]["id"] == shown["id"] and patched["messages"] == []
-    assert patched["status"] == "PRESENTED"
+    assert patched["status"] == "WAITING_REP"  # unchanged: the comparison (and the rep question) stay
+
+
+def test_a_car_chosen_in_the_gallery_asks_the_rep_about_its_default_participation(
+    conversations: MemoryConversationRepo,
+) -> None:
+    """Tester: the screen said "waiting for the rep" but the rep's queue was empty - only the chat asked."""
+    conversation_id = start()["id"]
+    client.get(f"/v1/conversations/{conversation_id}/options", headers=AS_NOA)  # browsing asks nobody
+    assert conversations.open_questions(conversation_id) == []
+    url = f"/v1/conversations/{conversation_id}/compare"
+    for _ in range(2):  # choosing it twice asks once
+        client.post(url, json={"option_ids": ["CAR-10"]}, headers=AS_NOA)
+    (question,) = conversations.open_questions(conversation_id)
+    assert question["field"] == "participation:CAR-10" and "ATTO 3" in question["question"]
+    assert question["context"] == {
+        "occupation": "מנהל/ת מוצר",
+        "group": "ג",  # from the occupations table
+        "requested_car": "ATTO 3 (2025)",
+        "current_car": "COROLLA CROSS (2025)",
+    }
+    state = client.get(f"/v1/conversations/{conversation_id}", headers=AS_NOA).json()
+    assert state["status"] == "WAITING_REP" and len(state["open_questions"]) == 1
+    rep_queue = client.get("/v1/rep/questions", params={"status": "OPEN"}, headers=AS_REP).json()
+    assert [q["conversation_id"] for q in rep_queue] == [conversation_id]

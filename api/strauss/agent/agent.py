@@ -68,6 +68,8 @@ def state_block(deps: AgentDeps) -> str:
         ]
         + [{"id": WAIVER_ID, "car": "ויתור על הרכב (אחזקה)"}],
         "children_age_limit": family.requires.child_max_age if family else None,
+        # from the occupations table: a car-required role may not give up the car - never offer it
+        "may_give_up_car": _may_give_up_car(deps),
         # what the employee is looking at, so "and the other one?" or "why?" has a referent
         "on_screen": _on_screen(deps),
     }
@@ -76,6 +78,11 @@ def state_block(deps: AgentDeps) -> str:
         + json.dumps(state, ensure_ascii=False, indent=1)
         + "\n```"
     )
+
+
+def _may_give_up_car(deps: AgentDeps) -> bool | None:
+    listed = next((o for o in deps.bundle.occupations if o.name == deps.profile.occupation), None)
+    return listed.waiver_allowed if listed else None
 
 
 def _on_screen(deps: AgentDeps) -> dict[str, object] | None:

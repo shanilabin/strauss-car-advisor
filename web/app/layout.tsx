@@ -18,7 +18,7 @@ const secularOne = Secular_One({
 });
 
 export const metadata: Metadata = {
-  title: "יועץ הרכב של שטראוס",
+  title: "Strauss Drive",
   description: "מה יקרה לנטו שלי? השוואת חלופות רכב חברה, מוסברת ומדויקת",
 };
 

@@ -321,3 +321,19 @@ def test_rerun_keeps_the_alternatives_on_screen() -> None:
 
     every = compare(noa, bundle)
     assert {r.option.id for r in rerun(every, richer, bundle).results} == {r.option.id for r in every.results}
+
+
+def test_the_best_option_is_measured_against_every_alternative_not_just_the_compared_ones() -> None:
+    """QA B03: Yossi - the EV3 compared alone is not "the best for you" while the MG4 leaves more."""
+    yossi = to_profile(next(e for e in load_sample_employees() if e.id == "E-004"), BUNDLE)
+    ev3 = next(r.option.id for r in compare(yossi, BUNDLE).results if "EV3" in r.option.label)
+    alone = compare(yossi, BUNDLE, [ev3])
+    assert [r.option.id for r in alone.results] == [ev3]
+    assert alone.best_option_id == "CAR-06"  # the MG4, not in this comparison
+
+
+def test_when_nothing_beats_today_there_is_no_best_option() -> None:
+    """QA UX02: Rachel - every alternative lowers her net, so staying as she is is the best."""
+    rachel = full("E-003")
+    assert all(r.delta < 0 for r in rachel.results if r.delta is not None)
+    assert rachel.best_option_id is None

@@ -115,17 +115,19 @@ function ChatPreview() {
 
 function ImpactPreview() {
   return (
-    <div className="relative grid w-full grid-cols-2 items-end gap-6 px-4">
-      <span className="absolute inset-x-0 top-0 mx-auto inline-flex w-fit flex-col items-center rounded-xl bg-success px-3 py-1 text-white shadow-soft dark:text-[#102632]">
-        <bdi dir="ltr" className="text-base font-extrabold">{formatDelta(sample.delta)}</bdi>
-        <span className="text-[0.65rem] font-semibold">בחודש · דוגמה</span>
-      </span>
+    // The net goes UP, so the "בחלופה" bar is clearly the taller one, solid to its top, with the gain on it
+    // (QA UX10: a top that faded to white read as a shorter bar).
+    <div className="grid w-full grid-cols-2 items-end gap-6 px-4">
       <div className="flex flex-col items-center gap-1">
-        <span className="h-20 w-full rounded-t-lg bg-gradient-to-t from-brand-blue to-brand-sky" />
+        <span className="h-12 w-full rounded-t-lg bg-gradient-to-t from-brand-blue to-brand-sky" />
         <span className="text-[0.7rem] font-semibold text-foreground/75">היום</span>
       </div>
       <div className="flex flex-col items-center gap-1">
-        <span className="h-24 w-full rounded-t-lg bg-gradient-to-t from-brand-green to-brand-lime" />
+        <span className="inline-flex flex-col items-center rounded-xl bg-success px-3 py-1 text-white shadow-soft dark:text-[#102632]">
+          <bdi dir="ltr" className="text-base font-extrabold">{formatDelta(sample.delta)}</bdi>
+          <span className="text-[0.65rem] font-semibold">בחודש · דוגמה</span>
+        </span>
+        <span className="h-20 w-full rounded-t-lg bg-gradient-to-t from-brand-green to-brand-green/75" />
         <span className="text-[0.7rem] font-semibold text-foreground/75">בחלופה</span>
       </div>
     </div>
@@ -133,10 +135,11 @@ function ImpactPreview() {
 }
 
 function OptionsPreview() {
+  // In the engine's order for the same sample employee: for her net, giving up the car comes first
   const rows = [
-    { name: sample.vehicleName, drive: sample.driveLabel, tone: "bg-mint", best: true },
+    { name: "ויתור על הרכב", drive: "אחזקה", tone: "bg-peach", best: true },
     { name: "MG4", drive: "חשמלי", tone: "bg-mist", best: false },
-    { name: "ויתור על הרכב", drive: "אחזקה", tone: "bg-peach", best: false },
+    { name: sample.vehicleName, drive: sample.driveLabel, tone: "bg-mint", best: false },
   ];
   return (
     <ul className="flex w-full flex-col justify-center gap-2">

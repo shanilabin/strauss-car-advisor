@@ -2,7 +2,15 @@
 
 import { SendHorizontal, UserRound } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
 import { AgentActions } from "@/components/chat/agent-actions";
 import { MessageCardView } from "@/components/chat/message-cards";
@@ -54,7 +62,7 @@ export function ChatPanel({
   className,
 }: ChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const inputId = useId();
   const [openTraces, setOpenTraces] = useState<ReadonlySet<string>>(() => new Set());
 
@@ -78,6 +86,21 @@ export function ChatPanel({
     event.preventDefault();
     submit(draft);
   }
+
+  // Enter sends, Shift+Enter starts a new line (Enter while an IME is composing never sends)
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    submit(draft);
+  }
+
+  // The box grows with the text, up to a few lines
+  useEffect(() => {
+    const node = inputRef.current;
+    if (!node) return;
+    node.style.height = "auto";
+    node.style.height = `${node.scrollHeight}px`;
+  }, [draft]);
 
   return (
     <section
@@ -231,14 +254,17 @@ export function ChatPanel({
               height={360}
               className={cn("shrink-0 rounded-full bg-surface p-0.5 shadow-soft", narrow ? "size-8" : "size-11")}
             />
-            <p className="inline-flex items-center gap-2 rounded-3xl rounded-es-md bg-mist px-4 py-3 text-sm font-medium text-muted-foreground shadow-soft">
-              חושב
-              <span aria-hidden className="typing-dots inline-flex gap-1">
-                <span />
-                <span />
-                <span />
-              </span>
-            </p>
+            <div className="flex flex-col gap-1">
+              <p className="inline-flex w-fit items-center gap-2 rounded-3xl rounded-es-md bg-mist px-4 py-3 text-sm font-medium text-muted-foreground shadow-soft">
+                חושב
+                <span aria-hidden className="typing-dots inline-flex gap-1">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              </p>
+              <SlowNotice />
+            </div>
           </div>
         )}
       </div>
@@ -272,11 +298,16 @@ export function ChatPanel({
         <label className="sr-only" htmlFor={inputId}>
           כתיבת הודעה
         </label>
-        <input
+        <span id={`${inputId}-hint`} className="sr-only">
+          Enter לשליחה, Shift+Enter לשורה חדשה
+        </span>
+        <textarea
           ref={inputRef}
           id={inputId}
+          rows={1}
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           onFocus={() => {
             const node = inputRef.current;
             if (!node) return;
@@ -288,7 +319,8 @@ export function ChatPanel({
           placeholder={narrow ? "שאל שאלה…" : "כתוב הודעה כאן…"}
           autoComplete="off"
           enterKeyHint="send"
-          className="min-h-12 min-w-0 flex-1 scroll-mb-4 rounded-full border border-border bg-background px-5 text-base outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
+          aria-describedby={`${inputId}-hint`}
+          className="max-h-36 min-h-12 min-w-0 flex-1 resize-none scroll-mb-4 rounded-3xl border border-border bg-background px-5 py-3 text-base leading-6 outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
         />
         <Button
           type="submit"
@@ -301,6 +333,26 @@ export function ChatPanel({
         </Button>
       </form>
     </section>
+  );
+}
+
+const SLOW_AFTER_MS = 15_000;
+
+/**
+ * When the advisor takes long (free-tier models are busy), say so instead of a silent spinner (QA UX04).
+ * Mounted only while thinking, so it starts fresh every turn.
+ */
+function SlowNotice() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSlow(true), SLOW_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+  if (!slow) return null;
+  return (
+    <p role="status" className="max-w-xs px-1 text-xs text-muted-foreground">
+      זה לוקח יותר מהרגיל, כי היועץ עמוס. ממשיכים לנסות, ואם זה לא יצליח ההודעה שלך תחזור לתיבה.
+    </p>
   );
 }
 

@@ -2,7 +2,6 @@
 
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
 
 import { ComparisonCard } from "@/components/comparison-card";
 import { OptionsMap } from "@/components/options-map";
@@ -25,8 +24,9 @@ import {
 } from "@/lib/fixtures/sample-employees";
 import { useSession } from "@/lib/supabase/use-session";
 import { cn } from "@/lib/utils";
+import { defaultOptionId } from "@/lib/comparison";
+import { type FormStage, updateFormFlow, useFormFlow } from "@/lib/form-flow-store";
 
-type FormStage = "pick" | "profile" | "options" | "comparison";
 
 function stepForStage(stage: FormStage): Step | null {
   switch (stage) {
@@ -48,10 +48,12 @@ function stepForStage(stage: FormStage): Step | null {
 export function FormFlow() {
   const session = useSession();
   const createConversation = useCreateConversation();
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [stage, setStage] = useState<FormStage>("pick");
-  const [userSelectedId, setUserSelectedId] = useState<string | null>(null);
-  const [pickedName, setPickedName] = useState<string | null>(null);
+  // Kept per tab, so a refresh returns to the same step (QA B07)
+  const { conversationId, stage, selectedId: userSelectedId, pickedName } = useFormFlow();
+  const setConversationId = (value: string | null) => updateFormFlow({ conversationId: value });
+  const setStage = (value: FormStage) => updateFormFlow({ stage: value });
+  const setUserSelectedId = (value: string | null) => updateFormFlow({ selectedId: value });
+  const setPickedName = (value: string | null) => updateFormFlow({ pickedName: value });
 
   const conversation = useConversation(conversationId ?? "");
   const compare = useCompare(conversationId ?? "");
@@ -65,7 +67,7 @@ export function FormFlow() {
   const selectedOptionId =
     userSelectedId && results.some((r) => r.option.id === userSelectedId)
       ? userSelectedId
-      : (comparison?.best_option_id ?? results[0]?.option.id ?? null);
+      : defaultOptionId(comparison);
 
   const createError =
     createConversation.error instanceof CreateConversationError

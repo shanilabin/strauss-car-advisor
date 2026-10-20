@@ -108,6 +108,7 @@ def update_profile(
     current_participation: float | None = None,
     current_is_waiver: bool | None = None,
     occupation_not_in_list: bool = False,
+    replaces_todays_car: bool = False,
 ) -> dict[str, Any]:
     """Save what the employee just told you. Pass only the fields they gave.
 
@@ -121,9 +122,11 @@ def update_profile(
         credit_points: Tax credit points (e.g. 2.25). Save together with pension_pct.
         children_under_23: Number of children up to the age in the conversation state.
         current_participation: What the employee pays today per month for their current car, in shekels.
-        current_is_waiver: True if the employee has no company car today and receives car maintenance.
+        current_is_waiver: True if the employee has no company car TODAY and receives car maintenance. Never
+            for "what if I give up the car?" - that is compare(["waiver"]).
         occupation_not_in_list: True only after checking with the employee that their occupation really is
             none of the listed ones - it then goes to the transport rep.
+        replaces_todays_car: True only when the employee corrects a saved car: they have no car today.
     """
     deps = ctx.deps
     profile = deps.profile
@@ -190,7 +193,13 @@ def update_profile(
     if children_under_23 is not None:
         changes["children_under_23"] = children_under_23
 
-    if current_is_waiver:
+    if current_is_waiver and isinstance(profile.current, CarArrangement) and not replaces_todays_car:
+        not_saved["current"] = (
+            "today's car is already saved. To show giving up the car, call compare with the alternatives on "
+            "screen plus 'waiver'. Only if the employee says they have no car TODAY, call again with "
+            "replaces_todays_car=true"
+        )
+    elif current_is_waiver:
         occupation_name = changes.get("occupation") or profile.occupation
         known_occupation = next((o for o in deps.bundle.occupations if o.name == occupation_name), None)
         if known_occupation is None:
@@ -219,11 +228,17 @@ def update_profile(
             updated = Profile.model_validate({**updated.model_dump(), field_name: value})
         except ValidationError as exc:
             not_saved[field_name] = f"invalid value ({exc.errors()[0]['msg']}) - ask the employee again"
-    saved = [name for name in changes if name not in not_saved]
+    valid = [name for name in changes if name not in not_saved]
+    # A value that is already saved is no change: nothing is recomputed, and the model is told so - a
+    # model that "saves" the same salary again and again would otherwise loop.
+    saved = [name for name in valid if getattr(updated, name) != getattr(profile, name)]
     if saved:
         deps.profile = updated
         deps.turn.profile_changed = True
     result: dict[str, Any] = {"saved": sorted(saved), "still_missing": _missing_text(updated)}
+    if unchanged := sorted(set(valid) - set(saved)):
+        result["already_saved"] = unchanged
+        result["tell"] = "these were saved already - do not call update_profile for them again"
     if not_saved:
         result["not_saved"] = not_saved
     if saved and (recalculated := _recalculate(deps)):
@@ -425,21 +440,28 @@ def _run(deps: AgentDeps, option_ids: list[str] | None) -> Comparison | dict[str
         raise ModelRetry(f"unknown option ids: {unknown} - use ids from list_options") from unknown
 
 
-def _recommendation(outcome: Comparison) -> str:
-    """What to tell the employee after a comparison, in words - the model never ranks options itself."""
-    best = next((r for r in outcome.results if r.option.id == outcome.best_option_id), None)
-    if best is None:
-        return "no alternative could be calculated yet - say what is missing"
-    if best.delta is not None and best.delta > 0:
+def _recommendation(outcome: Comparison, deps: AgentDeps) -> str:
+    """What to tell the employee after a comparison, in words - the model never ranks options itself.
+    The engine's best option is measured against every eligible alternative and today."""
+    if not any(r.delta is not None for r in outcome.results):
+        return "nothing could be calculated yet - say what is missing"
+    best_id = outcome.best_option_id
+    if best_id is None:
         return (
-            f"'{best.option.label}' leaves the most in the employee's net pay (see 'because'). Recommend it "
-            "in one sentence, add that the choice also depends on what car they need, and offer what-if "
-            "questions as quick replies"
+            "no alternative leaves more in the net than staying as today. Say so in one sentence, add that "
+            "the choice also depends on what car they need, and offer what-if questions as quick replies"
         )
+    best = next((r for r in outcome.results if r.option.id == best_id), None)
+    if best is not None:
+        return (
+            f"'{best.option.label}' leaves the most in the employee's net pay of all the alternatives (see "
+            "'because'). Recommend it in one sentence, add that the choice also depends on what car they "
+            "need, and offer what-if questions as quick replies"
+        )
+    label = next((o.label for o in build_options(deps.profile, deps.bundle) if o.id == best_id), best_id)
     return (
-        "none of the compared alternatives leaves more in the net than today's arrangement. Say so in one "
-        "sentence (for the net, today is better) and offer other alternatives or what-if questions as quick "
-        "replies"
+        f"another alternative, '{label}' (id {best_id}), leaves more in the net than the ones compared. "
+        "Say so in one sentence and offer to compare it as a quick reply"
     )
 
 
@@ -458,7 +480,7 @@ def _recalculate(deps: AgentDeps) -> dict[str, Any] | None:
         "shown_to_employee": True,
         "tell_employee": "the comparison on screen was recalculated with the new details - say so and what "
         "changed, in words. Do not call compare again for it",
-        "recommendation": _recommendation(outcome),
+        "recommendation": _recommendation(outcome, deps),
         "results": [describe(r) for r in outcome.results],
     }
 
@@ -476,7 +498,7 @@ def list_options(ctx: RunContext[AgentDeps]) -> dict[str, Any]:
     return {
         "shown_to_employee": True,
         "best": best,
-        "recommendation": _recommendation(outcome),
+        "recommendation": _recommendation(outcome, ctx.deps),
         "options": [describe(r) for r in outcome.results],
     }
 
@@ -501,7 +523,7 @@ def compare(ctx: RunContext[AgentDeps], option_ids: list[str]) -> dict[str, Any]
         field = item.pop("ask_rep_field", None)
         if isinstance(field, str) and _send_to_rep(deps, field):
             item["participation"] = "default - the transport rep was asked to confirm; say so"
-    return {"shown_to_employee": True, "recommendation": _recommendation(outcome), "results": described}
+    return {"shown_to_employee": True, "recommendation": _recommendation(outcome, deps), "results": described}
 
 
 @traced

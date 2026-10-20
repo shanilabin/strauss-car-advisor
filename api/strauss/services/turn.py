@@ -28,8 +28,9 @@ from strauss.agent.agent import ReplyDraft, default_agent, to_reply
 from strauss.agent.deps import AgentDeps, TurnLog
 from strauss.agent.guard import mask_ids
 from strauss.agent.models_chain import AgentUnavailable
-from strauss.agent.schemas import Card, ComparisonCard, OptionsCard, RepPendingCard
+from strauss.agent.schemas import Card, ComparisonCard, MissingCard, OptionsCard, RepPendingCard
 from strauss.config.bundle import ConfigBundle
+from strauss.domain.missing import missing_fields
 from strauss.domain.models import Comparison, Profile
 from strauss.errors import ApiError
 from strauss.http.schemas import ConversationStatus, MessageRole, TurnResponse
@@ -47,6 +48,11 @@ NO_MODEL = (AgentUnavailable, ModelAPIError, FallbackExceptionGroup)  # -> form 
 BUSY_RETRIES = 1  # one more try when every model is rate-limited
 BUSY_WAIT_SECONDS = 6
 STUCK_REPLY = "סליחה, לא הצלחתי להשלים את הבקשה. אפשר לנסח אותה אחרת?"
+# Stuck after the tools already calculated: the result on screen is right, only the wording failed
+STUCK_AFTER_RESULT = (
+    "החישוב הושלם והתוצאה המעודכנת מוצגת על המסך. לא הצלחתי לנסח עליה הסבר, "
+    "אז אם תרצו שאסביר משהו, אפשר לשאול שוב."
+)
 
 
 def agent_unavailable() -> ApiError:
@@ -85,6 +91,25 @@ def history(rows: list[dict[str, Any]]) -> list[ModelMessage]:
     return messages
 
 
+def latest_cards(cards: list[Card]) -> list[Card]:
+    """One card of each kind per reply - the last one, which is what the screen shows. A model that
+    compares (or recalculates) several times in a turn must not fill the chat with copies; rep questions
+    are all kept (each is a different question)."""
+    last = {type(card): index for index, card in enumerate(cards)}
+    return [c for i, c in enumerate(cards) if isinstance(c, RepPendingCard) or last[type(c)] == i]
+
+
+def current_missing(cards: list[Card], profile: Profile) -> list[Card]:
+    """A "still missing" card says what is missing at the END of the turn: a model that compared before
+    saving today's car must not leave a question about the car next to the comparison (QA B06)."""
+    still = missing_fields(profile)
+    return [
+        MissingCard(missing=still) if isinstance(c, MissingCard) else c
+        for c in cards
+        if not (isinstance(c, MissingCard) and not still)
+    ]
+
+
 def _stamped(card: Card, saved: Profile) -> Card:
     """A comparison the agent computed on the profile it just saved carries that save's revision (the
     revision only moves when the profile is stored, after the tools ran)."""
@@ -121,6 +146,7 @@ class TurnService:
         shown = self._repo.latest_comparison(record.id)
         deps = AgentDeps(profile=record.profile, bundle=self._bundle, value_of_use=self._vou, shown=shown)
         draft = self._think(record, deps, text, shown)
+        deps.turn.cards = current_missing(latest_cards(deps.turn.cards), deps.profile)
 
         record = self._save_profile(record, deps)
         deps.turn.cards = [_stamped(card, record.profile) for card in deps.turn.cards]
@@ -187,7 +213,8 @@ class TurnService:
             except AgentRunError as exc:  # the model answered but got stuck - keep what the tools did
                 logger.warning("agent got stuck in conversation %s: %r", record.id, exc)
                 deps.turn.event("model", "stuck", {"error": type(exc).__name__})
-                return ReplyDraft(text=STUCK_REPLY)
+                calculated = any(isinstance(c, ComparisonCard | OptionsCard) for c in deps.turn.cards)
+                return ReplyDraft(text=STUCK_AFTER_RESULT if calculated else STUCK_REPLY)
         usage = result.usage
         deps.turn.event(
             "model",

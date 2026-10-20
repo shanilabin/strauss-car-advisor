@@ -14,6 +14,7 @@ import { OptionsMap } from "@/components/options-map";
 import { ProfileCard } from "@/components/profile-card";
 import { Topbar } from "@/components/topbar";
 import { layoutPhaseFromStatus, stepFromStatus } from "@/lib/api/conversation-status";
+import { defaultOptionId } from "@/lib/comparison";
 import { isFormModeFallback } from "@/lib/api/form-mode";
 import { CompareError, useCompare } from "@/lib/api/use-compare";
 import {
@@ -111,13 +112,14 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
           },
         ]
       : serverMessages;
+  const transcript = withCurrentMissing(messages, data?.missing ?? []);
   const comparison = data?.latest_comparison ?? null;
   const galleryComparison = optionsQuery.data ?? comparison;
   const results = comparison?.results ?? [];
   const selectedOptionId =
     userSelectedId && results.some((r) => r.option.id === userSelectedId)
       ? userSelectedId
-      : (comparison?.best_option_id ?? results[0]?.option.id ?? null);
+      : defaultOptionId(comparison);
 
   function handleSend(text: string) {
     const previousReplies = quickReplies;
@@ -199,6 +201,25 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
           <p role="alert" className="text-error">
             {message}
           </p>
+          <p className="text-sm text-muted-foreground">
+            שיחה שמורה נפתחת רק מאותו דפדפן שבו התחילה. אפשר לנסות שוב, או להתחיל שיחה חדשה.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/c/new"
+              className="inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-(--primary-hover)"
+            >
+              שיחה חדשה
+            </Link>
+            <button
+              type="button"
+              onClick={() => void conversation.refetch()}
+              disabled={conversation.isFetching}
+              className="inline-flex min-h-11 items-center rounded-full border border-border px-5 text-sm font-semibold hover:bg-muted disabled:opacity-45"
+            >
+              {conversation.isFetching ? "מנסה…" : "ניסיון חוזר"}
+            </button>
+          </div>
         </main>
       </>
     );
@@ -227,7 +248,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               conversationId={conversationId}
               profile={data.profile}
               missing={data.missing}
-              messages={messages}
+              messages={transcript}
               quickReplies={quickReplies}
               thinking={sendMessage.isPending}
               errorMessage={sendError}
@@ -241,7 +262,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
           )}
           {displayPhase === "options" && (
             <OptionsDesktop
-              messages={messages}
+              messages={transcript}
               quickReplies={quickReplies}
               thinking={sendMessage.isPending}
               errorMessage={sendError}
@@ -265,7 +286,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
                 conversationId={conversationId}
                 profile={data.profile}
                 profileMissing={data.missing}
-                messages={messages}
+                messages={transcript}
                 quickReplies={quickReplies}
                 thinking={sendMessage.isPending}
                 errorMessage={sendError}
@@ -287,7 +308,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
                 conversationId={conversationId}
                 profile={data.profile}
                 missing={data.missing}
-                messages={messages}
+                messages={transcript}
                 quickReplies={quickReplies}
                 thinking={sendMessage.isPending}
                 errorMessage={sendError}
@@ -308,7 +329,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
           style={keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}
         >
           <ChatPanel
-            messages={messages}
+            messages={transcript}
             quickReplies={quickReplies}
             thinking={sendMessage.isPending}
             errorMessage={sendError}
@@ -809,7 +830,7 @@ function ResultBanner({ onEditDetails }: { onEditDetails: () => void }) {
         <p className="font-display text-4xl leading-tight lg:text-5xl">יש תוצאה!</p>
         <p className="font-display text-2xl leading-tight text-primary lg:text-3xl">הנה ההשוואה עבורך.</p>
         <p className="mt-2 max-w-md text-sm text-foreground/80">
-          לפי הפרטים שמסרת, חישבנו את כל החלופות. למטה ההשוואה המלאה, עם פירוט מאיפה מגיע כל שקל.
+          לפי הפרטים שמסרת, חישבנו את החלופות שבדקנו. למטה ההשוואה המלאה, עם פירוט מאיפה מגיע כל שקל.
           משהו השתנה? כתבו לי בצ&apos;אט, או{" "}
           <button
             type="button"
@@ -830,6 +851,27 @@ function ResultBanner({ onEditDetails }: { onEditDetails: () => void }) {
       />
     </div>
   );
+}
+
+/**
+ * A "missing details" card from an earlier message lists only what is STILL missing - a question the
+ * employee already answered is not asked again; a card with nothing left disappears.
+ */
+function withCurrentMissing(
+  messages: ChatMessage[],
+  missing: NonNullable<ConversationState["missing"]>,
+): ChatMessage[] {
+  const still = new Set(missing.map((m) => m.field));
+  return messages.map((message) => {
+    if (!message.cards?.some((c) => c.kind === "missing")) return message;
+    type Card = NonNullable<ChatMessage["cards"]>[number];
+    const cards = message.cards.flatMap((card): Card[] => {
+      if (card.kind !== "missing") return [card];
+      const left = card.missing.filter((m) => still.has(m.field));
+      return left.length > 0 ? [{ ...card, missing: left }] : [];
+    });
+    return { ...message, cards };
+  });
 }
 
 function FormModeLink() {

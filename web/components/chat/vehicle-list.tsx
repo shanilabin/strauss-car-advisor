@@ -21,7 +21,7 @@ type VehicleListProps = {
   className?: string;
 };
 
-/** "כל החלופות עבורך": every alternative as a card, the best one marked, ineligible ones dimmed. */
+/** The alternatives on screen as cards, the engine's best one marked, ineligible ones dimmed. */
 export function VehicleList({
   results,
   selectedId,
@@ -42,7 +42,7 @@ export function VehicleList({
       )}
     >
       <header className="flex shrink-0 items-center justify-between gap-2 px-4 pt-4 pb-2">
-        <h2 className="text-base font-extrabold whitespace-nowrap">כל החלופות עבורך</h2>
+        <h2 className="text-base font-extrabold whitespace-nowrap">החלופות שנבדקו</h2>
         <span className="flex items-center gap-1">
           <span className="rounded-full bg-mist px-2.5 py-0.5 text-xs font-bold whitespace-nowrap text-primary">
             {results.length} תוצאות
@@ -64,6 +64,8 @@ export function VehicleList({
           )}
         </span>
       </header>
+
+      <BestNote results={results} bestOptionId={bestOptionId} />
 
       {results.length === 0 ? (
         <p className="px-4 py-6 text-sm text-muted-foreground">אין חלופות מהשרת עדיין.</p>
@@ -132,6 +134,22 @@ export function VehicleList({
       )}
     </aside>
   );
+}
+
+/**
+ * The engine's best option is measured against every alternative and today (QA UX02), so say when
+ * staying as today wins, or when the winner is not among the alternatives on screen (QA B03).
+ */
+function BestNote({ results, bestOptionId }: { results: OptionResult[]; bestOptionId: string | null }) {
+  if (!results.some((r) => r.delta != null)) return null;
+  const text =
+    bestOptionId == null
+      ? "לנטו, המצב של היום עדיף: אף חלופה לא משאירה יותר."
+      : results.some((r) => r.option.id === bestOptionId)
+        ? null
+        : "ברשימה המלאה יש חלופה שמשאירה יותר בנטו. אפשר לראות אותה ב\"החלף רכב\"."
+  if (!text) return null;
+  return <p className="mx-3 mb-1 rounded-2xl bg-mist px-3 py-2 text-xs font-semibold text-primary">{text}</p>;
 }
 
 function driveLabel(drive: Drive): string {

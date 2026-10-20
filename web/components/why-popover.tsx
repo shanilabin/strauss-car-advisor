@@ -55,6 +55,54 @@ function sourceName(kind: Source["kind"]): string {
   }
 }
 
+/**
+ * The exact place a number comes from, in business words: document, section, and which version is in
+ * force (QA UX09) - instead of the engine's internal path ("catalog[CAR-10].defaultParticipation").
+ */
+function sourceSection(source: Source, lookup: SourceLookup): string {
+  const ref = source.ref;
+  const inBrackets = /\[([^\]]+)\]/.exec(ref)?.[1] ?? "";
+  if (source.kind === "VALUE_OF_USE_DB") {
+    const [taxYear, regYear] = ref.split("/");
+    return `רשומת הדגם המדויק: שנת מס ${taxYear}, שנת רישום ${regYear}`;
+  }
+  if (ref.startsWith("catalog[")) {
+    const car = lookup.catalog?.find((c) => c.id === inBrackets);
+    const name = car ? `${car.commercial_name} (${car.reg_year})` : inBrackets;
+    const what = ref.endsWith("monthlyCost") ? "עלות חודשית לחברה" : "השתתפות עובד (ברירת מחדל)";
+    return `קטלוג הרכבים של החברה · ${name} · ${what}`;
+  }
+  if (ref.startsWith("occupations[")) {
+    return ref.endsWith(".maintenance")
+      ? `טבלת העיסוקים · ${inBrackets} · אחזקת רכב`
+      : `טבלת העיסוקים · ${inBrackets}`;
+  }
+  if (ref.startsWith("rules.groups[")) return `כללי רכב החברה · תקציבי הקבוצות · קבוצה ${inBrackets}`;
+  if (ref.startsWith("rules.specialTracks[")) {
+    return ref.endsWith(".requires")
+      ? "כללי רכב החברה · מסלולים מיוחדים · תנאי הזכאות למסלול"
+      : "כללי רכב החברה · מסלולים מיוחדים · חלוקת הפער בין העובד לחברה";
+  }
+  if (ref === "rules.electric.netBonus") return "כללי רכב החברה · רכב חשמלי · החזר חשמל";
+  if (ref === "rules.chooseFrom") return "כללי רכב החברה · בחירת רכב מהקבוצה או מקבוצה נמוכה ממנה";
+  return source.label;
+}
+
+/** Which version of the source is in force, from GET /v1/config. */
+function sourceValidity(source: Source, lookup: SourceLookup): string | null {
+  const config = lookup.config;
+  if (!config) return null;
+  if (source.kind === "VALUE_OF_USE_DB") return `נתוני שנת המס ${config.value_of_use_tax_year}`;
+  const from = config.rules["effectiveFrom"];
+  const since = typeof from === "string" ? ` · בתוקף מ-${formatDate(from)}` : "";
+  return `גרסת הכללים ${config.version}${since}`;
+}
+
+function formatDate(iso: string): string {
+  const date = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString("he-IL");
+}
+
 /** Shares (0.5) read as percent; amounts as shekels; anything else as it is. */
 function formatResolvedValue(source: Source, value: string | number | boolean): string {
   if (typeof value === "boolean") return value ? "כן" : "לא";
@@ -143,12 +191,9 @@ export function WhyPopover({
                   ▾
                 </span>
               </summary>
-              <p className="mt-1">{sourceName(source.kind)}</p>
-              <p className="mt-0.5">
-                <bdi dir="ltr" className="font-mono break-all">
-                  {source.ref}
-                </bdi>
-              </p>
+              <p className="mt-1 font-semibold text-foreground/85">{sourceName(source.kind)}</p>
+              <p className="mt-0.5">{sourceSection(source, lookup)}</p>
+              {sourceValidity(source, lookup) && <p className="mt-0.5">{sourceValidity(source, lookup)}</p>}
             </details>
             <Popover.Close
               type="button"

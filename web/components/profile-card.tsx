@@ -20,6 +20,8 @@ import {
   Wallet,
 } from "lucide-react";
 import {
+  createContext,
+  useContext,
   useEffect,
   useId,
   useRef,
@@ -45,6 +47,7 @@ type Occupation = components["schemas"]["Occupation"];
 type Salary = NonNullable<Profile["salary"]>;
 type Deductions = NonNullable<Profile["deductions"]>;
 type CarArrangement = components["schemas"]["CarArrangement"];
+type Vehicle = components["schemas"]["Vehicle"];
 type WaiverArrangement = components["schemas"]["WaiverArrangement"];
 
 type ProfileCardProps = {
@@ -70,7 +73,7 @@ type FieldKey =
   | "current.participation"
   | "current.maintenance";
 
-type EditableKey = Exclude<FieldKey, "group" | "current">;
+type EditableKey = Exclude<FieldKey, "group">;
 
 function missingKeys(missing: MissingField[]): Set<string> {
   return new Set(missing.map((m) => m.field));
@@ -84,6 +87,42 @@ function isFieldMissing(keys: Set<string>, field: FieldKey, hasValue: boolean): 
   if (field === "current" && keys.has("current")) return true;
   if (field === "current.participation" && keys.has("current.participation")) return true;
   return false;
+}
+
+/** The open editor's error, shown right under its field (one field is edited at a time). */
+const EditError = createContext<string | null>(null);
+
+/**
+ * The limits are the API's own (Profile / Deductions validation), checked here first so the message
+ * sits next to the field and names the range (QA UX08).
+ */
+const LIMITS: Record<string, { min: number; max?: number; integer?: boolean; positive?: boolean }> = {
+  "salary.base": { min: 0, positive: true },
+  "salary.commissions": { min: 0 },
+  "salary.bonus": { min: 0 },
+  "deductions.pension_pct": { min: 0, max: 100 },
+  "deductions.study_fund_pct": { min: 0, max: 100 },
+  "deductions.credit_points": { min: 0, max: 30 },
+  children_under_23: { min: 0, max: 30, integer: true },
+  "current.participation": { min: 0 },
+  "current.maintenance": { min: 0 },
+};
+
+/** A number, or the reason it can't be saved. An empty field is never read as 0 (QA B04). */
+function parseField(field: string, raw: string): number | string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "השדה ריק. נא להזין ערך (0 אם אין).";
+  const n = Number(trimmed);
+  const limit = LIMITS[field] ?? { min: 0 };
+  if (!Number.isFinite(n)) return "נא להזין מספר.";
+  if (limit.integer && !Number.isInteger(n)) return "נא להזין מספר שלם.";
+  if (limit.positive && n <= 0) return "שכר הבסיס חייב להיות גדול מ-0.";
+  if (n < limit.min || (limit.max != null && n > limit.max)) {
+    return limit.max != null
+      ? `נא להזין ערך בין ${limit.min} ל-${limit.max}.`
+      : `נא להזין ערך של ${limit.min} ומעלה.`;
+  }
+  return n;
 }
 
 function formatGroupLabel(group: string): string {
@@ -180,21 +219,17 @@ export function ProfileCard({
       return { expected_revision, occupation: trimmed };
     }
 
+    const n = parseField(field, raw);
+    if (typeof n === "string") {
+      setLocalError(n);
+      return null;
+    }
+
     if (field === "children_under_23") {
-      const n = Number(trimmed);
-      if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
-        setLocalError("נא להזין מספר שלם תקין.");
-        return null;
-      }
       return { expected_revision, children_under_23: n };
     }
 
     if (field.startsWith("salary.")) {
-      const n = Number(trimmed);
-      if (!Number.isFinite(n) || n < 0) {
-        setLocalError("נא להזין סכום תקין.");
-        return null;
-      }
       if (salary == null && field !== "salary.base") {
         setLocalError("נא למלא קודם את שכר הבסיס.");
         return null;
@@ -211,11 +246,6 @@ export function ProfileCard({
     }
 
     if (field.startsWith("deductions.")) {
-      const n = Number(trimmed);
-      if (!Number.isFinite(n) || n < 0) {
-        setLocalError("נא להזין ערך תקין.");
-        return null;
-      }
       const next: Deductions = {
         pension_pct: deductions?.pension_pct ?? 0,
         study_fund_pct: deductions?.study_fund_pct ?? 0,
@@ -233,11 +263,6 @@ export function ProfileCard({
         setLocalError("אין רכב נוכחי לעדכון השתתפות.");
         return null;
       }
-      const n = Number(trimmed);
-      if (!Number.isFinite(n) || n < 0) {
-        setLocalError("נא להזין סכום תקין.");
-        return null;
-      }
       const next: CarArrangement = {
         ...current,
         participation: n,
@@ -248,11 +273,6 @@ export function ProfileCard({
     if (field === "current.maintenance") {
       if (!current || current.kind !== "waiver") {
         setLocalError("אין הסדר אחזקה לעדכון.");
-        return null;
-      }
-      const n = Number(trimmed);
-      if (!Number.isFinite(n) || n < 0) {
-        setLocalError("נא להזין סכום תקין.");
         return null;
       }
       const next: WaiverArrangement = {
@@ -307,353 +327,376 @@ export function ProfileCard({
     : [];
 
   return (
-    <section
-      aria-label="פרופיל עובד"
-      className={cn(
-        "flex min-h-0 min-w-0 flex-col overflow-x-clip overflow-y-auto rounded-3xl border border-border/70 bg-surface shadow-card",
-        className,
-      )}
-    >
-      <header className="shrink-0 px-5 pt-5 pb-3">
-        <h2 className="flex items-center gap-2 text-xl font-extrabold">
-          <span className="inline-flex size-9 items-center justify-center rounded-full bg-mist text-primary">
-            <UserRound aria-hidden className="size-5" />
-          </span>
-          הפרטים שלי
-        </h2>
-        <div className="mt-4 flex flex-col items-center text-center">
-          <span className="inline-flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-brand-sky to-mist text-primary ring-4 ring-mist">
-            <UserRound aria-hidden className="size-9" />
-          </span>
-          <p className="mt-2 text-lg font-bold">עובד/ת שטראוס</p>
-          {missing.length > 0 ? (
-            <p className="mt-1 rounded-full bg-pending-surface px-3 py-0.5 text-sm font-semibold text-pending">
-              חסרים עוד {missing.length} פרטים
-            </p>
-          ) : (
-            <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-success-surface px-3 py-0.5 text-sm font-semibold text-success">
-              <Check aria-hidden className="size-4" strokeWidth={3} />
-              הפרופיל מלא
-            </p>
-          )}
-        </div>
-      </header>
+    <EditError.Provider value={editing ? errorMessage : null}>
+      <section
+        aria-label="פרופיל עובד"
+        className={cn(
+          "flex min-h-0 min-w-0 flex-col overflow-x-clip overflow-y-auto rounded-3xl border border-border/70 bg-surface shadow-card",
+          className,
+        )}
+      >
+        <header className="shrink-0 px-5 pt-5 pb-3">
+          <h2 className="flex items-center gap-2 text-xl font-extrabold">
+            <span className="inline-flex size-9 items-center justify-center rounded-full bg-mist text-primary">
+              <UserRound aria-hidden className="size-5" />
+            </span>
+            הפרטים שלי
+          </h2>
+          <div className="mt-4 flex flex-col items-center text-center">
+            <span className="inline-flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-brand-sky to-mist text-primary ring-4 ring-mist">
+              <UserRound aria-hidden className="size-9" />
+            </span>
+            <p className="mt-2 text-lg font-bold">עובד/ת שטראוס</p>
+            {missing.length > 0 ? (
+              <p className="mt-1 rounded-full bg-pending-surface px-3 py-0.5 text-sm font-semibold text-pending">
+                חסרים עוד {missing.length} פרטים
+              </p>
+            ) : (
+              <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-success-surface px-3 py-0.5 text-sm font-semibold text-success">
+                <Check aria-hidden className="size-4" strokeWidth={3} />
+                הפרופיל מלא
+              </p>
+            )}
+          </div>
+        </header>
 
-      <div className="mx-4 mb-3 flex flex-col rounded-2xl border border-border/70 px-3">
-        <ProfileRow
-          label="עיסוק"
-          missing={occupationMissing}
-          editing={editing === "occupation"}
-          saving={saving}
-          onStartEdit={() => startEdit("occupation", profile.occupation ?? "")}
-          display={profile.occupation}
-        >
-          {editing === "occupation" ? (
-            <FieldEditor
-              kind="select"
-              label="עיסוק"
-              value={draft}
-              disabled={saving}
-              options={(occupations.data ?? []).map((o) => ({
-                value: o.name,
-                label: o.name,
-              }))}
-              loading={occupations.isPending}
-              onChange={setDraft}
-              onSave={saveEdit}
-              onCancel={cancelEdit}
-            />
-          ) : null}
-        </ProfileRow>
-
-        <ProfileRow
-          label="קבוצת רכב"
-          missing={groupMissing}
-          readOnly
-          display={group ? formatGroupLabel(group) : null}
-        />
-
-        <ProfileRow
-          label="שכר בסיס"
-          missing={baseMissing}
-          editing={editing === "salary.base"}
-          saving={saving}
-          onStartEdit={() =>
-            startEdit("salary.base", salary != null ? String(salary.base) : "")
-          }
-          display={salary != null ? <MoneyValue amount={salary.base} /> : null}
-        >
-          {editing === "salary.base" ? (
-            <NumberEditor
-              label="שכר בסיס"
-              value={draft}
-              disabled={saving}
-              onChange={setDraft}
-              onSave={saveEdit}
-              onCancel={cancelEdit}
-            />
-          ) : null}
-        </ProfileRow>
-
-        <ProfileRow
-          label="עמלות"
-          missing={commissionsMissing}
-          editing={editing === "salary.commissions"}
-          saving={saving}
-          onStartEdit={() =>
-            startEdit(
-              "salary.commissions",
-              salary != null ? String(salary.commissions) : "",
-            )
-          }
-          display={salary != null ? <MoneyValue amount={salary.commissions} /> : null}
-        >
-          {editing === "salary.commissions" ? (
-            <NumberEditor
-              label="עמלות"
-              value={draft}
-              disabled={saving}
-              onChange={setDraft}
-              onSave={saveEdit}
-              onCancel={cancelEdit}
-            />
-          ) : null}
-        </ProfileRow>
-
-        <ProfileRow
-          label="בונוס"
-          missing={bonusMissing}
-          editing={editing === "salary.bonus"}
-          saving={saving}
-          onStartEdit={() =>
-            startEdit("salary.bonus", salary != null ? String(salary.bonus) : "")
-          }
-          display={salary != null ? <MoneyValue amount={salary.bonus} /> : null}
-        >
-          {editing === "salary.bonus" ? (
-            <NumberEditor
-              label="בונוס"
-              value={draft}
-              disabled={saving}
-              onChange={setDraft}
-              onSave={saveEdit}
-              onCancel={cancelEdit}
-            />
-          ) : null}
-        </ProfileRow>
-
-        <ProfileRow
-          label="פנסיה"
-          missing={pensionMissing}
-          editing={editing === "deductions.pension_pct"}
-          saving={saving}
-          onStartEdit={() =>
-            startEdit(
-              "deductions.pension_pct",
-              deductions != null ? String(deductions.pension_pct) : "",
-            )
-          }
-          display={
-            deductions != null ? <PercentValue value={deductions.pension_pct} /> : null
-          }
-        >
-          {editing === "deductions.pension_pct" ? (
-            <NumberEditor
-              label="פנסיה (%)"
-              value={draft}
-              disabled={saving}
-              step="0.01"
-              onChange={setDraft}
-              onSave={saveEdit}
-              onCancel={cancelEdit}
-            />
-          ) : null}
-        </ProfileRow>
-
-        <ProfileRow
-          label="קרן השתלמות"
-          missing={studyMissing}
-          editing={editing === "deductions.study_fund_pct"}
-          saving={saving}
-          onStartEdit={() =>
-            startEdit(
-              "deductions.study_fund_pct",
-              deductions != null ? String(deductions.study_fund_pct) : "",
-            )
-          }
-          display={
-            deductions != null ? (
-              <PercentValue value={deductions.study_fund_pct} />
-            ) : null
-          }
-        >
-          {editing === "deductions.study_fund_pct" ? (
-            <NumberEditor
-              label="קרן השתלמות (%)"
-              value={draft}
-              disabled={saving}
-              step="0.01"
-              onChange={setDraft}
-              onSave={saveEdit}
-              onCancel={cancelEdit}
-            />
-          ) : null}
-        </ProfileRow>
-
-        <ProfileRow
-          label="נקודות זיכוי"
-          missing={creditMissing}
-          editing={editing === "deductions.credit_points"}
-          saving={saving}
-          onStartEdit={() =>
-            startEdit(
-              "deductions.credit_points",
-              deductions != null ? String(deductions.credit_points) : "",
-            )
-          }
-          display={
-            deductions != null ? (
-              <bdi dir="ltr" className="tabular-nums">
-                {deductions.credit_points}
-              </bdi>
-            ) : null
-          }
-        >
-          {editing === "deductions.credit_points" ? (
-            <NumberEditor
-              label="נקודות זיכוי"
-              value={draft}
-              disabled={saving}
-              step="0.01"
-              onChange={setDraft}
-              onSave={saveEdit}
-              onCancel={cancelEdit}
-            />
-          ) : null}
-        </ProfileRow>
-
-        <ProfileRow
-          label="מספר ילדים"
-          missing={childrenMissing}
-          editing={editing === "children_under_23"}
-          saving={saving}
-          onStartEdit={() =>
-            startEdit(
-              "children_under_23",
-              profile.children_under_23 != null
-                ? String(profile.children_under_23)
-                : "",
-            )
-          }
-          display={
-            profile.children_under_23 != null ? (
-              <bdi dir="ltr" className="tabular-nums">
-                {profile.children_under_23}
-              </bdi>
-            ) : null
-          }
-        >
-          {editing === "children_under_23" ? (
-            <NumberEditor
-              label="מספר ילדים"
-              value={draft}
-              disabled={saving}
-              step="1"
-              onChange={setDraft}
-              onSave={saveEdit}
-              onCancel={cancelEdit}
-            />
-          ) : null}
-        </ProfileRow>
-
-        <ProfileRow
-          label="רכב נוכחי"
-          missing={currentMissing}
-          readOnly
-          display={current ? currentVehicleLabel(current) : null}
-        />
-
-        {current?.kind === "car" && (
+        <div className="mx-4 mb-3 flex flex-col rounded-2xl border border-border/70 px-3">
           <ProfileRow
-            label="השתתפות חודשית"
-            missing={participationMissing}
-            editing={editing === "current.participation"}
+            label="עיסוק"
+            missing={occupationMissing}
+            editing={editing === "occupation"}
+            saving={saving}
+            onStartEdit={() => startEdit("occupation", profile.occupation ?? "")}
+            display={profile.occupation}
+          >
+            {editing === "occupation" ? (
+              <FieldEditor
+                kind="select"
+                label="עיסוק"
+                value={draft}
+                disabled={saving}
+                options={(occupations.data ?? []).map((o) => ({
+                  value: o.name,
+                  label: o.name,
+                }))}
+                loading={occupations.isPending}
+                onChange={setDraft}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+              />
+            ) : null}
+          </ProfileRow>
+
+          <ProfileRow
+            label="קבוצת רכב"
+            missing={groupMissing}
+            readOnly
+            display={group ? formatGroupLabel(group) : null}
+          />
+
+          <ProfileRow
+            label="שכר בסיס"
+            missing={baseMissing}
+            editing={editing === "salary.base"}
+            saving={saving}
+            onStartEdit={() =>
+              startEdit("salary.base", salary != null ? String(salary.base) : "")
+            }
+            display={salary != null ? <MoneyValue amount={salary.base} /> : null}
+          >
+            {editing === "salary.base" ? (
+              <NumberEditor
+                label="שכר בסיס"
+                value={draft}
+                disabled={saving}
+                onChange={setDraft}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+              />
+            ) : null}
+          </ProfileRow>
+
+          <ProfileRow
+            label="עמלות"
+            missing={commissionsMissing}
+            editing={editing === "salary.commissions"}
             saving={saving}
             onStartEdit={() =>
               startEdit(
-                "current.participation",
-                current.participation != null ? String(current.participation) : "",
+                "salary.commissions",
+                salary != null ? String(salary.commissions) : "",
+              )
+            }
+            display={salary != null ? <MoneyValue amount={salary.commissions} /> : null}
+          >
+            {editing === "salary.commissions" ? (
+              <NumberEditor
+                label="עמלות"
+                value={draft}
+                disabled={saving}
+                onChange={setDraft}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+              />
+            ) : null}
+          </ProfileRow>
+
+          <ProfileRow
+            label="בונוס"
+            missing={bonusMissing}
+            editing={editing === "salary.bonus"}
+            saving={saving}
+            onStartEdit={() =>
+              startEdit("salary.bonus", salary != null ? String(salary.bonus) : "")
+            }
+            display={salary != null ? <MoneyValue amount={salary.bonus} /> : null}
+          >
+            {editing === "salary.bonus" ? (
+              <NumberEditor
+                label="בונוס"
+                value={draft}
+                disabled={saving}
+                onChange={setDraft}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+              />
+            ) : null}
+          </ProfileRow>
+
+          <ProfileRow
+            label="פנסיה"
+            missing={pensionMissing}
+            editing={editing === "deductions.pension_pct"}
+            saving={saving}
+            onStartEdit={() =>
+              startEdit(
+                "deductions.pension_pct",
+                deductions != null ? String(deductions.pension_pct) : "",
               )
             }
             display={
-              current.participation != null ? (
-                <MoneyValue amount={current.participation} />
+              deductions != null ? <PercentValue value={deductions.pension_pct} /> : null
+            }
+          >
+            {editing === "deductions.pension_pct" ? (
+              <NumberEditor
+                label="פנסיה (%)"
+                value={draft}
+                disabled={saving}
+                step="0.01"
+                onChange={setDraft}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+              />
+            ) : null}
+          </ProfileRow>
+
+          <ProfileRow
+            label="קרן השתלמות"
+            missing={studyMissing}
+            editing={editing === "deductions.study_fund_pct"}
+            saving={saving}
+            onStartEdit={() =>
+              startEdit(
+                "deductions.study_fund_pct",
+                deductions != null ? String(deductions.study_fund_pct) : "",
+              )
+            }
+            display={
+              deductions != null ? (
+                <PercentValue value={deductions.study_fund_pct} />
               ) : null
             }
           >
-            {editing === "current.participation" ? (
+            {editing === "deductions.study_fund_pct" ? (
               <NumberEditor
-                label="השתתפות חודשית"
+                label="קרן השתלמות (%)"
                 value={draft}
                 disabled={saving}
+                step="0.01"
                 onChange={setDraft}
                 onSave={saveEdit}
                 onCancel={cancelEdit}
               />
             ) : null}
           </ProfileRow>
-        )}
 
-        {current?.kind === "waiver" && (
           <ProfileRow
-            label="אחזקה חודשית"
-            missing={false}
-            editing={editing === "current.maintenance"}
+            label="נקודות זיכוי"
+            missing={creditMissing}
+            editing={editing === "deductions.credit_points"}
             saving={saving}
             onStartEdit={() =>
-              startEdit("current.maintenance", String(current.maintenance))
+              startEdit(
+                "deductions.credit_points",
+                deductions != null ? String(deductions.credit_points) : "",
+              )
             }
-            display={<MoneyValue amount={current.maintenance} />}
+            display={
+              deductions != null ? (
+                <bdi dir="ltr" className="tabular-nums">
+                  {deductions.credit_points}
+                </bdi>
+              ) : null
+            }
           >
-            {editing === "current.maintenance" ? (
+            {editing === "deductions.credit_points" ? (
               <NumberEditor
-                label="אחזקה חודשית"
+                label="נקודות זיכוי"
                 value={draft}
                 disabled={saving}
+                step="0.01"
                 onChange={setDraft}
                 onSave={saveEdit}
                 onCancel={cancelEdit}
               />
             ) : null}
           </ProfileRow>
-        )}
 
-        {confirmed.map(([catalogId, amount]) => (
           <ProfileRow
-            key={catalogId}
-            label={`השתתפות מאושרת · ${catalogId}`}
-            missing={false}
-            readOnly
-            display={<MoneyValue amount={amount} />}
-          />
-        ))}
-      </div>
+            label="מספר ילדים"
+            missing={childrenMissing}
+            editing={editing === "children_under_23"}
+            saving={saving}
+            onStartEdit={() =>
+              startEdit(
+                "children_under_23",
+                profile.children_under_23 != null
+                  ? String(profile.children_under_23)
+                  : "",
+              )
+            }
+            display={
+              profile.children_under_23 != null ? (
+                <bdi dir="ltr" className="tabular-nums">
+                  {profile.children_under_23}
+                </bdi>
+              ) : null
+            }
+          >
+            {editing === "children_under_23" ? (
+              <NumberEditor
+                label="מספר ילדים"
+                value={draft}
+                disabled={saving}
+                step="1"
+                onChange={setDraft}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+              />
+            ) : null}
+          </ProfileRow>
 
-      <div className="mt-auto shrink-0 border-t border-border/70 px-5 py-3" aria-live="polite">
-        {saving && <p className="text-sm text-muted-foreground">שומר…</p>}
-        {errorMessage && !saving && (
-          <p role="alert" className="text-sm text-error">
-            {errorMessage}
-          </p>
-        )}
-        {!saving && !errorMessage && (
-          <p className="text-xs text-muted-foreground">
-            לחצו על שדה כדי לערוך. Enter לשמירה, Escape לביטול.
-            {recalculates && " כל שינוי מחשב מחדש את ההשוואה."}
-          </p>
-        )}
-      </div>
-    </section>
+          <ProfileRow
+            label="רכב נוכחי"
+            missing={currentMissing}
+            editing={editing === "current"}
+            saving={saving}
+            onStartEdit={() => startEdit("current", "")}
+            display={current ? currentVehicleLabel(current) : null}
+          >
+            {editing === "current" ? (
+              <CurrentCarEditor
+                maintenance={
+                  occupations.data?.find((o) => o.name === profile.occupation)?.maintenance ?? null
+                }
+                participation={current?.kind === "car" ? (current.participation ?? null) : null}
+                disabled={saving}
+                onSave={(next) => {
+                  setLocalError(null);
+                  patchProfile.mutate(
+                    { expected_revision: profile.revision, current: next },
+                    { onSuccess: () => cancelEdit() },
+                  );
+                }}
+                onError={setLocalError}
+                onCancel={cancelEdit}
+              />
+            ) : null}
+          </ProfileRow>
+
+          {current?.kind === "car" && (
+            <ProfileRow
+              label="השתתפות חודשית"
+              missing={participationMissing}
+              editing={editing === "current.participation"}
+              saving={saving}
+              onStartEdit={() =>
+                startEdit(
+                  "current.participation",
+                  current.participation != null ? String(current.participation) : "",
+                )
+              }
+              display={
+                current.participation != null ? (
+                  <MoneyValue amount={current.participation} />
+                ) : null
+              }
+            >
+              {editing === "current.participation" ? (
+                <NumberEditor
+                  label="השתתפות חודשית"
+                  value={draft}
+                  disabled={saving}
+                  onChange={setDraft}
+                  onSave={saveEdit}
+                  onCancel={cancelEdit}
+                />
+              ) : null}
+            </ProfileRow>
+          )}
+
+          {current?.kind === "waiver" && (
+            <ProfileRow
+              label="אחזקה חודשית"
+              missing={false}
+              editing={editing === "current.maintenance"}
+              saving={saving}
+              onStartEdit={() =>
+                startEdit("current.maintenance", String(current.maintenance))
+              }
+              display={<MoneyValue amount={current.maintenance} />}
+            >
+              {editing === "current.maintenance" ? (
+                <NumberEditor
+                  label="אחזקה חודשית"
+                  value={draft}
+                  disabled={saving}
+                  onChange={setDraft}
+                  onSave={saveEdit}
+                  onCancel={cancelEdit}
+                />
+              ) : null}
+            </ProfileRow>
+          )}
+
+          {confirmed.map(([catalogId, amount]) => (
+            <ProfileRow
+              key={catalogId}
+              label={`השתתפות מאושרת · ${catalogId}`}
+              missing={false}
+              readOnly
+              display={<MoneyValue amount={amount} />}
+            />
+          ))}
+        </div>
+
+        <div className="mt-auto shrink-0 border-t border-border/70 px-5 py-3" aria-live="polite">
+          {saving && <p className="text-sm text-muted-foreground">שומר…</p>}
+          {errorMessage && !saving && !editing && (
+            <p role="alert" className="text-sm text-error">
+              {errorMessage}
+            </p>
+          )}
+          {!saving && (!errorMessage || editing) && (
+            <p className="text-xs text-muted-foreground">
+              לחצו על שדה כדי לערוך. Enter לשמירה, Escape לביטול.
+              {recalculates && " כל שינוי מחשב מחדש את ההשוואה."}
+            </p>
+          )}
+        </div>
+      </section>
+    </EditError.Provider>
   );
 }
 
@@ -742,6 +785,230 @@ function ProfileRow({
   );
 }
 
+/**
+ * Today's car (QA UX06): a car searched in the Tax Authority data (the server re-reads it by its key
+ * and matches it to the catalog), or no car and the occupation's maintenance from the config.
+ */
+function CurrentCarEditor({
+  maintenance,
+  participation,
+  disabled,
+  onSave,
+  onError,
+  onCancel,
+}: {
+  maintenance: number | null;
+  participation: number | null;
+  disabled: boolean;
+  onSave: (current: CarArrangement | WaiverArrangement) => void;
+  onError: (message: string | null) => void;
+  onCancel: () => void;
+}) {
+  const id = useId();
+  const error = useContext(EditError);
+  const [mode, setMode] = useState<"car" | "waiver">("car");
+  const [query, setQuery] = useState("");
+  const [year, setYear] = useState("");
+  const [found, setFound] = useState<Vehicle[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [chosen, setChosen] = useState<number | null>(null);
+  const [pays, setPays] = useState(participation != null ? String(participation) : "");
+
+  async function search() {
+    onError(null);
+    if (query.trim().length < 2) {
+      onError("נא להזין לפחות 2 אותיות משם הדגם, באנגלית (למשל corolla).");
+      return;
+    }
+    const regYear = year.trim() ? Number(year) : null;
+    if (regYear != null && (!Number.isInteger(regYear) || regYear < 1990 || regYear > 2100)) {
+      onError("שנת רישום בין 1990 ל-2100.");
+      return;
+    }
+    setSearching(true);
+    setChosen(null);
+    const { data, error: failed } = await api.GET("/v1/vehicles/search", {
+      params: { query: { q: query.trim(), reg_year: regYear } },
+    });
+    setSearching(false);
+    if (failed || !data) {
+      onError("החיפוש נכשל. נסו שוב.");
+      return;
+    }
+    setFound(data);
+  }
+
+  function save() {
+    onError(null);
+    if (mode === "waiver") {
+      if (maintenance == null) {
+        onError("קודם בחרו עיסוק: האחזקה נקבעת לפי העיסוק.");
+        return;
+      }
+      onSave({ kind: "waiver", maintenance });
+      return;
+    }
+    const vehicle = chosen != null ? found?.[chosen] : undefined;
+    if (!vehicle) {
+      onError("חפשו את הרכב ובחרו אותו מהרשימה.");
+      return;
+    }
+    const amount = parseField("current.participation", pays);
+    if (typeof amount === "string") {
+      onError(`השתתפות חודשית: ${amount}`);
+      return;
+    }
+    onSave({ kind: "car", vehicle, participation: amount, participation_status: "CONFIRMED" });
+  }
+
+  const inputClass =
+    "w-full min-w-0 rounded-xl border border-input bg-background px-3 py-2.5 text-base focus-visible:border-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring";
+
+  return (
+    <div className="mt-2 flex flex-col gap-3">
+      <div role="radiogroup" aria-label="מה יש לי היום" className="flex gap-1 rounded-full bg-mist p-1">
+        {(
+          [
+            ["car", "רכב חברה"],
+            ["waiver", "אין רכב (אחזקה)"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={mode === value}
+            onClick={() => setMode(value)}
+            className={cn(
+              "min-h-10 flex-1 rounded-full px-3 text-sm font-bold",
+              mode === value ? "bg-surface shadow-soft" : "text-muted-foreground",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {mode === "car" ? (
+        <>
+          <div className="grid grid-cols-[minmax(0,1fr)_6rem] gap-2">
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+              דגם (באנגלית)
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void search();
+                  }
+                }}
+                dir="ltr"
+                placeholder="corolla cross"
+                className={inputClass}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+              שנת רישום
+              <input
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                inputMode="numeric"
+                dir="ltr"
+                placeholder="2025"
+                className={inputClass}
+              />
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={() => void search()}
+            disabled={disabled || searching}
+            className="min-h-11 rounded-full border border-border px-5 text-sm font-semibold hover:bg-muted disabled:opacity-45"
+          >
+            {searching ? "מחפש…" : "חיפוש במאגר רשות המסים"}
+          </button>
+          {found && found.length === 0 && (
+            <p className="text-sm text-muted-foreground">לא נמצא. נסו שם אחר או בלי שנה, או כתבו לבוט בצ&apos;אט.</p>
+          )}
+          {found && found.length > 0 && (
+            <fieldset className="flex flex-col gap-1.5">
+              <legend className="mb-1 text-xs text-muted-foreground">בחרו את הרכב שלך</legend>
+              {found.map((v, index) => (
+                <label
+                  key={`${v.key.maker_code}-${v.key.model_code}-${v.key.reg_year}-${v.key.vehicle_type_code}`}
+                  className={cn(
+                    "flex cursor-pointer items-start gap-2 rounded-xl border px-3 py-2 text-sm",
+                    chosen === index ? "border-primary bg-mist" : "border-border",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name={`${id}-car`}
+                    checked={chosen === index}
+                    onChange={() => setChosen(index)}
+                    className="mt-1 accent-primary"
+                  />
+                  <span className="min-w-0">
+                    <bdi className="font-bold">
+                      {v.maker_name} {v.commercial_name} ({v.key.reg_year})
+                    </bdi>
+                    <bdi className="block text-xs text-muted-foreground">{v.model_desc}</bdi>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+          )}
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+            כמה את/ה משלם/ת היום בחודש על הרכב (השתתפות)
+            <input
+              value={pays}
+              onChange={(e) => setPays(e.target.value)}
+              inputMode="decimal"
+              dir="ltr"
+              className={inputClass}
+            />
+          </label>
+        </>
+      ) : (
+        <p className="text-sm">
+          {maintenance != null ? (
+            <>
+              אחזקת הרכב לפי העיסוק שלך: <MoneyValue amount={maintenance} />
+            </>
+          ) : (
+            "קודם בחרו עיסוק: האחזקה נקבעת לפי העיסוק."
+          )}
+        </p>
+      )}
+
+      {error && (
+        <p role="alert" className="text-sm font-semibold text-error">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={save}
+          disabled={disabled}
+          className="min-h-11 rounded-full border border-transparent bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-(--primary-hover) disabled:opacity-45"
+        >
+          {disabled ? "שומר…" : "שמירה"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={disabled}
+          className="min-h-11 rounded-full border border-border bg-surface px-5 text-sm font-semibold hover:bg-muted"
+        >
+          ביטול
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function NumberEditor({
   label,
   value,
@@ -797,6 +1064,8 @@ function FieldEditor({
   onCancel: () => void;
 }) {
   const id = useId();
+  const errorId = `${id}-error`;
+  const error = useContext(EditError);
   const ref = useRef<HTMLInputElement | HTMLSelectElement>(null);
 
   useEffect(() => {
@@ -834,6 +1103,8 @@ function FieldEditor({
           onKeyDown={onKeyDown}
           className={fieldClass}
           aria-label={label}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
         >
           <option value="">{loading ? "טוען…" : "בחרו עיסוק"}</option>
           {(options ?? []).map((opt) => (
@@ -856,7 +1127,14 @@ function FieldEditor({
           onKeyDown={onKeyDown}
           className={fieldClass}
           aria-label={label}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
         />
+      )}
+      {error && (
+        <p id={errorId} role="alert" className="mt-1.5 text-sm font-semibold text-error">
+          {error}
+        </p>
       )}
       <div className="mt-2 flex flex-wrap gap-2">
         <button

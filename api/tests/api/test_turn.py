@@ -219,3 +219,28 @@ def test_a_change_told_in_the_chat_after_a_comparison_recomputes_it(model: Model
     assert state["latest_comparison"]["id"] == card["comparison"]["id"] != shown["id"]
     assert state["latest_comparison"]["profile_snapshot"]["revision"] == state["profile"]["revision"]
     assert state["status"] == "PRESENTED"
+
+
+def test_stuck_after_a_calculation_says_the_result_is_on_screen(model: ModelSlot) -> None:
+    """QA B02: "I could not complete it" next to a comparison that was completed."""
+    conversation_id = start()
+    calls = [("compare", {"option_ids": ["waiver"]})] * 13  # past the request limit
+    model.factory = lambda: scripted(*calls)
+    body = send(conversation_id, "מה אם אוותר על הרכב?").json()
+    assert body["reply"]["text"] == turn_service.STUCK_AFTER_RESULT
+    assert [c["kind"] for c in body["reply"]["cards"]] == ["comparison"]  # one, not thirteen
+
+
+def test_a_missing_card_says_what_is_missing_at_the_end_of_the_turn(model: ModelSlot) -> None:
+    """QA B06: compared before saving the car, then saved it - no question about the car is left."""
+    conversation_id = start(sample=None)
+    model.factory = lambda: scripted(
+        ("compare", {"option_ids": ["CAR-10"]}),  # nothing known yet -> a "missing" card
+        ("update_profile", {"occupation": "מנהל/ת מוצר", "base_salary": 18500}),
+        say("שמרתי. מה אחוז הפנסיה שלך?"),
+    )
+    body = send(conversation_id, "אני מנהלת מוצר ומרוויחה 18500").json()
+    (card,) = body["reply"]["cards"]
+    assert card["kind"] == "missing"
+    fields = [m["field"] for m in card["missing"]]
+    assert "occupation" not in fields and "salary.base" not in fields and "current" in fields

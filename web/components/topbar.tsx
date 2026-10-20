@@ -2,6 +2,7 @@ import { Check, House, MessageCircle, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { NavLinks } from "@/components/nav-links";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -93,34 +94,6 @@ export function Topbar({
         </div>
       </div>
     </header>
-  );
-}
-
-function NavLinks({ items, active }: { items: { href: string; label: string }[]; active: string }) {
-  return (
-    <nav aria-label="ניווט ראשי" className="max-md:hidden">
-      <ul className="flex items-center gap-1 lg:gap-3">
-        {items.map((item) => {
-          const current = item.href === active;
-          return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                aria-current={current ? "page" : undefined}
-                className={cn(
-                  "relative inline-flex h-11 items-center px-3 text-[0.95rem] font-medium transition-colors hover:text-primary",
-                  current && "font-bold",
-                  "after:absolute after:inset-x-3 after:bottom-1 after:h-[3px] after:rounded-full after:bg-brand-red after:transition-opacity",
-                  current ? "after:opacity-100" : "after:opacity-0 hover:after:opacity-40",
-                )}
-              >
-                {item.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
   );
 }
 

@@ -26,6 +26,7 @@ import { WaterfallChart } from "@/components/waterfall-chart";
 import { WhyPopover } from "@/components/why-popover";
 import { findSourceByField } from "@/lib/api/resolve-source-value";
 import type { components } from "@/lib/api/schema";
+import { carImage } from "@/lib/car-images";
 import { formatDelta, formatShekel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -192,6 +193,7 @@ export function ComparisonCard({
   const todayVou = comparison.today.value_of_use;
   const waitingRep = result.participation_status === "DEFAULT_PENDING";
   const isBest = comparison.best_option_id === option.id;
+  const photo = carImage(option.catalog_id);
   // A computed waiver has no car: its car fields are "not applicable", shown from the engine's breakdown
   const waiverDone = option.kind === "WAIVER" && result.delta != null;
   // The family track's share is charged on top of the participation (QA UX05: show it, don't hide it)
@@ -230,15 +232,30 @@ export function ComparisonCard({
             )}
             {estimated && eligible && <Badge variant="outline">משוערת</Badge>}
           </div>
-          {!compact && (
-            <Image
-              src="/brand/svg/car-silhouette.svg"
-              alt=""
-              width={340}
-              height={175}
-              className="mx-auto my-3 h-auto w-[70%] max-w-64 drop-shadow-[0_14px_12px_rgb(23_50_72/0.15)]"
-            />
-          )}
+          {!compact &&
+            (photo ? (
+              <figure className="mx-auto my-3 w-full max-w-80">
+                <Image
+                  src={photo.src}
+                  alt={`${option.label} (תמונה להמחשה)`}
+                  width={photo.width}
+                  height={photo.height}
+                  sizes="(min-width: 1024px) 320px, 80vw"
+                  className={cn("mx-auto h-auto max-h-44 w-auto object-contain", !eligible && "grayscale")}
+                />
+                <figcaption className="mt-1 text-center text-[0.7rem] text-muted-foreground">
+                  תמונה להמחשה · מקור: <bdi dir="ltr">{photo.credit}</bdi>
+                </figcaption>
+              </figure>
+            ) : (
+              <Image
+                src="/brand/svg/car-silhouette.svg"
+                alt=""
+                width={340}
+                height={175}
+                className="mx-auto my-3 h-auto w-[70%] max-w-64 drop-shadow-[0_14px_12px_rgb(23_50_72/0.15)]"
+              />
+            ))}
           <h2 className={cn("font-extrabold break-words", compact ? "mt-3 text-xl" : "text-2xl lg:text-3xl")}>
             <bdi>{option.label}</bdi>
           </h2>

@@ -7,6 +7,7 @@ import { useId, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { components } from "@/lib/api/schema";
 import { formatDelta } from "@/lib/format";
+import { carImage } from "@/lib/car-images";
 import { cn } from "@/lib/utils";
 
 type OptionResult = components["schemas"]["OptionResult"];
@@ -156,7 +157,13 @@ export function OptionsMap({
                       selectingId != null && !selecting && "opacity-50",
                     )}
                   >
-                    {!compact && <VehicleTile drive={result.option.drive ?? null} eligible={eligible} />}
+                    {!compact && (
+                      <VehicleTile
+                        drive={result.option.drive ?? null}
+                        catalogId={result.option.catalog_id}
+                        eligible={eligible}
+                      />
+                    )}
 
                     <span className="flex flex-wrap items-start justify-between gap-2">
                       <span className="min-w-0">
@@ -259,17 +266,29 @@ const DRIVE_TONE: Record<Drive, string> = {
 };
 
 /** The mockup's car picture, made from the brand car on a tint per drive (no photos - we have none). */
-function VehicleTile({ drive, eligible }: { drive: Drive | null; eligible: boolean }) {
+function VehicleTile({
+  drive,
+  catalogId,
+  eligible,
+}: {
+  drive: Drive | null;
+  catalogId?: string | null;
+  eligible: boolean;
+}) {
+  const photo = carImage(catalogId);
   return (
     <span
       aria-hidden
+      title={photo ? `תמונה להמחשה · מקור: ${photo.credit}` : undefined}
       className={cn(
-        "flex h-20 items-center justify-center rounded-xl",
+        "relative flex h-24 items-center justify-center overflow-hidden rounded-xl",
         drive ? DRIVE_TONE[drive] : "bg-background",
         !eligible && "grayscale",
       )}
     >
-      {drive ? (
+      {photo ? (
+        <Image src={photo.src} alt="" fill sizes="(min-width: 1280px) 22vw, (min-width: 640px) 45vw, 90vw" className="object-contain p-1.5" />
+      ) : drive ? (
         <Image src="/brand/svg/car-silhouette.svg" alt="" width={340} height={175} className="h-14 w-auto" />
       ) : (
         <HandCoins className="size-9 text-success" />

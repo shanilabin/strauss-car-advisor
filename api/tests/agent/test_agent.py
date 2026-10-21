@@ -595,3 +595,12 @@ def test_a_car_required_role_is_never_offered_a_waiver_quick_reply() -> None:
     draft = ReplyDraft(text="הנה ההשוואה.", quick_replies=["מה עם ויתור?", "למה יש הפרש?"])
     assert to_reply(draft, driver).quick_replies == ["למה יש הפרש?"]
     assert to_reply(draft, deps_for(noa())).quick_replies == ["מה עם ויתור?", "למה יש הפרש?"]
+
+
+def test_comparing_car_after_car_in_one_turn_asks_the_rep_once() -> None:
+    """Live run: the model compared one car at a time, ten times in a turn - ten questions for the rep."""
+    deps = deps_for(noa())
+    run(
+        deps, *[("compare", {"option_ids": [car]}) for car in ("CAR-10", "CAR-06", "CAR-03", "CAR-08")], FINAL
+    )
+    assert [r.field for r in deps.turn.rep_requests] == ["participation:CAR-10"]

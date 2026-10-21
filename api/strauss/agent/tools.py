@@ -544,7 +544,11 @@ def compare(ctx: RunContext[AgentDeps], option_ids: list[str]) -> dict[str, Any]
     # One specific car: the company must confirm its participation, so the rep is asked at once. A broad
     # comparison ("electric cars") would send the rep a question per car - testers got seven - so the
     # employee is offered to ask about the one they like instead.
-    one_car = sum(r.option.catalog_id is not None for r in outcome.results) == 1
+    # ...and at most one such question per turn: a model that compares car after car on its own (live run:
+    # ten one-car comparisons in a row) must not fill the rep's queue
+    one_car = (
+        sum(r.option.catalog_id is not None for r in outcome.results) == 1 and not deps.turn.rep_requests
+    )
     for item in described:
         field = item.get("ask_rep_field")
         if not isinstance(field, str):

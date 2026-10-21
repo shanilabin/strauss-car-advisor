@@ -34,8 +34,10 @@ function parse(raw: string | null): FormFlowState {
   if (!raw) return INITIAL;
   try {
     const value = JSON.parse(raw) as Partial<FormFlowState>;
-    // A step past "pick" needs a conversation to reload; without one, start over
-    return value.conversationId ? { ...INITIAL, ...value } : INITIAL;
+    if (value.conversationId) return { ...INITIAL, ...value };
+    // A step past "pick" needs a conversation to reload; without one, start over - but keep the name just
+    // picked: it is saved before the conversation exists ("employee chosen: ..." vanished otherwise)
+    return { ...INITIAL, pickedName: value.pickedName ?? null };
   } catch {
     return INITIAL;
   }

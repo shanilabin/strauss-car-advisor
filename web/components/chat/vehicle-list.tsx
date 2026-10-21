@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, ChevronLeft, ChevronRight, Star, TrendingDown, TrendingUp } from "lucide-react";
+import { Ban, ChevronLeft, ChevronRight, Plus, Star, TrendingDown, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -18,6 +18,8 @@ type VehicleListProps = {
   /** The engine's best option (Comparison.best_option_id), marked as recommended. */
   bestOptionId?: string | null;
   onSelect: (optionId: string) => void;
+  /** Opens all the alternatives to add another car to the comparison. */
+  onAddCar?: () => void;
   /** Desktop rail uses 260/320px; fluid fills the mobile sheet. */
   fluid?: boolean;
   className?: string;
@@ -29,6 +31,7 @@ export function VehicleList({
   selectedId,
   bestOptionId = null,
   onSelect,
+  onAddCar,
   fluid = false,
   className,
 }: VehicleListProps) {
@@ -67,6 +70,7 @@ export function VehicleList({
         </span>
       </header>
 
+      <p className="px-4 pb-2 text-xs text-muted-foreground">לחצו על רכב כדי לראות אותו בהשוואה.</p>
       <BestNote results={results} bestOptionId={bestOptionId} />
 
       {results.length === 0 ? (
@@ -140,6 +144,18 @@ export function VehicleList({
             );
           })}
         </ul>
+      )}
+      {onAddCar && (
+        <div className="shrink-0 border-t border-border/70 p-3">
+          <button
+            type="button"
+            onClick={onAddCar}
+            className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full border border-primary/40 text-sm font-bold text-primary hover:bg-mist"
+          >
+            <Plus aria-hidden className="size-4" />
+            הוספת רכב להשוואה
+          </button>
+        </div>
       )}
     </aside>
   );

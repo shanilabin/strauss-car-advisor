@@ -145,9 +145,19 @@ def default_agent() -> Agent[AgentDeps, ReplyDraft]:
 ASKS_THE_EMPLOYEE = re.compile(r"(?<!\w)(שלך|לך|אצלך|את/ה|אתה|את)(?!\w).*\?\s*$")
 
 
-def employee_replies(replies: list[str]) -> list[str]:
-    return [r for r in replies if r.strip() and not ASKS_THE_EMPLOYEE.search(r)]
+def employee_replies(replies: list[str], deps: AgentDeps | None = None) -> list[str]:
+    """The quick replies the employee may tap. Dropped: the bot's own questions; an occupation name (a
+    guess at who the employee is - tester: "random suggestions"); a waiver for a car-required role."""
+    kept = [r for r in replies if r.strip() and not ASKS_THE_EMPLOYEE.search(r)]
+    if deps is None:
+        return kept
+    occupations = {o.name for o in deps.bundle.occupations}
+    kept = [r for r in kept if r.strip() not in occupations]
+    if _may_give_up_car(deps) is False:
+        kept = [r for r in kept if "ויתור" not in r and "לוותר" not in r]
+    return kept
 
 
 def to_reply(draft: ReplyDraft, deps: AgentDeps) -> AgentReply:
-    return AgentReply(text=draft.text, quick_replies=draft.quick_replies, cards=list(deps.turn.cards))
+    replies = employee_replies(draft.quick_replies, deps)
+    return AgentReply(text=draft.text, quick_replies=replies, cards=list(deps.turn.cards))

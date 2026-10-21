@@ -19,7 +19,7 @@ from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIChatModel
 
-from strauss.agent.agent import build_agent, employee_replies, state_block, to_reply
+from strauss.agent.agent import ReplyDraft, build_agent, employee_replies, state_block, to_reply
 from strauss.agent.deps import AgentDeps
 from strauss.agent.guard import FALLBACK_WITH_CARDS
 from strauss.agent.models_chain import AgentUnavailable, Cooldowns, CoolingModel, build_model
@@ -579,3 +579,19 @@ def test_a_broad_comparison_does_not_send_the_rep_a_question_per_car() -> None:
     one = deps_for(noa())
     run(one, ("compare", {"option_ids": ["CAR-10", "waiver"]}), FINAL)
     assert [r.field for r in one.turn.rep_requests] == ["participation:CAR-10"]
+
+
+def test_quick_replies_never_guess_who_the_employee_is() -> None:
+    """Tester: asked "what is your role?", the bot offered three random occupations to tap."""
+    deps = deps_for()
+    draft = ReplyDraft(
+        text="מה התפקיד שלך?", quick_replies=["נציג/ת מכירות שטח", "מפתח/ת תוכנה", "לא בטוח/ה"]
+    )
+    assert to_reply(draft, deps).quick_replies == ["לא בטוח/ה"]
+
+
+def test_a_car_required_role_is_never_offered_a_waiver_quick_reply() -> None:
+    driver = deps_for(noa().model_copy(update={"occupation": "נהג/ת הפצה"}))
+    draft = ReplyDraft(text="הנה ההשוואה.", quick_replies=["מה עם ויתור?", "למה יש הפרש?"])
+    assert to_reply(draft, driver).quick_replies == ["למה יש הפרש?"]
+    assert to_reply(draft, deps_for(noa())).quick_replies == ["מה עם ויתור?", "למה יש הפרש?"]

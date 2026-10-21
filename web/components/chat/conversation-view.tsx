@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelRight } from "lucide-react";
+import { PanelRight, Pencil } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -8,12 +8,13 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BottomSheet } from "@/components/chat/bottom-sheet";
 import { ChatPanel, type ChatMessage } from "@/components/chat/chat-panel";
 import { type PayslipApply, PayslipUpload } from "@/components/chat/payslip-upload";
-import { RepWaitingPanel } from "@/components/chat/rep-waiting-panel";
+import { RepStatusLine, RepWaitingPanel } from "@/components/chat/rep-waiting-panel";
 import { ResizeHandle, useResizableWidth } from "@/components/chat/resize-handle";
 import { VehicleList } from "@/components/chat/vehicle-list";
-import { ComparisonCard } from "@/components/comparison-card";
+import { ComparisonCard, todayArrangementLabel } from "@/components/comparison-card";
 import { OptionsMap } from "@/components/options-map";
 import { ProfileCard } from "@/components/profile-card";
+import { ProfileDialog } from "@/components/profile-dialog";
 import { Topbar } from "@/components/topbar";
 import { layoutPhaseFromStatus, stepFromStatus } from "@/lib/api/conversation-status";
 import { defaultOptionId } from "@/lib/comparison";
@@ -602,38 +603,32 @@ function ComparisonDesktop({
   const [chatWidth, setChatWidth] = useResizableWidth("strauss-chat-width-comparison", 300, 0.3);
   // "Back to the full chat" (tester): the cars rail steps aside and the chat takes half the screen
   const [chatWide, setChatWide] = useState(false);
-  const [rail, setRail] = useState<"options" | "details">("options");
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const shownResult =
+    comparison.results.find((r) => r.option.id === selectedOptionId) ?? comparison.results[0] ?? null;
 
   return (
     <div className="flex min-h-0 flex-1 gap-4 p-6">
-      {/* RTL: visual order is chat (end/left) · comparison · vehicles (start/right).
-          Spec: vehicles on the right, comparison center, chat on the left.
-          In RTL flex row: first item is on the right. So order: vehicles, comparison, chat.
-          The right rail also holds the employee's details: an edit there recomputes the comparison
-          in the middle (PATCH /profile), the same as telling the agent in the chat. */}
-      <div className={cn("flex min-h-0 shrink-0 flex-col gap-2 self-stretch", chatWide && "hidden")}>
-        <RailTabs value={rail} onChange={setRail} />
-        {rail === "options" ? (
-          <VehicleList
-            results={comparison.results}
-            bestOptionId={comparison.best_option_id}
-            selectedId={selectedOptionId}
-            onSelect={onSelect}
-            className="min-h-0 flex-1"
-          />
-        ) : (
-          <ProfileCard
-            conversationId={conversationId}
-            profile={profile}
-            missing={profileMissing}
-            recalculates
-            className="min-h-0 w-[320px] flex-1"
-          />
-        )}
-      </div>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto">
-        <ResultBanner onEditDetails={() => setRail("details")} />
-        {waitingRep && (
+      {/* RTL: the first item is on the right. One fixed layout, three jobs:
+          the alternatives (right) · the comparison (middle) · the chat (left). */}
+      {!chatWide && (
+        <VehicleList
+          results={comparison.results}
+          bestOptionId={comparison.best_option_id}
+          selectedId={selectedOptionId}
+          onSelect={onSelect}
+          onAddCar={onChangeCar}
+          className="shrink-0 self-stretch"
+        />
+      )}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto">
+        <ComparisonHeader
+          optionLabel={shownResult?.option.label ?? null}
+          todayLabel={todayArrangementLabel(comparison.profile_snapshot)}
+          onEditDetails={() => setDetailsOpen(true)}
+        />
+        {waitingRep && openQuestions.length > 0 && <RepStatusLine questions={openQuestions} />}
+        {waitingRep && openQuestions.length === 0 && (
           <RepWaitingPanel questions={openQuestions} missing={missing} />
         )}
         <ComparisonCard
@@ -645,6 +640,13 @@ function ComparisonDesktop({
           className="shrink-0"
         />
       </div>
+      <ProfileDialog
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        conversationId={conversationId}
+        profile={profile}
+        missing={profileMissing}
+      />
       <ResizeHandle width={chatWidth} onWidth={setChatWidth} grows="right" />
       <ChatPanel
         messages={messages}
@@ -732,7 +734,8 @@ function MobileSideContent({
 
   return (
     <div className="flex flex-col gap-4 pb-4">
-      {waitingRep && <RepWaitingPanel questions={openQuestions} missing={missing} />}
+      {waitingRep && openQuestions.length > 0 && <RepStatusLine questions={openQuestions} />}
+      {waitingRep && openQuestions.length === 0 && <RepWaitingPanel questions={openQuestions} missing={missing} />}
       <VehicleList
         results={comparison.results}
         bestOptionId={comparison.best_option_id}
@@ -838,76 +841,40 @@ function OptionsGalleryPanel({
   );
 }
 
-/** Right rail of the comparison: the alternatives, or the employee's own details to edit. */
-function RailTabs({
-  value,
-  onChange,
+/**
+ * The comparison's title row: which car against what, and the way to change the details behind it.
+ * (It replaced a big "result!" banner that took a quarter of the screen.)
+ */
+function ComparisonHeader({
+  optionLabel,
+  todayLabel,
+  onEditDetails,
 }: {
-  value: "options" | "details";
-  onChange: (value: "options" | "details") => void;
+  optionLabel: string | null;
+  todayLabel: string;
+  onEditDetails: () => void;
 }) {
-  const tabs = [
-    { id: "options", label: "החלופות" },
-    { id: "details", label: "הפרטים שלי" },
-  ] as const;
   return (
-    <div role="tablist" aria-label="מה להציג בצד" className="flex gap-1 rounded-full bg-mist p-1">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          role="tab"
-          aria-selected={value === tab.id}
-          onClick={() => onChange(tab.id)}
-          className={cn(
-            "min-h-9 flex-1 rounded-full px-3 text-sm font-bold transition-colors",
-            "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring",
-            value === tab.id ? "bg-surface text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** The mockup's "יש תוצאה!" banner above the comparison: brand sky, the celebrating mascot. */
-function ResultBanner({ onEditDetails }: { onEditDetails: () => void }) {
-  return (
-    <div className="relative isolate flex min-h-36 shrink-0 items-center overflow-hidden rounded-3xl px-6 py-5 shadow-card lg:min-h-44 lg:px-8">
-      <Image
-        src="/brand/bg-flowing-ribbons.webp"
-        alt=""
-        fill
-        sizes="60vw"
-        className="-z-10 object-cover object-[60%_30%] dark:opacity-30"
-      />
-      <span aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-l from-surface/90 via-surface/70 to-transparent" />
+    <header className="flex shrink-0 flex-wrap items-center gap-3 rounded-3xl bg-surface px-5 py-3 shadow-card">
+      <Image src="/brand/mascot-celebrate.webp" alt="" width={520} height={503} className="h-auto w-12 shrink-0" />
       <div className="min-w-0 flex-1">
-        <p className="font-display text-4xl leading-tight lg:text-5xl">יש תוצאה!</p>
-        <p className="font-display text-2xl leading-tight text-primary lg:text-3xl">הנה ההשוואה עבורך.</p>
-        <p className="mt-2 max-w-md text-sm text-foreground/80">
-          לפי הפרטים שמסרת, חישבנו את החלופות שבדקנו. למטה ההשוואה המלאה, עם פירוט מאיפה מגיע כל שקל.
-          משהו השתנה? כתבו לי בצ&apos;אט, או{" "}
-          <button
-            type="button"
-            onClick={onEditDetails}
-            className="font-bold text-primary underline underline-offset-4 hover:no-underline"
-          >
-            ערכו את הפרטים
-          </button>
-          , וההשוואה תחושב מחדש.
+        <h1 className="text-xl font-extrabold">
+          ההשוואה שלך{optionLabel ? <>: <bdi>{optionLabel}</bdi></> : null}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          מול <bdi>{todayLabel}</bdi>, לפי הפרטים שמסרת. משהו השתנה? ערכו את הפרטים או כתבו בצ&apos;אט, וההשוואה
+          תחושב מחדש.
         </p>
       </div>
-      <Image
-        src="/brand/mascot-celebrate.webp"
-        alt=""
-        width={520}
-        height={503}
-        className="mascot-float h-auto w-32 shrink-0 drop-shadow-[0_12px_14px_rgb(23_50_72/0.18)] lg:w-44"
-      />
-    </div>
+      <button
+        type="button"
+        onClick={onEditDetails}
+        className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-bold text-primary hover:bg-mist focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        <Pencil aria-hidden className="size-4" />
+        עריכת הפרטים
+      </button>
+    </header>
   );
 }
 

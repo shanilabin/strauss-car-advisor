@@ -62,7 +62,7 @@ function pickResult(comparison: Comparison, optionId?: string | null): OptionRes
   return results[0] ?? null;
 }
 
-function todayArrangementLabel(profile: Profile): string {
+export function todayArrangementLabel(profile: Profile): string {
   const current = profile.current;
   if (!current) return "היום";
   if (current.kind === "waiver") return "ויתור על הרכב";
@@ -407,7 +407,11 @@ export function ComparisonCard({
           </section>
 
           {/* Requirement 23: every field, from the DTO. A real table (rows keep their names), laid out as tiles. */}
-          <table className="mt-4 block w-full text-sm">
+          <p className="mt-4 text-xs text-muted-foreground">
+            כל המספרים כאן מחושבים במנוע החישוב של החברה. ליד מספר יש <span className="font-bold">למה?</span>:
+            לחצו כדי לראות מאיפה הוא מגיע.
+          </p>
+          <table className="mt-2 block w-full text-sm">
             <caption className="sr-only">פירוט שדות ההשוואה</caption>
             <tbody className={cn("grid gap-3", compact ? "grid-cols-1" : "sm:grid-cols-2")}>
               <FactRow icon={Building2} label="עלות לחברה ותקציב הקבוצה">

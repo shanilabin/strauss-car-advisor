@@ -66,3 +66,32 @@ export function RepWaitingPanel({ questions, missing = [] }: RepWaitingPanelProp
     </section>
   );
 }
+
+
+/**
+ * The comparison screen's one line about the rep: THAT something waits for them and what happens next -
+ * not each question (testers: the question list only confused them).
+ */
+export function RepStatusLine({ questions }: { questions: readonly RepQuestionOut[] }) {
+  const cars = questions
+    .map((question) => question.context?.requested_car)
+    .filter((car): car is string => typeof car === "string" && car.length > 0);
+  const about =
+    cars.length === 1
+      ? `ההשתתפות ב-${cars[0]} ממתינה לאישור נציג התחבורה.`
+      : cars.length > 1
+        ? "ההשתתפות בחלק מהרכבים ממתינה לאישור נציג התחבורה."
+        : "פרט אחד ממתין לאישור נציג התחבורה.";
+  return (
+    <p
+      role="status"
+      className="flex shrink-0 items-center gap-2 rounded-2xl border border-pending-border bg-pending-surface px-4 py-2.5 text-sm"
+    >
+      <span aria-hidden className="size-2 shrink-0 rounded-full bg-pending motion-safe:animate-pulse" />
+      <Clock aria-hidden className="size-4 shrink-0 text-pending" />
+      <span>
+        <span className="font-bold">{about}</span> המספרים כאן הם הערכה עד שיענה, ואז ההשוואה תתעדכן לבד.
+      </span>
+    </p>
+  );
+}

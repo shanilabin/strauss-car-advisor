@@ -11,8 +11,8 @@ import {
 import { getSupabase } from "@/lib/supabase/client";
 import { useSession } from "@/lib/supabase/use-session";
 
-/** Slow refetch while waiting, in case Realtime is blocked. Not an ETA. */
-const WAITING_REP_POLL_MS = 15_000;
+/** Refetch while waiting for the rep, in case Realtime does not get through - the answer shows within seconds. */
+const WAITING_REP_POLL_MS = 4_000;
 
 /**
  * Employee Realtime for one conversation.

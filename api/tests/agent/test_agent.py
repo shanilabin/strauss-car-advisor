@@ -565,3 +565,17 @@ def test_the_state_says_whether_the_employee_may_give_up_the_car() -> None:
     assert '"may_give_up_car": false' in state_block(deps_for(driver))
     assert '"may_give_up_car": true' in state_block(deps_for(noa()))
     assert '"may_give_up_car": null' in state_block(deps_for())
+
+
+def test_a_broad_comparison_does_not_send_the_rep_a_question_per_car() -> None:
+    """Tester: "compare electric cars" opened seven rep questions. Several cars -> nobody is asked yet; the
+    employee is offered to ask about the one they like. One car -> the rep is asked at once."""
+    deps = deps_for(noa())
+    result = run(deps, ("compare", {"option_ids": ["CAR-03", "CAR-06", "CAR-08", "CAR-10"]}), FINAL)
+    (returned,) = returned_by(result, "compare")
+    assert deps.turn.rep_requests == []
+    assert all("offer to ask the transport rep" in item["participation"] for item in returned["results"])
+
+    one = deps_for(noa())
+    run(one, ("compare", {"option_ids": ["CAR-10", "waiver"]}), FINAL)
+    assert [r.field for r in one.turn.rep_requests] == ["participation:CAR-10"]

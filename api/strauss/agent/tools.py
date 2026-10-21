@@ -528,8 +528,8 @@ def list_options(ctx: RunContext[AgentDeps]) -> dict[str, Any]:
 @traced
 def compare(ctx: RunContext[AgentDeps], option_ids: list[str]) -> dict[str, Any]:
     """Compare today's arrangement with the alternatives the employee asked about. The full comparison
-    (numbers, chart, explanation) appears on the employee's screen in a card. When a compared car's
-    participation is still the catalog default, the transport rep is asked automatically.
+    (numbers, chart, explanation) appears on the employee's screen in a card. When ONE car is compared and
+    its participation is still the catalog default, the transport rep is asked automatically.
 
     Args:
         option_ids: Option ids from the conversation state: "waiver" or catalog car ids such as "CAR-10".
@@ -541,10 +541,22 @@ def compare(ctx: RunContext[AgentDeps], option_ids: list[str]) -> dict[str, Any]
     deps.turn.cards.append(ComparisonCard(comparison=outcome))
     deps.shown = outcome
     described = [describe(r) for r in outcome.results]
-    for item in described:  # the employee asked about this car - the company must confirm its participation
-        field = item.pop("ask_rep_field", None)
-        if isinstance(field, str) and _send_to_rep(deps, field):
-            item["participation"] = "default - the transport rep was asked to confirm; say so"
+    # One specific car: the company must confirm its participation, so the rep is asked at once. A broad
+    # comparison ("electric cars") would send the rep a question per car - testers got seven - so the
+    # employee is offered to ask about the one they like instead.
+    one_car = sum(r.option.catalog_id is not None for r in outcome.results) == 1
+    for item in described:
+        field = item.get("ask_rep_field")
+        if not isinstance(field, str):
+            continue
+        if one_car and _send_to_rep(deps, field):
+            item.pop("ask_rep_field")
+            item["participation"] = "default - the transport rep was asked to confirm; say so in general"
+        else:
+            item["participation"] = (
+                "default, not confirmed yet - offer to ask the transport rep about the car the employee "
+                "prefers (ask_representative with this ask_rep_field)"
+            )
     return {"shown_to_employee": True, "recommendation": _recommendation(outcome, deps), "results": described}
 
 

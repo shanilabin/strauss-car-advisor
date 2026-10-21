@@ -520,6 +520,7 @@ function OptionsDesktop({
 }) {
   // The employee can drag the chat wider at the expense of the gallery (and it is remembered)
   const [chatWidth, setChatWidth] = useResizableWidth("strauss-chat-width-options", 320);
+  const wide = chatWidth >= 560;
 
   return (
     <div
@@ -538,6 +539,7 @@ function OptionsDesktop({
         onSelectOption={onSelectOption}
         openQuestions={openQuestions}
         narrow={chatWidth < 400}
+        wideToggle={{ wide, onToggle: () => setChatWidth(wide ? 320 : window.innerWidth * 0.6) }}
         onTraceOpenChange={(open) => open && chatWidth < 440 && setChatWidth(440)}
         className="min-h-0 min-w-0"
       />
@@ -598,6 +600,8 @@ function ComparisonDesktop({
   missing: NonNullable<ConversationState["missing"]>;
 }) {
   const [chatWidth, setChatWidth] = useResizableWidth("strauss-chat-width-comparison", 300, 0.3);
+  // "Back to the full chat" (tester): the cars rail steps aside and the chat takes half the screen
+  const [chatWide, setChatWide] = useState(false);
   const [rail, setRail] = useState<"options" | "details">("options");
 
   return (
@@ -607,7 +611,7 @@ function ComparisonDesktop({
           In RTL flex row: first item is on the right. So order: vehicles, comparison, chat.
           The right rail also holds the employee's details: an edit there recomputes the comparison
           in the middle (PATCH /profile), the same as telling the agent in the chat. */}
-      <div className="flex min-h-0 shrink-0 flex-col gap-2 self-stretch">
+      <div className={cn("flex min-h-0 shrink-0 flex-col gap-2 self-stretch", chatWide && "hidden")}>
         <RailTabs value={rail} onChange={setRail} />
         {rail === "options" ? (
           <VehicleList
@@ -653,10 +657,11 @@ function ComparisonDesktop({
         onSend={onSend}
         onSelectOption={onSelectOption}
         openQuestions={openQuestions}
-        narrow={chatWidth < 400}
+        narrow={!chatWide && chatWidth < 400}
+        wideToggle={{ wide: chatWide, onToggle: () => setChatWide((wide) => !wide) }}
         onTraceOpenChange={(open) => open && chatWidth < 440 && setChatWidth(440)}
         className="shrink-0 self-stretch"
-        style={{ width: chatWidth }}
+        style={{ width: chatWide ? "min(50vw, 760px)" : chatWidth }}
       />
     </div>
   );

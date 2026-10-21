@@ -115,6 +115,20 @@ function MissingMessageCard({ card }: { card: components["schemas"]["MissingCard
   );
 }
 
+/** "The transport rep was asked" - once per message, however many questions were opened. */
+export function RepPendingSummary({ count }: { count: number }) {
+  return (
+    <p className="mt-3 flex items-start gap-2 rounded-2xl border border-pending-border bg-pending-surface px-4 py-2.5 text-sm">
+      <Clock aria-hidden className="mt-0.5 size-4 shrink-0 text-pending" />
+      <span>
+        <span className="font-bold text-pending">נשלח לנציג התחבורה.</span>{" "}
+        {count > 1 ? `ההשתתפות בחלק מהרכבים מחכה לאישור שלו.` : "ההשתתפות ברכב מחכה לאישור שלו."} ההשוואה
+        תתעדכן כאן לבד כשיענה.
+      </span>
+    </p>
+  );
+}
+
 function RepPendingMessageCard({
   card,
   askedAt,

@@ -58,7 +58,9 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
     baseline: number;
     startedAt: string;
   } | null>(null);
-  const [userSelectedId, setUserSelectedId] = useState<string | null>(null);
+  // The car on screen survives a refresh (tester: after a refresh the screen jumped from the car waiting
+  // for the rep to the best alternative - a waiver - and looked as if the rep had answered)
+  const [userSelectedId, setUserSelectedId] = useRememberedSelection(conversationId);
   const [sheetOpen, setSheetOpen] = useState(false);
   /**
    * GET /options saves a comparison and moves status to PRESENTED.
@@ -897,6 +899,29 @@ function withCurrentMissing(
     });
     return { ...message, cards };
   });
+}
+
+/** The car the employee is looking at, kept per conversation in this tab (sessionStorage). */
+function useRememberedSelection(conversationId: string) {
+  const key = `strauss-selected-option:${conversationId}`;
+  const [selected, setSelected] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.sessionStorage.getItem(key);
+    } catch {
+      return null; // storage blocked: just not remembered
+    }
+  });
+  const remember = (id: string | null) => {
+    setSelected(id);
+    try {
+      if (id) window.sessionStorage.setItem(key, id);
+      else window.sessionStorage.removeItem(key);
+    } catch {
+      // not remembered - fine
+    }
+  };
+  return [selected, remember] as const;
 }
 
 function FormModeLink() {

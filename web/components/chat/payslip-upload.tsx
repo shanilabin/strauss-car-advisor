@@ -41,12 +41,6 @@ const FIELDS: { key: Key; label: string; max?: number; text?: boolean }[] = [
   { key: "car_participation", label: "השתתפות ברכב (₪)" },
 ];
 
-/** Payslip PDFs and images the team made for the demo - fictitious, safe to send to a free model. */
-const SAMPLES = [
-  { href: "/samples/payslip-demo-1.pdf", label: "תלוש לדוגמה (PDF)" },
-  { href: "/samples/payslip-demo-2.png", label: "תלוש לדוגמה (תמונה)" },
-];
-
 type Draft = Record<Key, string>;
 
 function draftFrom(parse: PayslipParse): Draft {
@@ -265,12 +259,7 @@ export function PayslipUpload({
       </div>
       <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
         <ShieldCheck aria-hidden className="size-3.5 shrink-0" />
-        התלוש לא נשמר, ות״ז לא נקראת. בגרסת ההדגמה העלו רק תלוש לדוגמה:
-        {SAMPLES.map((s) => (
-          <a key={s.href} href={s.href} download className="font-semibold text-link underline underline-offset-2">
-            {s.label}
-          </a>
-        ))}
+        התלוש לא נשמר, ות״ז לא נקראת.
       </p>
       {shownError && (
         <p role="alert" className="flex items-center gap-1 text-sm font-semibold text-error">

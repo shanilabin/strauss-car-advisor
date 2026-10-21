@@ -1,6 +1,6 @@
 "use client";
 
-import { SendHorizontal, UserRound } from "lucide-react";
+import { Maximize2, Minimize2, SendHorizontal, UserRound } from "lucide-react";
 import Image from "next/image";
 import {
   useEffect,
@@ -14,7 +14,7 @@ import {
 } from "react";
 
 import { AgentActions } from "@/components/chat/agent-actions";
-import { MessageCardView } from "@/components/chat/message-cards";
+import { MessageCardView, RepPendingSummary } from "@/components/chat/message-cards";
 import { Button } from "@/components/ui/button";
 import type { components } from "@/lib/api/schema";
 import { cn } from "@/lib/utils";
@@ -39,12 +39,14 @@ type ChatPanelProps = {
   onSend: (text: string) => void;
   /** When set, options cards in messages can open a comparison. */
   onSelectOption?: (optionId: string) => void;
-  /** Open rep questions, so a rep_pending card can show when it was asked. */
+  /** Open rep questions - accepted for callers; the chat shows one summary line for them. */
   openQuestions?: readonly RepQuestionOut[];
   /** True while a narrow chat has an AI-actions timeline open, so the parent can widen it. */
   onTraceOpenChange?: (open: boolean) => void;
   /** Shown right above the message box (e.g. the payslip upload while details are missing). */
   toolbar?: ReactNode;
+  /** Beside a comparison or the options: a button that widens the chat (and back) - the compact header. */
+  wideToggle?: { wide: boolean; onToggle: () => void };
   className?: string;
   style?: CSSProperties;
 };
@@ -61,9 +63,9 @@ export function ChatPanel({
   errorAction,
   onSend,
   onSelectOption,
-  openQuestions,
   onTraceOpenChange,
   toolbar = null,
+  wideToggle,
   className,
   style,
 }: ChatPanelProps) {
@@ -121,12 +123,27 @@ export function ChatPanel({
       )}
       style={style}
     >
-      {narrow ? (
+      {narrow || wideToggle ? (
         <header className="flex shrink-0 items-center gap-3 border-b border-border/70 bg-mist/60 px-4 py-3">
           <Image src="/brand/mascot-avatar.webp" alt="" width={160} height={160} className="size-10 rounded-full bg-surface p-0.5 shadow-soft" />
-          <h2 className="text-base font-extrabold">
+          <h2 className="min-w-0 flex-1 text-base font-extrabold">
             צ׳אט עם <bdi dir="ltr">Drive</bdi>
           </h2>
+          {wideToggle && (
+            <button
+              type="button"
+              onClick={wideToggle.onToggle}
+              aria-pressed={wideToggle.wide}
+              className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface px-3 text-xs font-bold text-primary hover:bg-mist focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              {wideToggle.wide ? (
+                <Minimize2 aria-hidden className="size-3.5" />
+              ) : (
+                <Maximize2 aria-hidden className="size-3.5" />
+              )}
+              {wideToggle.wide ? "הקטנת הצ'אט" : "הרחבת הצ'אט"}
+            </button>
+          )}
         </header>
       ) : (
         <header className="relative isolate flex h-32 shrink-0 items-center overflow-hidden border-b border-border/70 px-6 lg:h-36">
@@ -229,14 +246,21 @@ export function ChatPanel({
                   {message.sending ? "שולח…" : formatTime(message.created_at)}
                 </p>
                 {!fromUser &&
-                  message.cards?.map((card, index) => (
-                    <MessageCardView
-                      key={`${message.id}-${card.kind}-${index}`}
-                      card={card}
-                      onSelectOption={onSelectOption}
-                      askedAt={askedAtFor(card, message.created_at, openQuestions)}
-                    />
-                  ))}
+                  message.cards
+                    ?.filter((card) => card.kind !== "rep_pending")
+                    .map((card, index) => (
+                      <MessageCardView
+                        key={`${message.id}-${card.kind}-${index}`}
+                        card={card}
+                        onSelectOption={onSelectOption}
+                      />
+                    ))}
+                {/* The employee needs to know THAT the rep was asked, not each question - one line */}
+                {!fromUser && message.cards?.some((card) => card.kind === "rep_pending") && (
+                  <RepPendingSummary
+                    count={message.cards.filter((card) => card.kind === "rep_pending").length}
+                  />
+                )}
                 {!fromUser && (
                   <AgentActions
                     trace={message.trace}
@@ -374,16 +398,6 @@ const timeFormat = new Intl.DateTimeFormat("he-IL", { hour: "2-digit", minute: "
 function formatTime(iso: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? "" : timeFormat.format(date);
-}
-
-function askedAtFor(
-  card: NonNullable<MessageOut["cards"]>[number],
-  messageCreatedAt: string,
-  openQuestions: readonly RepQuestionOut[] | undefined,
-): string | undefined {
-  if (card.kind !== "rep_pending") return undefined;
-  const match = openQuestions?.find((question) => question.id === card.question_id);
-  return match?.created_at ?? messageCreatedAt;
 }
 
 function roleLabel(role: MessageOut["role"]): string {

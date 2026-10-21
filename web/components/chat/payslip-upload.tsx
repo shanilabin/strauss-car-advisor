@@ -101,7 +101,15 @@ export function PayslipUpload({
     if (!file) return;
     setError(null);
     parse.mutate(file, {
-      onSuccess: (result) => setDraft(draftFrom(result)),
+      onSuccess: (result) => {
+        // nothing a payslip prints was found: an invitation, a photo of something else...
+        if (Object.values(result.reading).every((value) => value == null)) {
+          setError("לא מצאנו בקובץ נתונים של תלוש שכר. בדקו שזה התלוש, או כתבו את הפרטים בצ'אט.");
+          parse.reset();
+          return;
+        }
+        setDraft(draftFrom(result));
+      },
       onError: (e) => setError(e instanceof PayslipError ? e.message : "קריאת התלוש נכשלה. נסו שוב."),
     });
     if (fileRef.current) fileRef.current.value = "";

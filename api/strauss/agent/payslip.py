@@ -11,6 +11,7 @@ The file is never stored. The reading has no field for a name, an ID number or a
 """
 
 import io
+import re
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -84,17 +85,59 @@ def pdf_text(data: bytes) -> str | None:
         text = "\n".join(page.extract_text() or "" for page in reader.pages[:3])
     except (PdfReadError, ValueError, OSError):
         return None
-    text = mask_ids(text)
+    text = mask_ids(_unglue(text))
     return text if len(text.strip()) >= MIN_TEXT_CHARS else None
 
 
+# A table's columns ("this month" | "year to date") come out of the PDF glued: "14,200.00113,600.00".
+# Payslip amounts end in two decimals, so a digit right after ".dd" starts the next number.
+_GLUED = re.compile(r"(\.\d{2})(?=\d)")
+
+
+def _unglue(text: str) -> str:
+    return _GLUED.sub(r"\1 ", text)
+
+
+# The words a payslip prints beside each value. A number counts only on (or next to) one of its lines.
+LABELS: dict[str, tuple[str, ...]] = {
+    "base_salary": ("שכר יסוד", "שכר בסיס", "משכורת בסיס", "משכורת יסוד"),
+    "commissions": ("עמלות", "עמלה"),
+    "bonus": ("בונוס", "פרמיה", "מענק"),
+    "pension_pct": ("פנסיה", "תגמולי עובד", "תגמולים"),
+    "study_fund_pct": ("השתלמות",),
+    "credit_points": ("נקודות זיכוי", "נק' זיכוי", "נק זיכוי"),
+    "value_of_use": ("שווי שימוש", "שווי רכב"),
+    "car_participation": ("השתתפות",),
+}
+
+
+def _beside_its_label(name: str, value: Decimal, lines: list[str]) -> bool:
+    """The value is printed on a line carrying one of the field's labels. Only when that line has no
+    number at all (a table row extracted as two lines) does the line just after or before it count - so a
+    field can never borrow its neighbour's number."""
+    target = value.normalize()
+    for index, line in enumerate(lines):
+        if not any(label in line for label in LABELS[name]):
+            continue
+        on_line = numbers(line)
+        if target in on_line:
+            return True
+        if not on_line:
+            near = " ".join(lines[max(0, index - 1) : index + 2])
+            if target in numbers(near):
+                return True
+    return False
+
+
 def only_printed(reading: PayslipReading, text: str) -> tuple[PayslipReading, list[str]]:
-    """Drop every number that does not appear in the payslip's text. Returns the kept reading and the
-    fields that were dropped (the model invented them, or mis-copied them)."""
-    printed = numbers(text)
+    """Keep a number only where the payslip prints it beside its own label - a number that is not on the
+    payslip (invented) or sits on another field's line (mis-assigned: the study-fund amount read as the
+    salary) is dropped. Returns the kept reading and the dropped fields, which the employee fills in."""
+    lines = text.splitlines()
     dropped = [
         name
         for name in NUMBER_FIELDS
-        if (value := getattr(reading, name)) is not None and Decimal(value).normalize() not in printed
+        if (value := getattr(reading, name)) is not None
+        and not _beside_its_label(name, Decimal(value), lines)
     ]
     return reading.model_copy(update=dict.fromkeys(dropped)), dropped

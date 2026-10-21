@@ -112,3 +112,50 @@ def test_a_separate_payslip_key_keeps_the_chat_quota_apart() -> None:
     assert payslip_settings(both).gemini_api_key == "payslip" and both.gemini_api_key == "chat"
     only_chat = Settings(gemini_api_key="chat", payslip_gemini_api_key="")
     assert payslip_settings(only_chat).gemini_api_key == "chat"
+
+
+# ── Edge cases (fictitious payslips in tests/fixtures) ───────────────────────
+
+AMOUNTS_ONLY = (FIXTURES / "payslip-amounts-only.pdf").read_bytes()  # pension as an amount, a YTD column
+SCANNED = (FIXTURES / "payslip-scanned.pdf").read_bytes()  # a picture inside a PDF: no text layer
+NOT_A_PAYSLIP = (FIXTURES / "not-a-payslip.pdf").read_bytes()
+
+
+def test_a_percent_the_payslip_does_not_print_is_never_derived(model: ModelSlot) -> None:
+    """Pension and study fund printed only as amounts: a model that "helpfully" computes 6% is dropped."""
+    reading = {"base_salary": 14200, "pension_pct": 6, "study_fund_pct": 2.5, "credit_points": 2.25,
+               "value_of_use": 3130, "car_participation": 250}  # fmt: skip
+    body = read(model, reading, data=AMOUNTS_ONLY).json()
+    assert sorted(body["not_confirmed"]) == ["pension_pct", "study_fund_pct"]
+    kept = body["reading"]
+    assert (kept["base_salary"], kept["value_of_use"], kept["car_participation"]) == (14200, 3130, 250)
+
+
+def test_a_number_from_another_fields_line_is_not_accepted(model: ModelSlot) -> None:
+    """The value of use (3,130) read as the base salary: printed on the payslip, but not beside its label."""
+    body = read(model, {"base_salary": 3130, "value_of_use": 3130}, data=AMOUNTS_ONLY).json()
+    assert body["not_confirmed"] == ["base_salary"] and body["reading"]["value_of_use"] == 3130
+
+
+def test_table_columns_glued_by_the_pdf_are_read_apart() -> None:
+    """ "14,200.00113,600.00" (this month | year to date) is two numbers, not one."""
+    text = pdf_text(AMOUNTS_ONLY)
+    assert text is not None and "14,200.00 113,600.00" in text
+    kept, dropped = only_printed(PayslipReading(base_salary=14200), text)
+    assert kept.base_salary == 14200 and dropped == []
+
+
+def test_a_scanned_pdf_is_read_as_an_image(model: ModelSlot) -> None:
+    vision = ModelSlot()
+    vision.factory = lambda: scripted(("final_result", {"base_salary": 14200}))
+    app.dependency_overrides[get_vision_model] = lambda: vision
+    response = read(model, {}, data=SCANNED)
+    assert response.status_code == 200 and response.json()["read_from"] == "image"
+    assert vision.calls == 1 and model.calls == 0
+
+
+def test_a_document_that_is_not_a_payslip_comes_back_empty(model: ModelSlot) -> None:
+    """An invitation: the model finds no payslip line, and the screen says so (nothing to save)."""
+    body = read(model, {}, data=NOT_A_PAYSLIP).json()
+    assert body["read_from"] == "text"
+    assert all(value is None for value in body["reading"].values())

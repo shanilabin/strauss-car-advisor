@@ -537,8 +537,8 @@ def list_options(ctx: RunContext[AgentDeps]) -> dict[str, Any]:
 @traced
 def compare(ctx: RunContext[AgentDeps], option_ids: list[str]) -> dict[str, Any]:
     """Compare today's arrangement with the alternatives the employee asked about. The full comparison
-    (numbers, chart, explanation) appears on the employee's screen in a card. When ONE car is compared and
-    its participation is still the catalog default, the transport rep is asked automatically.
+    (numbers, chart, explanation) appears on the employee's screen in a card. A participation that is still
+    the catalog default is an estimate; the rep is asked only when the employee wants that car.
 
     Args:
         option_ids: Option ids from the conversation state: "waiver" or catalog car ids such as "CAR-10".
@@ -550,25 +550,15 @@ def compare(ctx: RunContext[AgentDeps], option_ids: list[str]) -> dict[str, Any]
     deps.turn.cards.append(ComparisonCard(comparison=outcome))
     deps.shown = outcome
     described = [describe(r) for r in outcome.results]
-    # One specific car: the company must confirm its participation, so the rep is asked at once. A broad
-    # comparison ("electric cars") would send the rep a question per car - testers got seven - so the
-    # employee is offered to ask about the one they like instead.
-    # ...and at most one such question per turn: a model that compares car after car on its own (live run:
-    # ten one-car comparisons in a row) must not fill the rep's queue
-    one_car = (
-        sum(r.option.catalog_id is not None for r in outcome.results) == 1 and not deps.turn.rep_requests
-    )
+    # Comparing never asks the rep (testers: "I only wanted to check"): a default participation is an
+    # estimate, and the employee asks the rep about the car they actually want - a button on the card, or
+    # by telling the advisor (then ask_representative with this field).
     for item in described:
-        field = item.get("ask_rep_field")
-        if not isinstance(field, str):
-            continue
-        if one_car and _send_to_rep(deps, field):
-            item.pop("ask_rep_field")
-            item["participation"] = "default - the transport rep was asked to confirm; say so in general"
-        else:
+        if isinstance(item.get("ask_rep_field"), str):
             item["participation"] = (
-                "default, not confirmed yet - offer to ask the transport rep about the car the employee "
-                "prefers (ask_representative with this ask_rep_field)"
+                "the catalog default - an estimate until the transport rep confirms. Say so; if the employee "
+                "wants this car, ask the rep (ask_representative with ask_rep_field) or point to the button "
+                "on the card"
             )
     return {"shown_to_employee": True, "recommendation": _recommendation(outcome, deps), "results": described}
 

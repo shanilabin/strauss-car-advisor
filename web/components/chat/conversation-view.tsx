@@ -11,7 +11,7 @@ import { type PayslipApply, PayslipUpload } from "@/components/chat/payslip-uplo
 import { RepStatusLine, RepWaitingPanel } from "@/components/chat/rep-waiting-panel";
 import { ResizeHandle, useResizableWidth } from "@/components/chat/resize-handle";
 import { VehicleList } from "@/components/chat/vehicle-list";
-import { ComparisonCard, todayArrangementLabel } from "@/components/comparison-card";
+import { ComparisonCard, type ComparisonCardProps, todayArrangementLabel } from "@/components/comparison-card";
 import { OptionsMap } from "@/components/options-map";
 import { ProfileCard } from "@/components/profile-card";
 import { ProfileDialog } from "@/components/profile-dialog";
@@ -27,6 +27,7 @@ import {
 } from "@/lib/api/use-conversation";
 import { OptionsFetchError, useOptions } from "@/lib/api/use-options";
 import { PatchProfileError, usePatchProfile } from "@/lib/api/use-patch-profile";
+import { RequestRepError, useRequestRep } from "@/lib/api/use-request-rep";
 import { SendMessageError, useSendMessage } from "@/lib/api/use-send-message";
 import { useConversationRealtime } from "@/lib/realtime/use-conversation-realtime";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
@@ -42,6 +43,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   const sendMessage = useSendMessage(conversationId);
   const compare = useCompare(conversationId);
   const patchProfile = usePatchProfile(conversationId);
+  const requestRep = useRequestRep(conversationId);
   // A new upload box after each saved payslip (the review closes; the message goes to the advisor)
   const [payslipRound, setPayslipRound] = useState(0);
 
@@ -259,6 +261,17 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
   }
 
   const sideTitle = sideSheetTitle(displayPhase);
+  const rep = {
+    askedFields: (data.open_questions ?? []).map((q) => q.field),
+    onRequest: (optionId: string) => requestRep.mutate(optionId),
+    requesting: requestRep.isPending,
+    error:
+      requestRep.error instanceof RequestRepError
+        ? requestRep.error.message
+        : requestRep.error
+          ? "שליחת הבקשה לנציג נכשלה. נסו שוב."
+          : null,
+  };
   // While details are missing, the payslip upload sits above the message box
   const payslip =
     (data.missing?.length ?? 0) > 0 ? (
@@ -351,6 +364,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
                 onSelect={setUserSelectedId}
                 onChangeCar={handleChangeCar}
                 waitingRep={waitingRep}
+                rep={rep}
                 openQuestions={data.open_questions ?? []}
                 missing={data.missing ?? []}
               />
@@ -415,6 +429,7 @@ export function ConversationView({ conversationId }: ConversationViewProps) {
               compareError={compareError}
               selectedOptionId={selectedOptionId}
               previousSelectedId={userSelectedId}
+              rep={rep}
               onSelect={setUserSelectedId}
               onSelectOption={handleSelectOption}
               onChangeCar={handleChangeCar}
@@ -581,6 +596,7 @@ function ComparisonDesktop({
   waitingRep,
   openQuestions,
   missing,
+  rep,
 }: {
   conversationId: string;
   profile: ConversationState["profile"];
@@ -601,6 +617,7 @@ function ComparisonDesktop({
   waitingRep: boolean;
   openQuestions: NonNullable<ConversationState["open_questions"]>;
   missing: NonNullable<ConversationState["missing"]>;
+  rep: NonNullable<ComparisonCardProps["rep"]>;
 }) {
   const [chatWidth, setChatWidth] = useResizableWidth("strauss-chat-width-comparison", 300, 0.3);
   // "Back to the full chat" (tester): the cars rail steps aside and the chat takes half the screen
@@ -637,6 +654,7 @@ function ComparisonDesktop({
           comparison={comparison}
           optionId={selectedOptionId}
           onChangeCar={onChangeCar}
+          rep={rep}
           // its own height inside the scrolling column - squeezed to the screen, its background ended
           // mid-content (the "white rectangle" testers saw)
           className="shrink-0"
@@ -688,6 +706,7 @@ function MobileSideContent({
   waitingRep,
   openQuestions,
   missing,
+  rep,
 }: {
   phase: ReturnType<typeof layoutPhaseFromStatus>;
   data: ConversationState;
@@ -705,6 +724,7 @@ function MobileSideContent({
   waitingRep: boolean;
   openQuestions: NonNullable<ConversationState["open_questions"]>;
   missing: NonNullable<ConversationState["missing"]>;
+  rep: NonNullable<ComparisonCardProps["rep"]>;
 }) {
   if (phase === "collecting") {
     return (
@@ -749,6 +769,7 @@ function MobileSideContent({
         comparison={comparison}
         optionId={selectedOptionId}
         onChangeCar={onChangeCar}
+        rep={rep}
       />
       <ProfileCard
         conversationId={data.id}

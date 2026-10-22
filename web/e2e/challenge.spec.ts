@@ -67,8 +67,9 @@ async function runChallenge(employee: Page, rep: Page): Promise<void> {
   await continueToOptions(employee);
   await selectOption(employee, CHALLENGE.optionLabel);
 
+  // Comparing asks nobody: the default participation is an estimate. The employee who wants the car asks.
   const formComparison = employee.getByRole("article", { name: `השוואה: ${CHALLENGE.optionLabel}` });
-  await expect(formComparison.getByText("ממתין לנציג", { exact: true }).first()).toBeVisible();
+  await expect(formComparison.getByText("הערכה", { exact: true }).first()).toBeVisible();
 
   const questionIdPromise = waitForOpenQuestionId(
     employee,
@@ -76,19 +77,11 @@ async function runChallenge(employee: Page, rep: Page): Promise<void> {
     CHALLENGE.optionField,
     AGENT_TIMEOUT_MS,
   );
+  await formComparison.getByRole("button", { name: "בקשת אישור מהנציג" }).click();
+  await expect(formComparison.getByText("נשלח לנציג התחבורה.").first()).toBeVisible();
 
   await employee.goto(`/c/${conversationId}`);
-  const chat = employee.getByRole("region", { name: "השיחה עם היועץ" });
-  const draft = chat.getByRole("textbox", { name: "כתיבת הודעה" });
-  await expect(draft).toBeEnabled();
-  await draft.fill("תשווה בבקשה ל-ATTO 3");
-  await chat.getByRole("button", { name: "שליחת הודעה" }).click();
-
-  await expect(employee.getByText(CHALLENGE.question).first()).toBeVisible({
-    timeout: AGENT_TIMEOUT_MS,
-  });
   const questionId = await questionIdPromise;
-
   const alternatives = employee.getByRole("complementary", { name: "רשימת חלופות" });
   const attoInList = alternatives.getByRole("button", { name: CHALLENGE.optionLabel });
   if (await attoInList.count()) {

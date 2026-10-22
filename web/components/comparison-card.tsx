@@ -11,6 +11,7 @@ import {
   Minus,
   RefreshCw,
   Scale,
+  Send,
   Sparkles,
   Star,
   TrendingUp,
@@ -46,6 +47,17 @@ export type ComparisonCardProps = {
   compact?: boolean;
   /** Return to the options gallery to pick another car and re-run compare. */
   onChangeCar?: () => void;
+  /**
+   * "I want this car": asks the transport rep to confirm a default participation. The rep is never asked
+   * by a mere comparison - until then the numbers are an estimate. Absent -> no button (e.g. in the chat).
+   */
+  rep?: {
+    /** Open rep question fields of the conversation ("participation:CAR-10"). */
+    askedFields: readonly string[];
+    onRequest: (optionId: string) => void;
+    requesting: boolean;
+    error: string | null;
+  };
 };
 
 function pickResult(comparison: Comparison, optionId?: string | null): OptionResult | null {
@@ -80,7 +92,7 @@ function participationStatusLabel(status: ParticipationStatus): {
     case "CONFIRMED":
       return { label: "מאושר", variant: "success" };
     case "DEFAULT_PENDING":
-      return { label: "ממתין לנציג", variant: "pending" };
+      return { label: "הערכה", variant: "outline" };
     case "UNKNOWN":
       return { label: "לא ידוע", variant: "outline" };
   }
@@ -138,8 +150,54 @@ function BreakEven({ amount, delta, pending }: { amount: number; delta: number; 
             החלופה תשתלם רק אם ההשתתפות בה תרד מתחת ל-<Money amount={amount} /> בחודש.
           </>
         )}
-        {pending && <span className="text-muted-foreground"> שימו לב: ההשתתפות עוד ממתינה לאישור הנציג.</span>}
+        {pending && <span className="text-muted-foreground"> שימו לב: ההשתתפות היא הערכה עד אישור הנציג.</span>}
       </p>
+    </div>
+  );
+}
+
+/**
+ * The participation is the catalog default - an estimate. The employee who wants this car asks the
+ * transport rep to confirm it; once asked, the card says it is waiting (the comparison updates by itself).
+ */
+function RepRequest({
+  optionId,
+  waiting,
+  onRequest,
+  requesting,
+  error,
+}: {
+  optionId: string;
+  waiting: boolean;
+  onRequest: (optionId: string) => void;
+  requesting: boolean;
+  error: string | null;
+}) {
+  if (waiting) {
+    return (
+      <p role="status" className="mt-4 flex items-start gap-2 rounded-2xl border border-pending-border bg-pending-surface px-3 py-2 text-sm">
+        <Clock aria-hidden className="mt-0.5 size-4 shrink-0 text-pending" />
+        <span>
+          <span className="font-bold">נשלח לנציג התחבורה.</span> כשיאשר את ההשתתפות, ההשוואה תתעדכן כאן לבד.
+        </span>
+      </p>
+    );
+  }
+  return (
+    <div className="mt-4 flex flex-col gap-1.5 rounded-2xl bg-surface/70 p-3 ring-1 ring-border/70">
+      <p className="text-sm">
+        <span className="font-bold">רוצה את הרכב הזה?</span> ההשתתפות כאן היא הערכה לפי הקטלוג. נציג התחבורה יאשר את
+        הסכום שלך.
+      </p>
+      <Button type="button" size="sm" onClick={() => onRequest(optionId)} disabled={requesting} className="self-start">
+        <Send aria-hidden data-icon="inline-start" className="rtl:-scale-x-100" />
+        {requesting ? "שולח…" : "בקשת אישור מהנציג"}
+      </Button>
+      {error && (
+        <p role="alert" className="text-sm font-semibold text-error">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -201,6 +259,7 @@ export function ComparisonCard({
   className,
   compact = false,
   onChangeCar,
+  rep,
 }: ComparisonCardProps) {
   const result = pickResult(comparison, optionId);
 
@@ -221,7 +280,9 @@ export function ComparisonCard({
     !result.complete || result.participation_status === "DEFAULT_PENDING";
   const todayLabel = todayArrangementLabel(comparison.profile_snapshot);
   const todayVou = comparison.today.value_of_use;
-  const waitingRep = result.participation_status === "DEFAULT_PENDING";
+  // A default participation is an estimate; "waiting for the rep" only once the employee asked for it
+  const defaultParticipation = result.participation_status === "DEFAULT_PENDING";
+  const waitingRep = defaultParticipation && (rep?.askedFields.includes(`participation:${option.id}`) ?? false);
   const isBest = comparison.best_option_id === option.id;
   const photo = carImage(option.catalog_id);
   // A computed waiver has no car: its car fields are "not applicable", shown from the engine's breakdown
@@ -310,6 +371,15 @@ export function ComparisonCard({
               החלף רכב
             </Button>
           )}
+          {rep && eligible && defaultParticipation && (
+            <RepRequest
+              optionId={option.id}
+              waiting={waitingRep}
+              onRequest={rep.onRequest}
+              requesting={rep.requesting}
+              error={rep.error}
+            />
+          )}
         </section>
 
         {/* The answer: monthly net delta first, then today and the alternative */}
@@ -318,7 +388,7 @@ export function ComparisonCard({
             <p className="inline-flex items-center gap-2 self-start rounded-full bg-success px-4 py-1.5 text-sm font-bold text-white shadow-soft dark:text-[#102632]">
               <Star aria-hidden className="size-4 fill-current" />
               {/* A best built on a default participation is said to be an estimate until the rep confirms */}
-              {waitingRep ? "המשתלמת ביותר לפי הערכה, עד אישור הנציג" : "החלופה המשתלמת ביותר עבורך"}
+              {defaultParticipation ? "המשתלמת ביותר לפי הערכה, עד אישור הנציג" : "החלופה המשתלמת ביותר עבורך"}
             </p>
           )}
           {!eligible ? (
@@ -381,7 +451,7 @@ export function ComparisonCard({
             </div>
           )}
           {eligible && result.break_even_participation != null && result.delta != null && result.delta !== 0 && (
-            <BreakEven amount={result.break_even_participation} delta={result.delta} pending={waitingRep} />
+            <BreakEven amount={result.break_even_participation} delta={result.delta} pending={defaultParticipation} />
           )}
         </section>
       </div>

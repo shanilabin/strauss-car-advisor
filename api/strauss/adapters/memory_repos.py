@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from strauss.domain.models import Comparison, Profile
-from strauss.ports.repositories import AuthUser, ConversationRecord
+from strauss.ports.repositories import AuthUser, ConversationRecord, ConversationSummary
 
 
 class MemoryConversationRepo:
@@ -17,11 +17,30 @@ class MemoryConversationRepo:
         self.message_rows: dict[str, list[dict[str, Any]]] = {}
         self.question_rows: dict[str, list[dict[str, Any]]] = {}
         self.comparisons: dict[str, list[tuple[dict[str, Any], Comparison]]] = {}
+        self.created_at: dict[str, str] = {}
+        self.updated_at: dict[str, str] = {}
+        self._tick = 0
 
     def create(self, user_id: str, profile: Profile, status: str, config_hash: str) -> ConversationRecord:
         record = ConversationRecord(id=str(uuid.uuid4()), user_id=user_id, status=status, profile=profile)
         self.conversations[record.id] = record
+        self._touch(record.id, created=True)
         return record
+
+    def _touch(self, conversation_id: str, created: bool = False) -> None:
+        self._tick += 1  # a strictly increasing clock: "most recently active" is unambiguous in tests
+        stamp = f"2026-10-22T10:00:{self._tick:02d}+00:00"
+        if created:
+            self.created_at[conversation_id] = stamp
+        self.updated_at[conversation_id] = stamp
+
+    def list_for_user(self, user_id: str, limit: int) -> list[ConversationSummary]:
+        mine = [r for r in self.conversations.values() if r.user_id == user_id]
+        mine.sort(key=lambda r: self.updated_at[r.id], reverse=True)
+        return [
+            ConversationSummary(r.id, r.status, r.profile, self.created_at[r.id], self.updated_at[r.id])
+            for r in mine[:limit]
+        ]
 
     def get(self, conversation_id: str) -> ConversationRecord | None:
         return self.conversations.get(conversation_id)
@@ -32,12 +51,14 @@ class MemoryConversationRepo:
         current = self.conversations.get(conversation_id)
         if current is None or current.profile.revision != expected_revision:
             return None
+        self._touch(conversation_id)
         updated = ConversationRecord(id=current.id, user_id=current.user_id, status=status, profile=profile)
         self.conversations[conversation_id] = updated
         return updated
 
     def set_status(self, conversation_id: str, status: str) -> None:
         current = self.conversations[conversation_id]
+        self._touch(conversation_id)
         self.conversations[conversation_id] = ConversationRecord(
             id=current.id, user_id=current.user_id, status=status, profile=current.profile
         )
@@ -46,6 +67,7 @@ class MemoryConversationRepo:
         return list(self.message_rows.get(conversation_id, []))
 
     def add_messages(self, conversation_id: str, rows: list[dict[str, Any]]) -> None:
+        self._touch(conversation_id)  # like Postgres' updated_at trigger on the conversation's activity
         saved = self.message_rows.setdefault(conversation_id, [])
         saved.extend({"id": str(uuid.uuid4()), **row} for row in rows)
 

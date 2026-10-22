@@ -23,6 +23,7 @@ ATTO_3_KEY = "tax_year=2026&reg_year=2025&vehicle_type_code=1&maker_code=01014&m
 EXPECTED_OPERATIONS = {
     ("get", "/health"),
     ("post", "/v1/conversations"),
+    ("get", "/v1/conversations"),
     ("get", "/v1/conversations/{conversation_id}"),
     ("post", "/v1/conversations/{conversation_id}/messages"),
     ("patch", "/v1/conversations/{conversation_id}/profile"),

@@ -2,6 +2,7 @@ import { Check, House, MessageCircle, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { AccountMenu } from "@/components/account-menu";
 import { NavLinks } from "@/components/nav-links";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -84,13 +85,14 @@ export function Topbar({
             (
               <Link
                 href="/c/new"
-                className="hidden h-11 items-center gap-2 rounded-full border border-nav-border bg-surface px-4 text-sm font-semibold transition-colors hover:border-primary hover:bg-mist sm:inline-flex"
+                className="hidden h-11 items-center gap-2 rounded-full border border-nav-border bg-surface px-4 text-sm font-semibold transition-colors hover:border-primary hover:bg-mist xl:inline-flex"
               >
                 <MessageCircle aria-hidden className="size-4 text-primary" />
                 שיחה עם היועץ
               </Link>
             )
           )}
+          {area === "employee" && <AccountMenu />}
         </div>
       </div>
     </header>

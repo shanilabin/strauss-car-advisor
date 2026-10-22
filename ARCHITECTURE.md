@@ -329,7 +329,7 @@ Prefix `/v1` · Auth: `Authorization: Bearer <Supabase JWT>` · שגיאות: `{
 | שפה | `<html lang="he" dir="rtl">` · Heebo · `Intl.NumberFormat('he-IL',{style:'currency',currency:'ILS',maximumFractionDigits:0})` |
 | **מספרים** | **כל מספר מוצג מרכיב שמקבל DTO** (`ComparisonCard`, `OptionCard`, `WaterfallChart`). טקסט הבוט מוצג כטקסט בלבד |
 | מצב שרת | TanStack Query; אירוע Realtime ← `invalidateQueries` (מקור אמת אחד: ה-API) |
-| זהות | בטעינה: `signInAnonymously()` אם אין session; נציג: email+password |
+| זהות | חובת התחברות (מערכת פנימית): עובד נכנס ב-Google (השם הפרטי מהחשבון) או באימייל+סיסמה ב-`/login`; ה-API דוחה session אנונימי (`401 sign_in_required`). השיחות שמורות לפי משתמש (`GET /v1/conversations`, "השיחות שלי"). נציג: email+password |
 | פריסה | Mobile-first: בנייד הצ'אט במסך מלא וההשוואה כ-sheet; במחשב 3 עמודות |
 | נגישות | ניווט מקלדת, ניגודיות AA, `aria-live` להודעות בוט |
 | מצב טופס | `/form`: אותם רכיבים בלי הצ'אט; נכנס אוטומטית כשה-API מחזיר `mode:"form"` |
@@ -413,4 +413,4 @@ branch  a/<task-id>-<slug>  |  b/<task-id>-<slug>
 | **resume אחרי מענה נציג בלי LLM** | תור סוכן נוסף | המספרים ממילא מהמנוע; עובד גם כשכל המודלים חסומים, ולא מבזבז מכסה |
 | **trace בתשובת ה-API** | trace ב-Realtime | Realtime רק איפה שצריך: הודעות ונציג *(P2)* |
 | Supabase Realtime להודעות ולנציג | polling | עדכון מיידי בלי שרת WebSocket משלנו |
-| Anonymous auth | בלי זהות | RLS אמיתי גם בדמו |
+| התחברות חובה: Google או אימייל | כניסה אנונימית | מערכת פנימית: זהות אמיתית, שם פרטי לצ'אט, ושיחות שנשמרות לחזרה |

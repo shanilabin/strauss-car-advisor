@@ -126,6 +126,18 @@ class StatelessCompareRequest(ApiModel):
     option_ids: list[str] | None = Field(default=None, description="None = every option")
 
 
+class ConversationListItem(ApiModel):
+    """One line of "my conversations" - enough to recognise it, not the conversation itself."""
+
+    id: str
+    status: ConversationStatus
+    created_at: datetime
+    updated_at: datetime
+    first_name: str | None = None
+    occupation: str | None = None
+    current_car: str | None = Field(default=None, description="Today's car, e.g. 'COROLLA CROSS (2025)'")
+
+
 class RepRequest(ApiModel):
     option_id: str = Field(min_length=1, max_length=40)
 

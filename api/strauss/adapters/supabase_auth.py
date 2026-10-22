@@ -42,8 +42,27 @@ class SupabaseAuthVerifier:
             raise SupabaseError(f"Supabase auth {response.status_code}: {response.text[:200]}")
         body = response.json()
         role: Role = "rep" if (body.get("app_metadata") or {}).get("role") == "rep" else "employee"
-        user = AuthUser(id=body["id"], role=role, is_anonymous=bool(body.get("is_anonymous")))
+        user = AuthUser(
+            id=body["id"],
+            role=role,
+            is_anonymous=bool(body.get("is_anonymous")),
+            first_name=first_name(body.get("user_metadata") or {}),
+        )
         self._cache[digest] = (now + CACHE_SECONDS, user)
         if len(self._cache) > CACHE_SIZE:
             self._cache.popitem(last=False)
         return user
+
+
+def first_name(metadata: dict[str, object]) -> str | None:
+    """The first name a sign-in account carries: Google's given_name, else the first word of the full name.
+    Email sign-ups carry none - the advisor then asks, as before."""
+    for key in ("given_name", "first_name"):
+        value = metadata.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()[:30]
+    for key in ("full_name", "name"):
+        value = metadata.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.split()[0][:30]
+    return None

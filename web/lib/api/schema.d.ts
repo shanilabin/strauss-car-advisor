@@ -89,7 +89,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Conversations
+         * @description The signed-in employee's conversations, most recently active first (up to 30).
+         */
+        get: operations["conversations_list_conversations"];
         put?: never;
         /**
          * Create Conversation
@@ -478,6 +482,34 @@ export interface components {
             value_of_use_tax_year: number;
             /** Version */
             version: string;
+        };
+        /**
+         * ConversationListItem
+         * @description One line of "my conversations" - enough to recognise it, not the conversation itself.
+         */
+        ConversationListItem: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Current Car
+             * @description Today's car, e.g. 'COROLLA CROSS (2025)'
+             */
+            current_car?: string | null;
+            /** First Name */
+            first_name?: string | null;
+            /** Id */
+            id: string;
+            /** Occupation */
+            occupation?: string | null;
+            status: components["schemas"]["ConversationStatus"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** ConversationState */
         ConversationState: {
@@ -1264,6 +1296,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfigSummary"];
+                };
+            };
+        };
+    };
+    conversations_list_conversations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationListItem"][];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict (stale revision, already answered) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid input */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Data service or chat model unavailable (details.mode = form) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

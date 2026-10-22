@@ -4,7 +4,7 @@ import { CircleX } from "lucide-react";
 
 import { useSession } from "@/lib/supabase/use-session";
 
-/** Starts the employee's (anonymous) session; renders only when it failed. Covers /, /c/*, /form. */
+/** Says when checking the employee's sign-in failed. Covers /, /login, /c/*, /form. */
 export function EmployeeSession() {
   const { error } = useSession();
 

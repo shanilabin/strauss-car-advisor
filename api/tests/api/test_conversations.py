@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from index import app
 from strauss.adapters.memory_repos import MemoryConversationRepo
-from tests.api.conftest import AS_NOA, AS_OTHER, AS_REP
+from tests.api.conftest import AS_ANONYMOUS, AS_DANA, AS_NOA, AS_OTHER, AS_REP
 
 client = TestClient(app)
 
@@ -327,3 +327,38 @@ def test_only_the_owner_can_ask_the_rep() -> None:
         f"/v1/conversations/{conversation_id}/rep-requests", json={"option_id": "CAR-10"}, headers=AS_OTHER
     )
     assert response.status_code == 404
+
+
+# ── Sign-in: an internal company system ──────────────────────────────────────
+
+
+def test_an_anonymous_visitor_cannot_use_the_advisor() -> None:
+    """The company's system needs a real sign-in (Google or email) - an anonymous session is refused."""
+    for method, path, body in [
+        ("post", "/v1/conversations", {}),
+        ("get", "/v1/conversations", None),
+        ("post", "/v1/payslip/parse", {"content_type": "application/pdf", "data_base64": "AAAA"}),
+    ]:
+        response = client.request(method, path, json=body, headers=AS_ANONYMOUS)
+        assert response.status_code == 401, path
+        assert response.json()["error"]["code"] == "sign_in_required"
+
+
+def test_the_name_of_a_google_account_makes_the_chat_personal() -> None:
+    dana = client.post("/v1/conversations", json={}, headers=AS_DANA).json()
+    assert dana["profile"]["first_name"] == "דנה"
+    sample = client.post("/v1/conversations", json={"sample_employee_id": "E-001"}, headers=AS_DANA).json()
+    assert sample["profile"]["first_name"] == "דנה"  # the sample's data, the signed-in person's name
+    no_name = client.post("/v1/conversations", json={}, headers=AS_NOA).json()  # an email sign-up
+    assert no_name["profile"].get("first_name") is None
+
+
+def test_my_conversations_are_mine_and_the_last_active_comes_first() -> None:
+    first = start()["id"]
+    second = start("E-003")["id"]
+    client.post("/v1/conversations", json={}, headers=AS_OTHER)  # someone else's
+    client.patch(f"/v1/conversations/{first}/profile", json={"children_under_23": 1}, headers=AS_NOA)
+    mine = client.get("/v1/conversations", headers=AS_NOA).json()
+    assert [c["id"] for c in mine] == [first, second]  # the first was active more recently
+    assert mine[0]["occupation"] == "מנהל/ת מוצר" and mine[0]["current_car"] == "COROLLA CROSS (2025)"
+    assert mine[1]["current_car"] == "ויתור על הרכב (אחזקה)"

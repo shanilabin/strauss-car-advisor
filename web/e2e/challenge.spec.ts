@@ -9,6 +9,7 @@ import {
   AGENT_TIMEOUT_MS,
   REALTIME_TIMEOUT_MS,
   comparisonArticle,
+  employeeCredentials,
   continueToOptions,
   openForm,
   pickSampleEmployee,
@@ -27,8 +28,8 @@ import {
  */
 test.describe("rep participation challenge", () => {
   test.skip(
-    !repPassword(),
-    "E2E_REP_PASSWORD is not set. The rep challenge needs it in the environment; it is never committed.",
+    !repPassword() || !employeeCredentials(),
+    "E2E_REP_PASSWORD (and an employee account: E2E_EMPLOYEE_EMAIL / _PASSWORD) are not set - never committed.",
   );
 
 test("rep confirms a missing participation and a second answer is blocked", async ({

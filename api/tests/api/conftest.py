@@ -18,10 +18,21 @@ from strauss.ports.repositories import AuthUser
 from tests.conftest import _tax_authority_repo
 from tests.scripted import say, scripted
 
-NOA = AuthUser(id="00000000-0000-0000-0000-00000000000a", role="employee", is_anonymous=True)
-OTHER = AuthUser(id="00000000-0000-0000-0000-00000000000b", role="employee", is_anonymous=True)
+NOA = AuthUser(id="00000000-0000-0000-0000-00000000000a", role="employee", is_anonymous=False)
+OTHER = AuthUser(id="00000000-0000-0000-0000-00000000000b", role="employee", is_anonymous=False)
 REP = AuthUser(id="00000000-0000-0000-0000-0000000000ee", role="rep", is_anonymous=False)
-TOKENS = {"token-noa": NOA, "token-other": OTHER, "token-rep": REP}
+# signed in with Google: the account carries a first name
+DANA = AuthUser(
+    id="00000000-0000-0000-0000-00000000000d", role="employee", is_anonymous=False, first_name="דנה"
+)
+ANONYMOUS = AuthUser(id="00000000-0000-0000-0000-0000000000ff", role="employee", is_anonymous=True)
+TOKENS = {
+    "token-noa": NOA,
+    "token-other": OTHER,
+    "token-rep": REP,
+    "token-dana": DANA,
+    "token-anon": ANONYMOUS,
+}
 
 
 def auth(token: str) -> dict[str, str]:
@@ -29,6 +40,7 @@ def auth(token: str) -> dict[str, str]:
 
 
 AS_NOA, AS_OTHER, AS_REP = auth("token-noa"), auth("token-other"), auth("token-rep")
+AS_DANA, AS_ANONYMOUS = auth("token-dana"), auth("token-anon")
 
 
 @pytest.fixture

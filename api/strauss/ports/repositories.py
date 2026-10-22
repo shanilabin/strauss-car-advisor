@@ -25,6 +25,18 @@ class AuthUser:
     id: str
     role: Role
     is_anonymous: bool
+    first_name: str | None = None  # from the sign-in account (Google's given name) - for a personal chat
+
+
+@dataclass(frozen=True)
+class ConversationSummary:
+    """One line of "my conversations"."""
+
+    id: str
+    status: str
+    profile: Profile
+    created_at: str
+    updated_at: str
 
 
 class AuthVerifier(Protocol):
@@ -47,6 +59,10 @@ class ConversationRepo(Protocol):
     def create(self, user_id: str, profile: Profile, status: str, config_hash: str) -> ConversationRecord: ...
 
     def get(self, conversation_id: str) -> ConversationRecord | None: ...
+
+    def list_for_user(self, user_id: str, limit: int) -> list[ConversationSummary]:
+        """The user's conversations, the most recently active first."""
+        ...
 
     def update_profile(
         self, conversation_id: str, profile: Profile, status: str, expected_revision: int

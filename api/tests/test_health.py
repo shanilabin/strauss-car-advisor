@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from index import app
+from strauss.adapters.supabase_auth import first_name
 
 client = TestClient(app)
 
@@ -29,3 +30,9 @@ def test_a_dashboard_link_is_not_reported_as_configured() -> None:
     )
     assert wrong.configured["supabase"] is False
     assert right.configured["supabase"] is True
+
+
+def test_a_google_account_first_name() -> None:
+    assert first_name({"given_name": "דנה", "full_name": "דנה לוי"}) == "דנה"
+    assert first_name({"full_name": "Dana Levi"}) == "Dana"
+    assert first_name({"email": "x@y.z"}) is None

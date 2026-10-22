@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 import { GROUP_B_WAIVER } from "./expected";
-import { continueToOptions, openForm, pickSampleEmployee } from "./helpers";
+import { continueToOptions, employeeCredentials, openForm, pickSampleEmployee } from "./helpers";
+
+test.skip(!employeeCredentials(), "Set E2E_EMPLOYEE_EMAIL and E2E_EMPLOYEE_PASSWORD (sign-in is required)");
 
 test("group B field sales sees an ineligible waiver card", async ({ page }) => {
   await openForm(page);

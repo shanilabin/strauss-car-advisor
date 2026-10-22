@@ -20,6 +20,7 @@ from strauss.domain.missing import missing_fields, rep_context, rep_question
 from strauss.domain.models import CarArrangement, Comparison, ParticipationStatus, Profile
 from strauss.errors import ApiError
 from strauss.http.schemas import (
+    ConversationListItem,
     ConversationState,
     ConversationStatus,
     MessageOut,
@@ -30,6 +31,7 @@ from strauss.http.schemas import (
 from strauss.ports.repositories import AuthUser, ConversationRecord, ConversationRepo, ValueOfUseRepo
 
 CARDS = TypeAdapter(list[Card])
+LIST_LIMIT = 30
 TRACE = TypeAdapter(list[TraceEvent])
 # The details the employee edited, as the chat note names them
 FIELD_NAMES = {
@@ -110,8 +112,36 @@ class ConversationService:
                     404, "sample_employee_not_found", "העובד לדוגמה לא נמצא", {"id": sample_employee_id}
                 )
             profile = to_profile(sample, self._bundle)
+        if user.first_name and profile.first_name is None:  # the sign-in account's name: a personal chat
+            profile = profile.model_copy(update={"first_name": user.first_name})
         record = self._repo.create(user.id, profile, status_for(profile, 0), self._bundle.config_hash)
         return self.state(record, questions=[])  # a new conversation has no rep questions yet
+
+    def mine(self, user: AuthUser) -> list[ConversationListItem]:
+        """The signed-in employee's conversations, the most recently active first - to pick up where they
+        left off, on any device."""
+        items = []
+        for row in self._repo.list_for_user(user.id, LIST_LIMIT):
+            current = row.profile.current
+            car = (
+                f"{current.vehicle.commercial_name} ({current.vehicle.key.reg_year})"
+                if isinstance(current, CarArrangement)
+                else "ויתור על הרכב (אחזקה)"
+                if current is not None
+                else None
+            )
+            items.append(
+                ConversationListItem(
+                    id=row.id,
+                    status=ConversationStatus(row.status),
+                    created_at=datetime.fromisoformat(row.created_at),
+                    updated_at=datetime.fromisoformat(row.updated_at),
+                    first_name=row.profile.first_name,
+                    occupation=row.profile.occupation,
+                    current_car=car,
+                )
+            )
+        return items
 
     def get(self, user: AuthUser, conversation_id: str) -> ConversationState:
         return self.state(self.owned(user, conversation_id))

@@ -26,6 +26,8 @@ def current_user(
     user = verifier.verify(credentials.credentials)
     if user is None:
         raise ApiError(401, "invalid_token", "פג תוקף ההתחברות. רעננו את הדף")
+    if user.is_anonymous:  # an internal company system: Google or email sign-in, never anonymous
+        raise ApiError(401, "sign_in_required", "צריך להתחבר כדי להמשיך")
     return user
 
 

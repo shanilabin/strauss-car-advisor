@@ -7,7 +7,7 @@ import httpx
 
 from strauss.adapters.supabase_rest import raise_for_status
 from strauss.domain.models import Comparison, Profile
-from strauss.ports.repositories import ConversationRecord
+from strauss.ports.repositories import ConversationRecord, ConversationSummary
 
 RETURN_ROW = {"Prefer": "return=representation"}
 QUEUE_LIMIT = 200
@@ -48,6 +48,28 @@ class SupabaseConversationRepo:
         raise_for_status(response)
         rows = response.json()
         return _record(rows[0]) if rows else None
+
+    def list_for_user(self, user_id: str, limit: int) -> list[ConversationSummary]:
+        response = self._client.get(
+            "/conversations",
+            params={
+                "user_id": f"eq.{user_id}",
+                "select": "id,status,profile,profile_revision,created_at,updated_at",
+                "order": "updated_at.desc",
+                "limit": str(limit),
+            },
+        )
+        raise_for_status(response)
+        return [
+            ConversationSummary(
+                id=row["id"],
+                status=row["status"],
+                profile=_record({**row, "user_id": user_id}).profile,
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+            )
+            for row in response.json()
+        ]
 
     def update_profile(
         self, conversation_id: str, profile: Profile, status: str, expected_revision: int

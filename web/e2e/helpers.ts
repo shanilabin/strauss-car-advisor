@@ -24,6 +24,26 @@ export function repPassword(): string | undefined {
   return value && value.length > 0 ? value : undefined;
 }
 
+/** An employee account for the browser tests (the system needs a sign-in). Set both in the shell or in
+ * web/.env.local; the tests that need it skip without it. */
+export function employeeCredentials(): { email: string; password: string } | undefined {
+  const email = process.env.E2E_EMPLOYEE_EMAIL;
+  const password = process.env.E2E_EMPLOYEE_PASSWORD;
+  return email && password ? { email, password } : undefined;
+}
+
+/** On the login page (a protected page sent us there): sign in, and wait to be sent back. */
+export async function signInIfAsked(page: Page): Promise<void> {
+  await page.waitForLoadState("networkidle");
+  if (!new URL(page.url()).pathname.startsWith("/login")) return;
+  const credentials = employeeCredentials();
+  if (!credentials) throw new Error("Sign-in required: set E2E_EMPLOYEE_EMAIL and E2E_EMPLOYEE_PASSWORD");
+  await page.getByLabel("אימייל").fill(credentials.email);
+  await page.getByLabel("סיסמה").fill(credentials.password);
+  await page.getByRole("button", { name: "כניסה", exact: true }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 30_000 });
+}
+
 /** Strip bidi marks and spaces so two DTO-formatted shekel strings can be compared. */
 export function normalizeMoney(text: string): string {
   return text.replace(/[\s\u00a0\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "");
@@ -31,12 +51,14 @@ export function normalizeMoney(text: string): string {
 
 export async function openForm(page: Page): Promise<void> {
   await page.goto("/form");
+  await signInIfAsked(page);
   await expect(page.getByRole("heading", { name: "מצב טופס" })).toBeVisible();
 }
 
 export async function openFormFromLanding(page: Page): Promise<void> {
   await page.goto("/");
   await page.getByRole("link", { name: "נסו עם עובד לדוגמה" }).click();
+  await signInIfAsked(page);
   await expect(page).toHaveURL(/\/form\/?$/);
   await expect(page.getByRole("heading", { name: "מצב טופס" })).toBeVisible();
 }

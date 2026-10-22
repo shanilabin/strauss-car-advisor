@@ -3,11 +3,14 @@ import { expect, test } from "@playwright/test";
 import { CHALLENGE, NOA_ATTO_REASON, REQUIREMENT_23_ROWS } from "./expected";
 import {
   continueToOptions,
+  employeeCredentials,
   normalizeMoney,
   openFormFromLanding,
   pickSampleEmployee,
   selectOption,
 } from "./helpers";
+
+test.skip(!employeeCredentials(), "Set E2E_EMPLOYEE_EMAIL and E2E_EMPLOYEE_PASSWORD (sign-in is required)");
 
 test("landing through comparison shows requirement 23 and a matching waterfall", async ({
   page,

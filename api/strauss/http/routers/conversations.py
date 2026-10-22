@@ -6,6 +6,7 @@ from strauss.http.deps import ConversationServiceDep, TurnServiceDep
 from strauss.http.errors import ERROR_RESPONSES
 from strauss.http.schemas import (
     CompareRequest,
+    ConversationListItem,
     ConversationState,
     CreateConversationRequest,
     ProfilePatch,
@@ -23,6 +24,12 @@ def create_conversation(
 ) -> ConversationState:
     """Start a conversation for the signed-in user, optionally pre-filled from a sample employee (demo)."""
     return service.create(user, body.sample_employee_id)
+
+
+@router.get("")
+def list_conversations(user: UserDep, service: ConversationServiceDep) -> list[ConversationListItem]:
+    """The signed-in employee's conversations, most recently active first (up to 30)."""
+    return service.mine(user)
 
 
 @router.get("/{conversation_id}")

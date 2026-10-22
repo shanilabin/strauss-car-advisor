@@ -1,6 +1,6 @@
 "use client";
 
-import { isAuthApiError } from "@supabase/supabase-js";
+import { isAuthApiError, type Session } from "@supabase/supabase-js";
 import { CircleX, LoaderCircle, MailCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import { getSupabase } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/supabase/errors";
 import { useSession } from "@/lib/supabase/use-session";
+
+function isRep(session: Session | null): boolean {
+  return session?.user.app_metadata.role === "rep";
+}
 
 const inputClass =
   "h-12 w-full min-w-0 rounded-xl border border-input bg-background px-4 text-base text-foreground focus-visible:border-primary aria-invalid:border-error";
@@ -34,9 +38,15 @@ export function EmployeeLogin() {
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
 
-  // Signed in already (or just back from Google): continue where they were heading
+  // Signed in already (or just back from Google): continue where they were heading. A rep's account
+  // never stays in the employee area: onSubmit moves it to the rep's own session and screen.
   useEffect(() => {
-    if (session) router.replace(nextPath());
+    if (!session) return;
+    if (isRep(session)) {
+      if (!submitting.current) void getSupabase("employee").auth.signOut({ scope: "local" });
+      return;
+    }
+    router.replace(nextPath());
   }, [session, router]);
 
   // Next keeps this page alive but hidden after the redirect: unlock it for the next visit
@@ -88,8 +98,16 @@ export function EmployeeLogin() {
     try {
       const auth = getSupabase("employee").auth;
       if (mode === "signin") {
-        const { error: failure } = await auth.signInWithPassword({ email, password });
+        const { data, error: failure } = await auth.signInWithPassword({ email, password });
         if (failure) throw failure;
+        if (isRep(data.session)) {
+          // The transport rep signed in here: open their queue, under their own session
+          const { error: repFailure } = await getSupabase("rep").auth.signInWithPassword({ email, password });
+          await auth.signOut({ scope: "local" });
+          if (repFailure) throw repFailure;
+          router.replace("/rep");
+          return;
+        }
       } else {
         const { data, error: failure } = await auth.signUp({
           email,

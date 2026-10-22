@@ -169,3 +169,21 @@ def test_a_rep_answer_during_the_employees_turn_is_merged_not_a_conflict(model: 
     assert response.status_code == 200, response.text
     profile = response.json()["state"]["profile"]
     assert profile["children_under_23"] == 3 and profile["confirmed_participation"] == {"CAR-10": 350}
+
+
+def test_a_car_the_rep_already_confirmed_is_never_asked_about_again(
+    conversations: MemoryConversationRepo,
+) -> None:
+    """Reviewer's question: once the rep confirmed the ATTO 3's participation, comparing it again - in the
+    gallery or in the chat - opens no new question."""
+    conversation_id = client.post(
+        "/v1/conversations", json={"sample_employee_id": "E-001"}, headers=AS_NOA
+    ).json()["id"]
+    url = f"/v1/conversations/{conversation_id}/compare"
+    client.post(url, json={"option_ids": ["CAR-10"]}, headers=AS_NOA)
+    (question,) = conversations.open_questions(conversation_id)
+    assert answer(question["id"], "350").status_code == 200
+    again = client.post(url, json={"option_ids": ["CAR-10"]}, headers=AS_NOA).json()
+    assert conversations.open_questions(conversation_id) == []
+    (atto,) = again["results"]
+    assert atto["participation"] == 350 and atto["participation_status"] == "CONFIRMED"

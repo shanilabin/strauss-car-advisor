@@ -254,9 +254,11 @@ def test_an_unlisted_occupation_never_blocks_the_salary() -> None:
         say("שמרתי את השכר. איזה מהתפקידים ברשימה הכי קרוב לשלך?"),
     )
     returned = tool_returns(result)[0].content
-    assert returned["saved"] == ["salary"] and "occupation" in returned["not_saved"]
+    assert returned["saved"] == ["occupation", "salary"] and "not_saved" not in returned
     assert deps.profile.salary is not None and deps.profile.salary.base == 15000
-    assert deps.profile.occupation is None and deps.turn.profile_changed
+    # resembling no listed occupation, it is kept as said and the rep is asked which one it is
+    assert deps.profile.occupation == "מנתח/ת מערכות"
+    assert [r.field for r in deps.turn.rep_requests] == ["occupation"]
 
 
 def test_a_really_unlisted_occupation_is_saved_when_flagged() -> None:
@@ -604,3 +606,23 @@ def test_comparing_car_after_car_in_one_turn_asks_the_rep_once() -> None:
         deps, *[("compare", {"option_ids": [car]}) for car in ("CAR-10", "CAR-06", "CAR-03", "CAR-08")], FINAL
     )
     assert [r.field for r in deps.turn.rep_requests] == ["participation:CAR-10"]
+
+
+def test_a_cleaner_goes_to_the_rep_without_the_model_looping() -> None:
+    """Tester: "I'm a cleaner" - the bot said it asked the rep, nothing reached the rep, and the next turn
+    looped save/ask-rep until it got stuck. One update_profile now saves it and asks the rep."""
+    deps = deps_for()
+    result = run(deps, ("update_profile", {"occupation": "מנקה"}), say("העברתי לנציג התחבורה."))
+    (returned,) = returned_by(result, "update_profile")
+    assert returned["saved"] == ["occupation"] and "the transport rep was asked" in returned["occupation"]
+    (request,) = deps.turn.rep_requests
+    assert request.field == "occupation" and "מנקה" in request.question
+    again = run(deps, ("ask_representative", {"field": "occupation"}), say("כבר נשאל."))
+    assert returned_by(again, "ask_representative") == [{"sent": False, "already_asked": True}]
+
+
+def test_a_near_spelling_of_a_listed_occupation_is_checked_with_the_employee() -> None:
+    deps = deps_for()
+    result = run(deps, ("update_profile", {"occupation": "מפתחת תוכנה"}), say("התכוונת למפתח/ת תוכנה?"))
+    (returned,) = returned_by(result, "update_profile")
+    assert "מפתח/ת תוכנה" in returned["not_saved"]["occupation"] and deps.turn.rep_requests == []

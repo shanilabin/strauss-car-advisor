@@ -36,6 +36,7 @@ from strauss.domain.models import (
 from strauss.domain.options import build_options
 
 SEARCH_LIMIT = 5
+CLOSE_OCCUPATION = 0.6  # below this, "closest" was nonsense (a cleaner offered "department manager")
 SEARCH_POOL = 200  # variants looked through to find the catalog's or the payslip's one
 # Personal amounts are saved, not displayed: the 'show AI actions' timeline is visible on screen.
 REDACTED = "(נשמר)"
@@ -143,15 +144,16 @@ def update_profile(
     if occupation is not None:
         names = [o.name for o in deps.bundle.occupations]
         name = occupation.strip()
-        if name in names or occupation_not_in_list:
+        # A near spelling of a listed occupation ("מפתחת תוכנה") is checked with the employee. A role that
+        # resembles none ("מנקה", tester) is saved as not listed and goes to the rep at once - in code: the
+        # model asking the rep before saving it looped until it got stuck, and the rep never got it.
+        close = difflib.get_close_matches(name, names, n=3, cutoff=CLOSE_OCCUPATION)
+        if name in names or occupation_not_in_list or not close:
             changes["occupation"] = name
         else:
-            close = difflib.get_close_matches(name, names, n=3, cutoff=0.4)
             not_saved["occupation"] = (
-                f"'{name}' is not in the occupations list"
-                + (f" - closest: {close}" if close else "")
-                + ". Ask the employee which listed occupation fits, or whether it is none of them "
-                "(then save it with occupation_not_in_list=true)."
+                f"'{name}' is not in the occupations list - closest: {close}. Ask the employee which "
+                "listed occupation fits, or whether it is none (then save with occupation_not_in_list=true)"
             )
 
     if base_salary is not None or commissions is not None or bonus is not None:
@@ -246,6 +248,13 @@ def update_profile(
         result["tell"] = "these were saved already - do not call update_profile for them again"
     if not_saved:
         result["not_saved"] = not_saved
+    listed = {o.name for o in deps.bundle.occupations}
+    if "occupation" in saved and updated.occupation not in listed and _send_to_rep(deps, "occupation"):
+        result["occupation"] = (
+            "not in the company's occupations table - the transport rep was asked which listed one it is "
+            "(that decides the group). Tell the employee so in general and continue with the other details; "
+            "do not call ask_representative for it"
+        )
     # a name changes no number: only a real detail recomputes what is on screen
     if set(saved) - {"first_name"} and (recalculated := _recalculate(deps)):
         result["recalculated"] = recalculated
@@ -593,8 +602,9 @@ def ask_representative(ctx: RunContext[AgentDeps], field: str) -> dict[str, Any]
         return {"sent": False, "already_asked": True}
     if not _send_to_rep(deps, field):
         raise ModelRetry(
-            f"'{field}' is not something the rep is asked about - use an 'ask_rep_field' a tool returned, "
-            "or 'occupation' for an occupation that is not in the list"
+            f"'{field}' is not something the rep is asked about - use an 'ask_rep_field' a tool returned. An "
+            "occupation that is not in the list: save it first with update_profile(occupation=..., "
+            "occupation_not_in_list=true) - that already asks the rep"
         )
     return {
         "sent": True,

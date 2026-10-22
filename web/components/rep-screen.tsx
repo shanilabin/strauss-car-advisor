@@ -1,11 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
+import { RepInsights } from "@/components/rep-insights";
 import { RepQueue } from "@/components/rep-queue";
 import { Topbar } from "@/components/topbar";
 import { useRepSession } from "@/lib/supabase/use-rep-session";
+import { cn } from "@/lib/utils";
 
 /**
  * Rep home: requires a REP session (separate storage key). Never starts an anonymous employee session.
@@ -13,6 +15,7 @@ import { useRepSession } from "@/lib/supabase/use-rep-session";
 export function RepScreen() {
   const router = useRouter();
   const { session, loading, error } = useRepSession();
+  const [view, setView] = useState<"queue" | "insights">("queue");
 
   useEffect(() => {
     if (!loading && !session) {
@@ -59,8 +62,41 @@ export function RepScreen() {
     <>
       <Topbar step={null} area="rep" />
       <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
-        <RepQueue enabled />
+        <div className="mx-auto flex w-full max-w-screen-2xl justify-end px-4 pt-4 lg:px-8">
+          <div role="tablist" aria-label="תצוגה" className="inline-flex rounded-full bg-mist p-1">
+            <ViewTab active={view === "queue"} onClick={() => setView("queue")}>
+              תור השאלות
+            </ViewTab>
+            <ViewTab active={view === "insights"} onClick={() => setView("insights")}>
+              תמונת מצב
+            </ViewTab>
+          </div>
+        </div>
+        {view === "queue" ? (
+          <RepQueue enabled />
+        ) : (
+          <div className="mx-auto w-full max-w-screen-2xl px-4 py-6 lg:px-8">
+            <RepInsights />
+          </div>
+        )}
       </main>
     </>
+  );
+}
+
+function ViewTab({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        "rounded-full px-4 py-1.5 text-sm font-bold transition-colors",
+        active ? "bg-surface text-primary shadow-soft" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }

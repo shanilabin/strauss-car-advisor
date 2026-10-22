@@ -9,6 +9,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from strauss.config.models import FactsSource, VehicleFacts
 from strauss.domain.models import Comparison, MissingField
 
 
@@ -42,7 +43,24 @@ class RepPendingCard(AgentModel):
     question: str
 
 
-Card = Annotated[ComparisonCard | OptionsCard | MissingCard | RepPendingCard, Field(discriminator="kind")]
+class CarFacts(AgentModel):
+    catalog_id: str
+    label: str
+    facts: VehicleFacts | None = Field(description="None: the ministry has no row for this car and year")
+
+
+class VehicleFactsCard(AgentModel):
+    """Seats, safety, body... of catalog cars, as the Ministry of Transport publishes them."""
+
+    kind: Literal["vehicle_facts"] = "vehicle_facts"
+    cars: list[CarFacts]
+    source: FactsSource
+
+
+Card = Annotated[
+    ComparisonCard | OptionsCard | MissingCard | RepPendingCard | VehicleFactsCard,
+    Field(discriminator="kind"),
+]
 
 
 class AgentReply(AgentModel):

@@ -15,6 +15,7 @@ import {
 
 import { AgentActions } from "@/components/chat/agent-actions";
 import { MessageCardView, RepPendingSummary } from "@/components/chat/message-cards";
+import { VoiceInput } from "@/components/chat/voice-input";
 import { Button } from "@/components/ui/button";
 import type { components } from "@/lib/api/schema";
 import { cn } from "@/lib/utils";
@@ -330,7 +331,7 @@ export function ChatPanel({
 
       <form
         onSubmit={handleSubmit}
-        className={cn("flex min-w-0 shrink-0 items-center gap-2 border-t border-border/70", narrow ? "p-2.5" : "p-3 lg:p-4")}
+        className={cn("relative flex min-w-0 shrink-0 items-center gap-2 border-t border-border/70", narrow ? "p-2.5" : "p-3 lg:p-4")}
       >
         <label className="sr-only" htmlFor={inputId}>
           כתיבת הודעה
@@ -359,6 +360,7 @@ export function ChatPanel({
           aria-describedby={`${inputId}-hint`}
           className="max-h-36 min-h-12 min-w-0 flex-1 resize-none scroll-mb-4 rounded-3xl border border-border bg-background px-5 py-3 text-base leading-6 outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
         />
+        <VoiceInput draft={draft} onDraftChange={onDraftChange} disabled={disabled || thinking} />
         <Button
           type="submit"
           size="icon-lg"

@@ -407,3 +407,24 @@
     translate: 0 0;
   }
 }
+
+/* "Save as PDF": only the comparison summary (components/print-summary.tsx) is printed - in black on white,
+   whatever the theme. The browser prints Hebrew and RTL natively. */
+@media print {
+  @page {
+    size: A4;
+    margin: 16mm;
+  }
+  body > *:not(.print-summary) {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    padding: 0 !important;
+  }
+  .print-summary {
+    display: block !important;
+    color: #000;
+    font-family: var(--font-heebo), Arial, sans-serif;
+  }
+}

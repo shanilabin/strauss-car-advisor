@@ -14,7 +14,7 @@ from typing import Any
 from pydantic import TypeAdapter
 
 from strauss.config.bundle import ConfigBundle
-from strauss.config.models import CatalogCar, Occupation, SampleEmployee
+from strauss.config.models import CatalogCar, Occupation, SampleEmployee, VehicleFactsFile
 from strauss.config.schema import Rules
 
 CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
@@ -86,6 +86,17 @@ def read_reference_results() -> list[dict[str, Any]]:
     """The challenge's reference sheet ('חישובים'), used by the engine's reference tests."""
     results: list[dict[str, Any]] = _read_json(CONFIG_DIR, "reference-results.json")
     return results
+
+
+def vehicle_facts_from_dir(directory: Path) -> VehicleFactsFile:
+    return VehicleFactsFile.model_validate(_read_json(directory, "vehicle-facts.json"))
+
+
+@lru_cache
+def load_vehicle_facts() -> VehicleFactsFile:
+    """What the Ministry of Transport publishes about the catalog cars (seats, safety...). Not part of the
+    rules fingerprint: it describes the cars, it never changes a calculation."""
+    return vehicle_facts_from_dir(CONFIG_DIR)
 
 
 @lru_cache

@@ -82,6 +82,8 @@ def build_rules(src: dict) -> dict:
             "policy": "default_pending_rep",
             "reducesValueOfUse": nm["participation"]["reducesValueOfUse"],
         },
+        # DERIVED: how far ahead the card adds up the monthly delta - a year, and three (a common lease term)
+        "projection": {"years": [1, 3]},
         "payroll": {
             "pensionableComponents": components,
             "studyFundComponents": components,

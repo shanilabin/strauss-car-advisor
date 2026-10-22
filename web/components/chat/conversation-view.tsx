@@ -12,6 +12,7 @@ import { RepStatusLine, RepWaitingPanel } from "@/components/chat/rep-waiting-pa
 import { ResizeHandle, useResizableWidth } from "@/components/chat/resize-handle";
 import { VehicleList } from "@/components/chat/vehicle-list";
 import { ComparisonCard, type ComparisonCardProps, todayArrangementLabel } from "@/components/comparison-card";
+import { ComparisonTools } from "@/components/comparison-tools";
 import { OptionsMap } from "@/components/options-map";
 import { ProfileCard } from "@/components/profile-card";
 import { ProfileDialog } from "@/components/profile-dialog";
@@ -659,6 +660,7 @@ function ComparisonDesktop({
           // mid-content (the "white rectangle" testers saw)
           className="shrink-0"
         />
+        <ComparisonTools comparison={comparison} optionId={selectedOptionId} />
       </div>
       <ProfileDialog
         open={detailsOpen}
@@ -771,6 +773,7 @@ function MobileSideContent({
         onChangeCar={onChangeCar}
         rep={rep}
       />
+      <ComparisonTools comparison={comparison} optionId={selectedOptionId} />
       <ProfileCard
         conversationId={data.id}
         profile={data.profile}

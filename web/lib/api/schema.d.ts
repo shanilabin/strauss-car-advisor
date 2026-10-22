@@ -361,7 +361,7 @@ export interface components {
         /** AgentReply */
         AgentReply: {
             /** Cards */
-            cards?: (components["schemas"]["ComparisonCard"] | components["schemas"]["OptionsCard"] | components["schemas"]["MissingCard"] | components["schemas"]["RepPendingCard"])[];
+            cards?: (components["schemas"]["ComparisonCard"] | components["schemas"]["OptionsCard"] | components["schemas"]["MissingCard"] | components["schemas"]["RepPendingCard"] | components["schemas"]["VehicleFactsCard"])[];
             /** Quick Replies */
             quick_replies?: string[];
             /**
@@ -400,6 +400,15 @@ export interface components {
             /** @default UNKNOWN */
             participation_status: components["schemas"]["ParticipationStatus"];
             vehicle: components["schemas"]["Vehicle"];
+        };
+        /** CarFacts */
+        CarFacts: {
+            /** Catalog Id */
+            catalog_id: string;
+            /** @description None: the ministry has no row for this car and year */
+            facts: components["schemas"]["VehicleFacts"] | null;
+            /** Label */
+            label: string;
         };
         /** CatalogCar */
         CatalogCar: {
@@ -571,6 +580,16 @@ export interface components {
             study_fund_pct: number;
         };
         /**
+         * DeltaOverYears
+         * @description The monthly net delta added up over a horizon: "+661 a month" is "+23,796 in three years".
+         */
+        DeltaOverYears: {
+            /** Amount */
+            amount: number;
+            /** Years */
+            years: number;
+        };
+        /**
          * Drive
          * @enum {string}
          */
@@ -606,6 +625,20 @@ export interface components {
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
         };
+        /** FactsSource */
+        FactsSource: {
+            /**
+             * Fetched On
+             * Format: date
+             */
+            fetched_on: string;
+            /** Name */
+            name: string;
+            /** Resource Id */
+            resource_id: string;
+            /** Url */
+            url: string;
+        };
         /** GroupBudget */
         GroupBudget: {
             /** Budget */
@@ -635,7 +668,7 @@ export interface components {
         /** MessageOut */
         MessageOut: {
             /** Cards */
-            cards?: (components["schemas"]["ComparisonCard"] | components["schemas"]["OptionsCard"] | components["schemas"]["MissingCard"] | components["schemas"]["RepPendingCard"])[];
+            cards?: (components["schemas"]["ComparisonCard"] | components["schemas"]["OptionsCard"] | components["schemas"]["MissingCard"] | components["schemas"]["RepPendingCard"] | components["schemas"]["VehicleFactsCard"])[];
             /**
              * Created At
              * Format: date-time
@@ -756,6 +789,11 @@ export interface components {
             cost_to_company?: number | null;
             /** Delta */
             delta?: number | null;
+            /**
+             * Delta Over Years
+             * @description The delta over the years of rules.projection; empty without one
+             */
+            delta_over_years?: components["schemas"]["DeltaOverYears"][];
             /** Electric Refund Net */
             electric_refund_net?: number | null;
             eligibility: components["schemas"]["Eligibility"];
@@ -1118,6 +1156,45 @@ export interface components {
             model_desc: string;
             /** Value Of Use */
             value_of_use: number;
+        };
+        /**
+         * VehicleFacts
+         * @description What the Ministry of Transport publishes about one catalog car - for questions about the car itself.
+         *
+         *     Matched by the car's full key (maker, model, year); None where the ministry gives no value.
+         */
+        VehicleFacts: {
+            /** Body */
+            body?: string | null;
+            /** Catalog Id */
+            catalog_id: string;
+            /** Fuel */
+            fuel?: string | null;
+            /** Horsepower */
+            horsepower?: number | null;
+            /**
+             * Safety Level
+             * @description רמת אבזור בטיחותי: the ministry's 0-8 scale, 8 = most equipped
+             */
+            safety_level?: number | null;
+            /** Seats */
+            seats?: number | null;
+            /** Trim */
+            trim?: string | null;
+        };
+        /**
+         * VehicleFactsCard
+         * @description Seats, safety, body... of catalog cars, as the Ministry of Transport publishes them.
+         */
+        VehicleFactsCard: {
+            /** Cars */
+            cars: components["schemas"]["CarFacts"][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "vehicle_facts";
+            source: components["schemas"]["FactsSource"];
         };
         /**
          * VehicleKey

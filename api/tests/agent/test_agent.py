@@ -25,7 +25,7 @@ from strauss.agent.agent import ReplyDraft, build_agent, employee_replies, state
 from strauss.agent.deps import AgentDeps
 from strauss.agent.guard import FALLBACK_WITH_CARDS
 from strauss.agent.models_chain import AgentUnavailable, Cooldowns, CoolingModel, build_model
-from strauss.agent.schemas import ComparisonCard, MissingCard, OptionsCard
+from strauss.agent.schemas import ComparisonCard, MissingCard, OptionsCard, VehicleFactsCard
 from strauss.config.loader import load_bundle, load_sample_employees
 from strauss.config.samples import to_profile
 from strauss.domain.models import CarArrangement, Profile, WaiverArrangement
@@ -103,6 +103,39 @@ def test_every_tool_call_is_in_the_trace() -> None:
         ("guard", "number_guard"),
     ]
     assert "קבוצה ד" in deps.turn.trace[1].data["summary"]  # Tesla: higher group, in words
+
+
+# ── Questions about the car itself ───────────────────────────────────────────
+
+
+def test_car_details_shows_the_ministry_facts_in_a_card() -> None:
+    """ "How many seats in the KONA?" - by name, before any detail was collected: a card with the source."""
+    deps = deps_for()
+    result = run(deps, ("car_details", {"cars": ["kona ev", "CAR-10"]}), FINAL, prompt="כמה מקומות יש בקונה?")
+    (card,) = deps.turn.cards
+    assert isinstance(card, VehicleFactsCard)
+    assert [c.catalog_id for c in card.cars] == ["CAR-08", "CAR-10"]
+    assert card.cars[0].facts is not None and card.cars[0].facts.seats == 5
+    assert "משרד התחבורה" in card.source.name
+    (returned,) = [p for p in tool_returns(result) if p.tool_name == "car_details"]
+    assert returned.content["shown_to_employee"] is True
+
+
+def test_car_details_says_when_the_ministry_has_no_data() -> None:
+    """SANTA FE 2025 has no row - the model is told to say so, and an unknown name is reported back."""
+    deps = deps_for()
+    result = run(deps, ("car_details", {"cars": ["santa fe", "not a car"]}), FINAL)
+    (card,) = deps.turn.cards
+    assert isinstance(card, VehicleFactsCard) and card.cars[0].facts is None
+    (returned,) = [p for p in tool_returns(result) if p.tool_name == "car_details"]
+    assert "never guess" in returned.content["cars"][0]["facts"]
+    assert returned.content["unknown"] == ["not a car"]
+
+
+def test_car_details_without_a_known_car_shows_nothing() -> None:
+    deps = deps_for()
+    run(deps, ("car_details", {"cars": ["batmobile"]}), FINAL)
+    assert deps.turn.cards == []
 
 
 # ── Tools refuse to guess ────────────────────────────────────────────────────

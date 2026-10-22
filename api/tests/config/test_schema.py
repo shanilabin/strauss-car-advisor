@@ -72,6 +72,8 @@ BROKEN_RULES = [
     pytest.param(_set(["effectiveFrom"], "2026-02-30"), "effectiveFrom", id="impossible-date"),
     pytest.param(_set(["netMethod", "rounding", "during"], "agorot"), "none", id="unsupported-rounding"),
     pytest.param(_set(["participation", "reducesValueOfUse"], True), "False", id="unsupported-participation"),
+    pytest.param(_set(["projection", "years"], [1, 1]), "שנות התחזית", id="duplicate-projection-year"),
+    pytest.param(_set(["projection", "years"], [40]), "שנות התחזית", id="projection-too-far"),
 ]
 
 

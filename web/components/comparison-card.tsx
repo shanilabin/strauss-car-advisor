@@ -3,6 +3,7 @@ import {
   ArrowUp,
   Building2,
   CalendarCheck,
+  CalendarRange,
   CarFront,
   Check,
   Clock,
@@ -33,6 +34,7 @@ import { formatDelta, formatShekel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type Comparison = components["schemas"]["Comparison"];
+type DeltaOverYears = components["schemas"]["DeltaOverYears"];
 type OptionResult = components["schemas"]["OptionResult"];
 type ParticipationStatus = components["schemas"]["ParticipationStatus"];
 type Profile = components["schemas"]["Profile-Output"];
@@ -152,6 +154,37 @@ function BreakEven({ amount, delta, pending }: { amount: number; delta: number; 
         )}
         {pending && <span className="text-muted-foreground"> שימו לב: ההשתתפות היא הערכה עד אישור הנציג.</span>}
       </p>
+    </div>
+  );
+}
+
+function yearsLabel(years: number): string {
+  return years === 1 ? "בשנה" : `ב-${years} שנים`;
+}
+
+/** The same monthly delta added up over the years of rules.projection - each amount from the engine. */
+function OverYears({ items, estimated }: { items: DeltaOverYears[]; estimated: boolean }) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface px-4 py-3">
+      <p className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+        <CalendarRange aria-hidden className="size-4" />
+        לאורך זמן{estimated && " (משוער)"}
+      </p>
+      <dl className="mt-1.5 flex flex-wrap gap-x-6 gap-y-1">
+        {items.map((item) => (
+          <div key={item.years} className="flex items-baseline gap-2">
+            <dt className="text-sm text-muted-foreground">{yearsLabel(item.years)}</dt>
+            <dd
+              className={cn(
+                "text-lg font-extrabold tabular-nums",
+                item.amount > 0 ? "text-success" : item.amount < 0 ? "text-error" : "",
+              )}
+            >
+              <bdi dir="ltr">{formatDelta(item.amount)}</bdi>
+            </dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }
@@ -452,6 +485,9 @@ export function ComparisonCard({
           )}
           {eligible && result.break_even_participation != null && result.delta != null && result.delta !== 0 && (
             <BreakEven amount={result.break_even_participation} delta={result.delta} pending={defaultParticipation} />
+          )}
+          {eligible && result.delta != null && result.delta !== 0 && (result.delta_over_years?.length ?? 0) > 0 && (
+            <OverYears items={result.delta_over_years ?? []} estimated={estimated} />
           )}
         </section>
       </div>

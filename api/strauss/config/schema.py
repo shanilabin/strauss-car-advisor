@@ -53,6 +53,16 @@ class Participation(ConfigModel):
     )
 
 
+class Projection(ConfigModel):
+    years: list[int] = Field(min_length=1, description="Horizons the card adds the monthly delta up to")
+
+    @model_validator(mode="after")
+    def _sensible(self) -> Self:
+        if any(not 1 <= y <= 10 for y in self.years) or len(set(self.years)) != len(self.years):
+            raise ValueError("שנות התחזית חייבות להיות שונות זו מזו ובין 1 ל-10")
+        return self
+
+
 class Payroll(ConfigModel):
     pensionable_components: list[SalaryComponent] = Field(min_length=1)
     study_fund_components: list[SalaryComponent] = Field(min_length=1)
@@ -181,6 +191,7 @@ class Rules(ConfigModel):
     special_tracks: list[SpecialTrack] = Field(default_factory=list)
     waiver: Waiver
     participation: Participation
+    projection: Projection
     payroll: Payroll
     net_method: NetMethod
     value_of_use: ValueOfUse

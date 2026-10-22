@@ -11,7 +11,8 @@
                   "comparison": "#/components/schemas/ComparisonCard",
                   "missing": "#/components/schemas/MissingCard",
                   "options": "#/components/schemas/OptionsCard",
-                  "rep_pending": "#/components/schemas/RepPendingCard"
+                  "rep_pending": "#/components/schemas/RepPendingCard",
+                  "vehicle_facts": "#/components/schemas/VehicleFactsCard"
                 },
                 "propertyName": "kind"
               },
@@ -27,6 +28,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/RepPendingCard"
+                },
+                {
+                  "$ref": "#/components/schemas/VehicleFactsCard"
                 }
               ]
             },
@@ -131,6 +135,37 @@
           "vehicle"
         ],
         "title": "CarArrangement",
+        "type": "object"
+      },
+      "CarFacts": {
+        "additionalProperties": false,
+        "properties": {
+          "catalog_id": {
+            "title": "Catalog Id",
+            "type": "string"
+          },
+          "facts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VehicleFacts"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None: the ministry has no row for this car and year"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "catalog_id",
+          "label",
+          "facts"
+        ],
+        "title": "CarFacts",
         "type": "object"
       },
       "CatalogCar": {
@@ -541,6 +576,26 @@
         "title": "Deductions",
         "type": "object"
       },
+      "DeltaOverYears": {
+        "additionalProperties": false,
+        "description": "The monthly net delta added up over a horizon: \"+661 a month\" is \"+23,796 in three years\".",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "years": {
+            "title": "Years",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "years",
+          "amount"
+        ],
+        "title": "DeltaOverYears",
+        "type": "object"
+      },
       "Drive": {
         "enum": [
           "PETROL",
@@ -637,6 +692,36 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "FactsSource": {
+        "additionalProperties": false,
+        "properties": {
+          "fetched_on": {
+            "format": "date",
+            "title": "Fetched On",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "resource_id": {
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "resource_id",
+          "fetched_on"
+        ],
+        "title": "FactsSource",
+        "type": "object"
+      },
       "GroupBudget": {
         "additionalProperties": false,
         "properties": {
@@ -713,7 +798,8 @@
                   "comparison": "#/components/schemas/ComparisonCard",
                   "missing": "#/components/schemas/MissingCard",
                   "options": "#/components/schemas/OptionsCard",
-                  "rep_pending": "#/components/schemas/RepPendingCard"
+                  "rep_pending": "#/components/schemas/RepPendingCard",
+                  "vehicle_facts": "#/components/schemas/VehicleFactsCard"
                 },
                 "propertyName": "kind"
               },
@@ -729,6 +815,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/RepPendingCard"
+                },
+                {
+                  "$ref": "#/components/schemas/VehicleFactsCard"
                 }
               ]
             },
@@ -1052,6 +1141,14 @@
               }
             ],
             "title": "Delta"
+          },
+          "delta_over_years": {
+            "description": "The delta over the years of rules.projection; empty without one",
+            "items": {
+              "$ref": "#/components/schemas/DeltaOverYears"
+            },
+            "title": "Delta Over Years",
+            "type": "array"
           },
           "electric_refund_net": {
             "anyOf": [
@@ -2141,6 +2238,120 @@
           "value_of_use"
         ],
         "title": "Vehicle",
+        "type": "object"
+      },
+      "VehicleFacts": {
+        "additionalProperties": false,
+        "description": "What the Ministry of Transport publishes about one catalog car - for questions about the car itself.\n\nMatched by the car's full key (maker, model, year); None where the ministry gives no value.",
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "catalog_id": {
+            "title": "Catalog Id",
+            "type": "string"
+          },
+          "fuel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fuel"
+          },
+          "horsepower": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horsepower"
+          },
+          "safety_level": {
+            "anyOf": [
+              {
+                "maximum": 8.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "רמת אבזור בטיחותי: the ministry's 0-8 scale, 8 = most equipped",
+            "title": "Safety Level"
+          },
+          "seats": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seats"
+          },
+          "trim": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trim"
+          }
+        },
+        "required": [
+          "catalog_id"
+        ],
+        "title": "VehicleFacts",
+        "type": "object"
+      },
+      "VehicleFactsCard": {
+        "additionalProperties": false,
+        "description": "Seats, safety, body... of catalog cars, as the Ministry of Transport publishes them.",
+        "properties": {
+          "cars": {
+            "items": {
+              "$ref": "#/components/schemas/CarFacts"
+            },
+            "title": "Cars",
+            "type": "array"
+          },
+          "kind": {
+            "const": "vehicle_facts",
+            "default": "vehicle_facts",
+            "title": "Kind",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/FactsSource"
+          }
+        },
+        "required": [
+          "cars",
+          "source"
+        ],
+        "title": "VehicleFactsCard",
         "type": "object"
       },
       "VehicleKey": {

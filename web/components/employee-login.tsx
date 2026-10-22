@@ -215,6 +215,13 @@ export function EmployeeLogin() {
           כניסת נציג
         </Link>
       </p>
+      <p className="text-center text-xs text-muted-foreground">
+        בהתחברות את/ה מסכים/ה ל
+        <Link href="/privacy" className="font-semibold text-link underline underline-offset-4">
+          מדיניות הפרטיות
+        </Link>
+        .
+      </p>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Heebo, Secular_One } from "next/font/google";
+import Link from "next/link";
 
 import { ApiStatus } from "@/components/api-status";
 import { ThemeSync } from "@/components/theme-sync";
@@ -45,9 +46,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-(--topbar-h)">{children}</div>
         <footer
           id="app-footer"
-          className="shrink-0 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5 lg:px-8"
+          className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5 lg:px-8"
         >
           <ApiStatus />
+          <Link href="/privacy" className="underline underline-offset-4 hover:text-foreground">
+            מדיניות פרטיות
+          </Link>
         </footer>
       </body>
     </html>

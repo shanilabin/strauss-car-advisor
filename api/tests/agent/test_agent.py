@@ -3,6 +3,7 @@ network, no keys, no cost. The script plays the LLM's part: which tools to call 
 
 import json
 import re
+import time
 from typing import Any
 
 import pytest
@@ -12,6 +13,7 @@ from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
     TextPart,
+    ToolCallPart,
     ToolReturnPart,
 )
 from pydantic_ai.models.fallback import FallbackModel
@@ -626,3 +628,37 @@ def test_a_near_spelling_of_a_listed_occupation_is_checked_with_the_employee() -
     result = run(deps, ("update_profile", {"occupation": "מפתחת תוכנה"}), say("התכוונת למפתח/ת תוכנה?"))
     (returned,) = returned_by(result, "update_profile")
     assert "מפתח/ת תוכנה" in returned["not_saved"]["occupation"] and deps.turn.rep_requests == []
+
+
+# ── Found on the live site: two tool calls in one model response ─────────────
+
+
+def test_tools_called_together_run_in_order() -> None:
+    """The model saved today's car and compared in the same response: compare must see the saved car
+    (tools run one at a time, in the order called - they share one profile)."""
+
+    class SlowLookup:  # like Supabase in production: reading the car takes a moment, comparing doesn't
+        def get(self, key: Any) -> Any:
+            time.sleep(0.3)
+            return _tax_authority_repo().get(key)
+
+        def search(self, *args: Any) -> Any:
+            return _tax_authority_repo().search(*args)
+
+    deps = AgentDeps(
+        profile=noa().model_copy(update={"current": None}), bundle=BUNDLE, value_of_use=SlowLookup()
+    )
+
+    def car_and_compare_together(_messages: Any) -> ModelResponse:
+        return ModelResponse(
+            parts=[
+                ToolCallPart("set_current_car", {**COROLLA_CROSS_2025, "participation": 300}),
+                ToolCallPart("compare", {"option_ids": ["CAR-10"]}),
+            ]
+        )
+
+    result = build_agent(scripted(car_and_compare_together, FINAL)).run_sync("ATTO 3?", deps=deps)
+    cards = to_reply(result.output, deps).cards
+    assert [type(c) for c in cards] == [ComparisonCard]  # not "which car do you have?"
+    (atto,) = cards[0].comparison.results  # type: ignore[union-attr]
+    assert atto.delta == 661  # computed against the saved Corolla Cross

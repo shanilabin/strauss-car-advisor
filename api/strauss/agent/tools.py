@@ -12,7 +12,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from pydantic import ValidationError
-from pydantic_ai import ModelRetry, RunContext
+from pydantic_ai import ModelRetry, RunContext, Tool
 
 from strauss.agent.deps import AgentDeps, RepRequest
 from strauss.agent.schemas import ComparisonCard, MissingCard, OptionsCard
@@ -647,12 +647,17 @@ def _rep_question(field: str, deps: AgentDeps) -> tuple[str, str | None] | None:
     return None
 
 
-TOOLS = (
-    update_profile,
-    find_vehicle,
-    set_current_car,
-    list_options,
-    compare,
-    check_eligibility,
-    ask_representative,
+# Every tool reads or changes the same profile, so they run one at a time, in the order the model called
+# them - even when it calls several at once ("save the car" + "compare" must not race).
+TOOLS = tuple(
+    Tool(function, sequential=True)
+    for function in (
+        update_profile,
+        find_vehicle,
+        set_current_car,
+        list_options,
+        compare,
+        check_eligibility,
+        ask_representative,
+    )
 )

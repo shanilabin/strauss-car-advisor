@@ -279,13 +279,13 @@ def test_the_rep_is_asked_only_about_known_fields_and_once() -> None:
     assert [r.field for r in deps.turn.rep_requests] == ["participation:CAR-10"]
 
 
-def test_comparing_a_car_with_a_default_participation_asks_the_rep_by_itself() -> None:
+def test_a_default_participation_is_flagged_as_an_estimate_and_offered_to_the_rep() -> None:
     deps = deps_for(to_profile(next(e for e in load_sample_employees() if e.id == "E-001"), BUNDLE))
     result = run(deps, ("compare", {"option_ids": ["CAR-10", "waiver"]}), FINAL)
     by_id = {item["id"]: item for item in tool_returns(result)[0].content["results"]}
     atto, waiver = by_id["CAR-10"], by_id["waiver"]
-    assert "rep was asked" in atto["participation"] and "participation" not in waiver
-    assert [r.field for r in deps.turn.rep_requests] == ["participation:CAR-10"]  # only the car compared
+    assert "an estimate" in atto["participation"] and atto["ask_rep_field"] == "participation:CAR-10"
+    assert "participation" not in waiver and deps.turn.rep_requests == []
 
 
 def test_personal_amounts_are_redacted_in_the_trace() -> None:
@@ -569,18 +569,19 @@ def test_the_state_says_whether_the_employee_may_give_up_the_car() -> None:
     assert '"may_give_up_car": null' in state_block(deps_for())
 
 
-def test_a_broad_comparison_does_not_send_the_rep_a_question_per_car() -> None:
-    """Tester: "compare electric cars" opened seven rep questions. Several cars -> nobody is asked yet; the
-    employee is offered to ask about the one they like. One car -> the rep is asked at once."""
+def test_comparing_never_asks_the_rep_by_itself() -> None:
+    """Testers: "I only wanted to check - why wait for a rep?" A default participation is an estimate; the
+    rep is asked only when the employee wants the car (the card's button, or ask_representative)."""
     deps = deps_for(noa())
-    result = run(deps, ("compare", {"option_ids": ["CAR-03", "CAR-06", "CAR-08", "CAR-10"]}), FINAL)
+    result = run(deps, ("compare", {"option_ids": ["CAR-03", "CAR-06", "CAR-10"]}), FINAL)
     (returned,) = returned_by(result, "compare")
     assert deps.turn.rep_requests == []
-    assert all("offer to ask the transport rep" in item["participation"] for item in returned["results"])
-
+    assert all(
+        "an estimate until the transport rep confirms" in i["participation"] for i in returned["results"]
+    )
     one = deps_for(noa())
-    run(one, ("compare", {"option_ids": ["CAR-10", "waiver"]}), FINAL)
-    assert [r.field for r in one.turn.rep_requests] == ["participation:CAR-10"]
+    run(one, ("compare", {"option_ids": ["CAR-10"]}), FINAL)
+    assert one.turn.rep_requests == []
 
 
 def test_quick_replies_never_guess_who_the_employee_is() -> None:
@@ -599,12 +600,11 @@ def test_a_car_required_role_is_never_offered_a_waiver_quick_reply() -> None:
     assert to_reply(draft, deps_for(noa())).quick_replies == ["מה עם ויתור?", "למה יש הפרש?"]
 
 
-def test_comparing_car_after_car_in_one_turn_asks_the_rep_once() -> None:
-    """Live run: the model compared one car at a time, ten times in a turn - ten questions for the rep."""
+def test_the_employee_who_wants_the_car_gets_the_rep_asked_once() -> None:
+    """ "I want the ATTO 3" -> ask_representative; comparing car after car asks nobody."""
     deps = deps_for(noa())
-    run(
-        deps, *[("compare", {"option_ids": [car]}) for car in ("CAR-10", "CAR-06", "CAR-03", "CAR-08")], FINAL
-    )
+    steps = [("compare", {"option_ids": [car]}) for car in ("CAR-10", "CAR-06", "CAR-03")]
+    run(deps, *steps, ("ask_representative", {"field": "participation:CAR-10"}), FINAL)
     assert [r.field for r in deps.turn.rep_requests] == ["participation:CAR-10"]
 
 

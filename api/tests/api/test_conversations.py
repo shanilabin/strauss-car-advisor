@@ -227,8 +227,7 @@ def test_editing_a_detail_after_a_comparison_recomputes_it(conversations: Memory
     assert [r["option"]["id"] for r in after["results"]] == ["CAR-10"]  # the same alternative
     assert after["results"][0]["net_today"] != before["results"][0]["net_today"]
     assert after["profile_snapshot"]["revision"] == 1
-    # still on the comparison, not back to the options (the ATTO 3's default participation is with the rep)
-    assert patched["status"] == "WAITING_REP"
+    assert patched["status"] == "PRESENTED"  # still on the comparison, not back to the options
     note = patched["messages"][-1]
     assert note["role"] == "system_event" and "שכר" in note["text"] and "חושבה מחדש" in note["text"]
     request, _ = conversations.comparisons[conversation_id][-1]
@@ -278,28 +277,53 @@ def test_a_name_is_saved_and_changes_no_number() -> None:
     ).json()
     assert patched["profile"]["first_name"] == "נועה"
     assert patched["latest_comparison"]["id"] == shown["id"] and patched["messages"] == []
-    assert patched["status"] == "WAITING_REP"  # unchanged: the comparison (and the rep question) stay
+    assert patched["status"] == "PRESENTED"  # unchanged: the comparison stays
 
 
-def test_a_car_chosen_in_the_gallery_asks_the_rep_about_its_default_participation(
+def test_choosing_a_car_asks_nobody_until_the_employee_asks_for_it(
     conversations: MemoryConversationRepo,
 ) -> None:
-    """Tester: the screen said "waiting for the rep" but the rep's queue was empty - only the chat asked."""
+    """Comparing is free: the default participation is an estimate. "I want this car" (the card's button)
+    asks the rep - once, with the minimum context - and the conversation waits for the answer."""
     conversation_id = start()["id"]
-    client.get(f"/v1/conversations/{conversation_id}/options", headers=AS_NOA)  # browsing asks nobody
+    compare_url = f"/v1/conversations/{conversation_id}/compare"
+    for _ in range(2):
+        client.post(compare_url, json={"option_ids": ["CAR-10"]}, headers=AS_NOA)
     assert conversations.open_questions(conversation_id) == []
-    url = f"/v1/conversations/{conversation_id}/compare"
-    for _ in range(2):  # choosing it twice asks once
-        client.post(url, json={"option_ids": ["CAR-10"]}, headers=AS_NOA)
+
+    ask = f"/v1/conversations/{conversation_id}/rep-requests"
+    for _ in range(2):  # asking twice asks once
+        state = client.post(ask, json={"option_id": "CAR-10"}, headers=AS_NOA).json()
     (question,) = conversations.open_questions(conversation_id)
     assert question["field"] == "participation:CAR-10" and "ATTO 3" in question["question"]
     assert question["context"] == {
         "occupation": "מנהל/ת מוצר",
-        "group": "ג",  # from the occupations table
+        "group": "ג",
         "requested_car": "ATTO 3 (2025)",
         "current_car": "COROLLA CROSS (2025)",
     }
-    state = client.get(f"/v1/conversations/{conversation_id}", headers=AS_NOA).json()
     assert state["status"] == "WAITING_REP" and len(state["open_questions"]) == 1
+    assert state["messages"][-1]["role"] == "system_event" and "ATTO 3" in state["messages"][-1]["text"]
     rep_queue = client.get("/v1/rep/questions", params={"status": "OPEN"}, headers=AS_REP).json()
     assert [q["conversation_id"] for q in rep_queue] == [conversation_id]
+
+
+def test_asking_the_rep_about_a_car_one_may_not_take_is_refused() -> None:
+    conversation_id = start()["id"]
+    ineligible = next(
+        r["option"]["id"]
+        for r in client.get(f"/v1/conversations/{conversation_id}/options", headers=AS_NOA).json()["results"]
+        if not r["eligibility"]["eligible"]
+    )
+    response = client.post(
+        f"/v1/conversations/{conversation_id}/rep-requests", json={"option_id": ineligible}, headers=AS_NOA
+    )
+    assert response.status_code == 422 and response.json()["error"]["code"] == "not_eligible"
+
+
+def test_only_the_owner_can_ask_the_rep() -> None:
+    conversation_id = start()["id"]
+    response = client.post(
+        f"/v1/conversations/{conversation_id}/rep-requests", json={"option_id": "CAR-10"}, headers=AS_OTHER
+    )
+    assert response.status_code == 404

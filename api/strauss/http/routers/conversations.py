@@ -9,6 +9,7 @@ from strauss.http.schemas import (
     ConversationState,
     CreateConversationRequest,
     ProfilePatch,
+    RepRequest,
     SendMessageRequest,
     TurnResponse,
 )
@@ -56,6 +57,15 @@ def list_options(conversation_id: str, user: UserDep, service: ConversationServi
     """Every alternative versus today, ranked by net impact (ineligible ones carry the reason only).
     An incomplete profile returns 422 'incomplete_profile' with the questions to ask."""
     return service.options(user, conversation_id)
+
+
+@router.post("/{conversation_id}/rep-requests")
+def request_rep(
+    conversation_id: str, body: RepRequest, user: UserDep, service: ConversationServiceDep
+) -> ConversationState:
+    """The employee wants this car: ask the transport rep to confirm its participation (one open question
+    per car). 422 nothing_to_confirm if already confirmed, not_eligible for a car they may not take."""
+    return service.request_rep(user, conversation_id, body.option_id)
 
 
 @router.post("/{conversation_id}/compare")

@@ -206,6 +206,27 @@ export interface paths {
         patch: operations["conversations_patch_profile"];
         trace?: never;
     };
+    "/v1/conversations/{conversation_id}/rep-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Rep
+         * @description The employee wants this car: ask the transport rep to confirm its participation (one open question
+         *     per car). 422 nothing_to_confirm if already confirmed, not_eligible for a car they may not take.
+         */
+        post: operations["conversations_request_rep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/occupations": {
         parameters: {
             query?: never;
@@ -955,6 +976,11 @@ export interface components {
          * @enum {string}
          */
         RepQuestionStatus: "OPEN" | "ANSWERED";
+        /** RepRequest */
+        RepRequest: {
+            /** Option Id */
+            option_id: string;
+        };
         /** SalaryInput */
         "SalaryInput-Input": {
             /** Base */
@@ -1599,6 +1625,77 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ProfilePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationState"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict (stale revision, already answered) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid input */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Data service or chat model unavailable (details.mode = form) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    conversations_request_rep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepRequest"];
             };
         };
         responses: {

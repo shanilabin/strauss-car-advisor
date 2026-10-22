@@ -3,12 +3,13 @@
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 
-import { ComparisonCard } from "@/components/comparison-card";
+import { ComparisonCard, type ComparisonCardProps } from "@/components/comparison-card";
 import { OptionsMap } from "@/components/options-map";
 import { ProfileCard } from "@/components/profile-card";
 import { Topbar, type Step } from "@/components/topbar";
 import { Button } from "@/components/ui/button";
 import { CompareError, useCompare } from "@/lib/api/use-compare";
+import { useRequestRep } from "@/lib/api/use-request-rep";
 import {
   ConversationFetchError,
   useConversation,
@@ -57,6 +58,7 @@ export function FormFlow() {
 
   const conversation = useConversation(conversationId ?? "");
   const compare = useCompare(conversationId ?? "");
+  const requestRep = useRequestRep(conversationId ?? "");
   const showOptions = stage === "options" || stage === "comparison";
   const optionsQuery = useOptions(conversationId ?? "", showOptions && stage === "options");
 
@@ -211,6 +213,12 @@ export function FormFlow() {
             onChangeCar={handleChangeCar}
             waitingRep={data?.status === "WAITING_REP"}
             openQuestion={data?.open_questions?.[0]?.question ?? null}
+            rep={{
+              askedFields: (data?.open_questions ?? []).map((q) => q.field),
+              onRequest: (optionId: string) => requestRep.mutate(optionId),
+              requesting: requestRep.isPending,
+              error: requestRep.error ? requestRep.error.message : null,
+            }}
           />
         )}
       </main>
@@ -435,6 +443,7 @@ function ComparisonStage({
   onChangeCar,
   waitingRep,
   openQuestion,
+  rep,
 }: {
   loading: boolean;
   error: Error | null;
@@ -443,6 +452,7 @@ function ComparisonStage({
   onChangeCar: () => void;
   waitingRep: boolean;
   openQuestion: string | null;
+  rep: NonNullable<ComparisonCardProps["rep"]>;
 }) {
   if (loading) {
     return (
@@ -484,6 +494,7 @@ function ComparisonStage({
         comparison={comparison}
         optionId={selectedOptionId}
         onChangeCar={onChangeCar}
+        rep={rep}
       />
     </div>
   );

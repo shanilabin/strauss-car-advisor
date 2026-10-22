@@ -126,6 +126,10 @@ class StatelessCompareRequest(ApiModel):
     option_ids: list[str] | None = Field(default=None, description="None = every option")
 
 
+class RepRequest(ApiModel):
+    option_id: str = Field(min_length=1, max_length=40)
+
+
 # ── Rep ──────────────────────────────────────────────────────────────────────
 
 

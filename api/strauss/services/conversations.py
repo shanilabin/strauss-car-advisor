@@ -148,6 +148,38 @@ class ConversationService:
             self._repo.add_messages(record.id, [{**row, "created_at": datetime.now(UTC).isoformat()}])
         return self.state(saved, questions)
 
+    def request_rep(self, user: AuthUser, conversation_id: str, option_id: str) -> ConversationState:
+        """The employee wants this car: the transport rep is asked to confirm its participation.
+
+        Comparing never asks the rep by itself (testers: "I only wanted to check - why wait for a rep?");
+        a comparison on a default participation is shown as an estimate, and the employee asks for the
+        car they actually want. One open question per car; a confirmed one is not asked again."""
+        record = self.owned(user, conversation_id)
+        (result,) = compare(record.profile, self._bundle, [option_id]).results
+        if not result.eligibility.eligible:
+            raise ApiError(422, "not_eligible", "אי אפשר לבקש אישור לרכב שאינך זכאי/ת לו")
+        if result.participation_status != ParticipationStatus.DEFAULT_PENDING:
+            raise ApiError(422, "nothing_to_confirm", "ההשתתפות ברכב הזה כבר מאושרת")
+        field = f"participation:{option_id}"
+        questions = self._repo.open_questions(record.id)
+        if all(q["field"] != field for q in questions):
+            question = rep_question(field, "participation", car=result.option.label).question
+            context = rep_context(record.profile, self._bundle, result.option.label)
+            row = self._repo.open_question(record.id, field, question, context, record.profile.revision)
+            if row is not None:
+                questions.append(row)
+                note = f"ביקשת מנציג התחבורה לאשר את ההשתתפות ב-{result.option.label}. ההשוואה תתעדכן כשיענה."
+                self._repo.add_messages(
+                    record.id,
+                    [{"role": MessageRole.SYSTEM_EVENT, "content": note, "payload": {},
+                      "created_at": datetime.now(UTC).isoformat()}],
+                )  # fmt: skip
+        status = status_for(record.profile, len(questions), presented=True)
+        if status != record.status:
+            self._repo.set_status(record.id, status)
+            record = ConversationRecord(record.id, record.user_id, status, record.profile)
+        return self.state(record, questions)
+
     def options(self, user: AuthUser, conversation_id: str) -> Comparison:
         return self._compare(self.owned(user, conversation_id), None)
 
@@ -177,31 +209,10 @@ class ConversationService:
         comparison = compare(record.profile, self._bundle, option_ids)
         request = {"option_ids": option_ids, "revision": record.profile.revision}
         self._repo.save_comparison(record.id, request, comparison)
-        if option_ids is not None:  # the employee chose these cars - not a browse of all of them
-            self._ask_rep_about_defaults(record, comparison)
         status = status_for(record.profile, len(self._repo.open_questions(record.id)), presented=True)
         if status != record.status:
             self._repo.set_status(record.id, status)
         return comparison
-
-    def _ask_rep_about_defaults(self, record: ConversationRecord, comparison: Comparison) -> None:
-        """A chosen car whose participation is still the catalog default: the transport rep is asked, the
-        same as when the employee asks the advisor in the chat (a car picked in the gallery or the form
-        showed "waiting for the rep" while no rep was ever asked). One open question per car."""
-        already = {q["field"] for q in self._repo.open_questions(record.id)}
-        for result in comparison.results:
-            if (
-                not result.eligibility.eligible
-                or result.participation_status != ParticipationStatus.DEFAULT_PENDING
-            ):
-                continue
-            field = f"participation:{result.option.id}"
-            if field in already:
-                continue
-            question = rep_question(field, "participation", car=result.option.label).question
-            context = rep_context(record.profile, self._bundle, result.option.label)
-            self._repo.open_question(record.id, field, question, context, record.profile.revision)
-            already.add(field)
 
     def _official_car(self, arrangement: CarArrangement) -> CarArrangement:
         """Today's car as the server knows it: the vehicle re-read by its key, matched to the company catalog

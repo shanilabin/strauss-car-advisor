@@ -180,10 +180,13 @@ def test_a_car_the_rep_already_confirmed_is_never_asked_about_again(
         "/v1/conversations", json={"sample_employee_id": "E-001"}, headers=AS_NOA
     ).json()["id"]
     url = f"/v1/conversations/{conversation_id}/compare"
-    client.post(url, json={"option_ids": ["CAR-10"]}, headers=AS_NOA)
+    ask = f"/v1/conversations/{conversation_id}/rep-requests"
+    client.post(ask, json={"option_id": "CAR-10"}, headers=AS_NOA)
     (question,) = conversations.open_questions(conversation_id)
     assert answer(question["id"], "350").status_code == 200
     again = client.post(url, json={"option_ids": ["CAR-10"]}, headers=AS_NOA).json()
     assert conversations.open_questions(conversation_id) == []
     (atto,) = again["results"]
     assert atto["participation"] == 350 and atto["participation_status"] == "CONFIRMED"
+    refused = client.post(ask, json={"option_id": "CAR-10"}, headers=AS_NOA)
+    assert refused.status_code == 422 and refused.json()["error"]["code"] == "nothing_to_confirm"

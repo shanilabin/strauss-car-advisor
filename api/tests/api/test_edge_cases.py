@@ -204,23 +204,20 @@ def test_6_a_salary_correction_mid_conversation_recomputes(model: ModelSlot) -> 
 # 7 ── An unknown participation: "I'm missing X, I asked the rep"
 
 
-def test_7_an_unconfirmed_participation_is_flagged_and_the_rep_is_asked(model: ModelSlot) -> None:
+def test_7_an_unconfirmed_participation_is_flagged_as_an_estimate(model: ModelSlot) -> None:
     conversation_id = start("E-001")
     body, returned = turn(
         model,
         conversation_id,
         "ATTO 3?",
-        ("compare", {"option_ids": ["CAR-10"]}),  # asks the rep by itself - no extra model request
-        say("ההשתתפות ב-ATTO 3 עוד לא אושרה, ולכן זו הערכה. שאלתי את נציג התחבורה."),
+        ("compare", {"option_ids": ["CAR-10"]}),
+        say("ההשתתפות ב-ATTO 3 היא הערכה עד שנציג התחבורה יאשר. רוצה שאבקש ממנו אישור?"),
     )
     (atto,) = returned[0]["results"]
-    assert "rep was asked" in atto["participation"]
+    assert "an estimate until the transport rep confirms" in atto["participation"]
     assert results(body)["CAR-10"]["participation_status"] == "DEFAULT_PENDING"
-    assert [c["kind"] for c in body["reply"]["cards"]] == ["comparison", "rep_pending"]
-    assert body["state"]["status"] == "WAITING_REP"
-
-
-# 8 ── "Just give me a rough estimate": the bot refuses to guess
+    assert [c["kind"] for c in body["reply"]["cards"]] == ["comparison"]  # nobody asked yet
+    assert body["state"]["status"] == "PRESENTED"
 
 
 def test_8_a_rough_estimate_is_refused_and_the_missing_details_are_asked(model: ModelSlot) -> None:

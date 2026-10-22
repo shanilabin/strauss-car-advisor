@@ -353,12 +353,31 @@ def test_the_name_of_a_google_account_makes_the_chat_personal() -> None:
     assert no_name["profile"].get("first_name") is None
 
 
+def say_to(conversation_id: str, text: str, headers: dict[str, str] = AS_NOA) -> None:
+    path = f"/v1/conversations/{conversation_id}/messages"
+    response = client.post(path, json={"text": text}, headers=headers)
+    assert response.status_code == 200
+
+
 def test_my_conversations_are_mine_and_the_last_active_comes_first() -> None:
     first = start()["id"]
     second = start("E-003")["id"]
-    client.post("/v1/conversations", json={}, headers=AS_OTHER)  # someone else's
+    say_to(first, "שלום")
+    say_to(second, "שלום")
+    other = client.post("/v1/conversations", json={}, headers=AS_OTHER).json()["id"]  # someone else's
+    say_to(other, "שלום", AS_OTHER)
     client.patch(f"/v1/conversations/{first}/profile", json={"children_under_23": 1}, headers=AS_NOA)
     mine = client.get("/v1/conversations", headers=AS_NOA).json()
     assert [c["id"] for c in mine] == [first, second]  # the first was active more recently
     assert mine[0]["occupation"] == "מנהל/ת מוצר" and mine[0]["current_car"] == "COROLLA CROSS (2025)"
     assert mine[1]["current_car"] == "ויתור על הרכב (אחזקה)"
+
+
+def test_a_conversation_appears_only_once_the_employee_wrote_something() -> None:
+    """Opening the chat and leaving adds nothing to "my conversations" (testers saw piles of empty ones)."""
+    empty = start(None)["id"]
+    assert client.get("/v1/conversations", headers=AS_NOA).json() == []
+    say_to(empty, "אני שוקלת לעבור לרכב חשמלי. כמה זה ישנה לי בנטו?")
+    (item,) = client.get("/v1/conversations", headers=AS_NOA).json()
+    assert item["id"] == empty
+    assert item["title"] == "אני שוקלת לעבור לרכב חשמלי"  # named by the first sentence - no model asked

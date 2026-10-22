@@ -515,6 +515,11 @@ export interface components {
             occupation?: string | null;
             status: components["schemas"]["ConversationStatus"];
             /**
+             * Title
+             * @description From the employee's first message - no model is asked
+             */
+            title: string;
+            /**
              * Updated At
              * Format: date-time
              */

@@ -30,13 +30,14 @@ class AuthUser:
 
 @dataclass(frozen=True)
 class ConversationSummary:
-    """One line of "my conversations"."""
+    """One line of "my conversations" - only a conversation in which the employee wrote something."""
 
     id: str
     status: str
     profile: Profile
     created_at: str
     updated_at: str
+    first_message: str = ""
 
 
 class AuthVerifier(Protocol):

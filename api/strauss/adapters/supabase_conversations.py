@@ -54,7 +54,12 @@ class SupabaseConversationRepo:
             "/conversations",
             params={
                 "user_id": f"eq.{user_id}",
-                "select": "id,status,profile,profile_revision,created_at,updated_at",
+                # !inner keeps only conversations with a message of the employee - opening the chat and
+                # leaving creates no entry - and brings the first of them along to name the conversation
+                "select": "id,status,profile,profile_revision,created_at,updated_at,messages!inner(content)",
+                "messages.role": "eq.user",
+                "messages.order": "created_at.asc",
+                "messages.limit": "1",
                 "order": "updated_at.desc",
                 "limit": str(limit),
             },
@@ -67,6 +72,7 @@ class SupabaseConversationRepo:
                 profile=_record({**row, "user_id": user_id}).profile,
                 created_at=row["created_at"],
                 updated_at=row["updated_at"],
+                first_message=row["messages"][0]["content"] if row["messages"] else "",
             )
             for row in response.json()
         ]

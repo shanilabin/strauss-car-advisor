@@ -130,6 +130,7 @@ class ConversationListItem(ApiModel):
     """One line of "my conversations" - enough to recognise it, not the conversation itself."""
 
     id: str
+    title: str = Field(description="From the employee's first message - no model is asked")
     status: ConversationStatus
     created_at: datetime
     updated_at: datetime

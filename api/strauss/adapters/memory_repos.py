@@ -35,10 +35,16 @@ class MemoryConversationRepo:
         self.updated_at[conversation_id] = stamp
 
     def list_for_user(self, user_id: str, limit: int) -> list[ConversationSummary]:
-        mine = [r for r in self.conversations.values() if r.user_id == user_id]
+        written = {
+            cid: next((m["content"] for m in rows if m["role"] == "user"), None)
+            for cid, rows in self.message_rows.items()
+        }
+        mine = [r for r in self.conversations.values() if r.user_id == user_id and written.get(r.id)]
         mine.sort(key=lambda r: self.updated_at[r.id], reverse=True)
         return [
-            ConversationSummary(r.id, r.status, r.profile, self.created_at[r.id], self.updated_at[r.id])
+            ConversationSummary(
+                r.id, r.status, r.profile, self.created_at[r.id], self.updated_at[r.id], written[r.id] or ""
+            )
             for r in mine[:limit]
         ]
 

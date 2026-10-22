@@ -10,7 +10,6 @@ export const metadata: Metadata = {
 };
 
 const UPDATED = "22 באוקטובר 2026";
-const ISSUES_URL = "https://github.com/shanilabin/strauss-car-advisor/issues";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -93,11 +92,7 @@ export default function PrivacyPage() {
 
         <Section title="יצירת קשר">
           <p>
-            לשאלות על פרטיות או לבקשת מחיקה, פנו לצוות דרך{" "}
-            <a href={ISSUES_URL} className="font-semibold text-link underline underline-offset-4" dir="ltr">
-              GitHub
-            </a>
-            .
+            לשאלות על פרטיות או לבקשת מחיקה של החשבון והשיחות, פנו לנציג/ת התחבורה בחברה.
           </p>
         </Section>
 

@@ -292,7 +292,7 @@ export function ChatPanel({
             />
             <div className="flex flex-col gap-1">
               <p className="inline-flex w-fit items-center gap-2 rounded-3xl rounded-es-md bg-mist px-4 py-3 text-sm font-medium text-muted-foreground shadow-soft">
-                חושב
+                <ThinkingLabel />
                 <span aria-hidden className="typing-dots inline-flex gap-1">
                   <span />
                   <span />
@@ -372,6 +372,35 @@ export function ChatPanel({
         </Button>
       </form>
     </section>
+  );
+}
+
+/**
+ * While the advisor answers, the words move on so it never looks stuck. The server answers in one piece, so
+ * these follow the clock, not the server - each one is true of every turn (no "calculating" when the
+ * employee only said hello). It never cycles back: it reads as progress. Then SlowNotice takes over.
+ */
+const THINKING_STEPS = [
+  { after: 0, label: "חושב" },
+  { after: 4_000, label: "בודק את הפרטים" },
+  { after: 9_000, label: "מנסח תשובה" },
+] as const;
+
+/** Mounted only while thinking, so every turn starts again from the first step. */
+function ThinkingLabel() {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const timers = THINKING_STEPS.slice(1).map((s, i) => window.setTimeout(() => setStep(i + 1), s.after));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, []);
+  return (
+    <>
+      {/* a screen reader hears it once, not every few seconds */}
+      <span className="sr-only">{THINKING_STEPS[0].label}</span>
+      <span key={step} aria-hidden className="thinking-step inline-block">
+        {THINKING_STEPS[step].label}
+      </span>
+    </>
   );
 }
 

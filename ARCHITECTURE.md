@@ -65,6 +65,7 @@ strauss-car-advisor/
 │  ├─ index.py                   נקודת הכניסה של Vercel (מייבא את strauss.http.app)
 │  ├─ config/                    ★ חבילת הקונפיג (נתונים עסקיים)
 │  │  ├─ rules.json · catalog.json · occupations.json
+│  │  ├─ vehicle-facts.json      מקומות, בטיחות, מרכב לכל רכב בקטלוג (משרד התחבורה, research/fetch_vehicle_facts.py)
 │  │  ├─ sample-employees.json   6 העובדים (לדמו ולבדיקות)
 │  │  ├─ reference-results.json  גיליון 'חישובים' (לבדיקות)
 │  │  └─ PROVENANCE.md           מאיפה הגיע כל כלל: אתגר / מאומת / נגזר
@@ -239,6 +240,7 @@ POST /v1/conversations/{id}/messages {text}
 | `list_options` | — | כל החלופות + זכאות + נטו | **נכשל אם הפרופיל חסר**, ומחזיר את רשימת החוסרים |
 | `check_eligibility` | option_id | Eligibility + סיבה | |
 | `compare` | option_ids[] | Comparison (נשמר) | **נכשל אם הפרופיל חסר** |
+| `car_details` | רכבים מהקטלוג (מזהה או שם) | כרטיס פרטי רכב + מקור | מקומות, רמת אבזור בטיחותי (0 עד 8), מרכב, הנעה, כוח סוס ורמת גימור, מ-`vehicle-facts.json`. לרכב בלי נתונים לשנה שלו הכלי אומר שאין, והמודל לא משלים מהידע שלו |
 | `ask_representative` | field (מתוך `ask_rep_field` שהכלים החזירו) | נשלח | פותח שאלה עם `profile_revision`; השיחה ← `waiting_rep`. **נוסח השאלה נבנה בשרת מתבנית קבועה, לא בידי המודל**, ולכן שכר לא יכול לדלוף לנציג; שאלה אחת לכל שדה בתור |
 
 ### מכונת מצבים של שיחה

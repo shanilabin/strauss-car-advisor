@@ -346,6 +346,18 @@ def test_noa_and_the_atto_3_break_even_at_the_participation_plus_the_gain() -> N
     assert (atto.participation, atto.delta, atto.break_even_participation) == (300, 661, 961)
 
 
+def test_the_monthly_delta_is_added_up_over_the_projection_years() -> None:
+    """ATTO 3 for Noa: +661 a month is +7,932 a year and +23,796 in three (rules.projection.years)."""
+    atto = next(r for r in full("E-001").results if r.option.id == "CAR-10")
+    assert [(p.years, p.amount) for p in atto.delta_over_years] == [(1, 7932), (3, 23796)]
+
+
+def test_there_is_nothing_to_add_up_without_a_delta() -> None:
+    comparison = full("E-001")
+    assert all(r.delta_over_years == [] for r in comparison.results if r.delta is None)
+    assert all(len(r.delta_over_years) == 2 for r in comparison.results if r.delta is not None)
+
+
 def test_there_is_no_break_even_when_even_a_free_car_loses() -> None:
     """Rachel: every car lowers her net by more than its whole participation."""
     rachel = full("E-003")

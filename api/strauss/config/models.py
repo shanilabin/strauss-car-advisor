@@ -4,6 +4,7 @@ Config files use camelCase (the challenge's format); the API speaks snake_case.
 The full rules schema and cross-checks arrive in task A2.2.
 """
 
+from datetime import date
 from typing import Annotated, Literal
 
 from pydantic import AliasGenerator, BaseModel, ConfigDict, Field
@@ -36,6 +37,40 @@ class CatalogCar(ConfigModel):
     value_of_use: Money = Field(description="Copied from the Tax Authority file; cross-checked in CI")
     monthly_cost: Money
     default_participation: Money
+
+
+class VehicleFacts(ConfigModel):
+    """What the Ministry of Transport publishes about one catalog car - for questions about the car itself.
+
+    Matched by the car's full key (maker, model, year); None where the ministry gives no value.
+    """
+
+    catalog_id: str
+    seats: int | None = Field(default=None, gt=0)
+    safety_level: int | None = Field(
+        default=None, ge=0, le=8, description="רמת אבזור בטיחותי: the ministry's 0-8 scale, 8 = most equipped"
+    )
+    body: str | None = None
+    fuel: str | None = None
+    horsepower: int | None = Field(default=None, gt=0)
+    trim: str | None = None
+
+
+class FactsSource(ConfigModel):
+    name: str
+    url: str
+    resource_id: str
+    fetched_on: date
+
+
+class VehicleFactsFile(ConfigModel):
+    """api/config/vehicle-facts.json, built by research/fetch_vehicle_facts.py."""
+
+    source: FactsSource
+    cars: list[VehicleFacts]
+
+    def for_car(self, catalog_id: str) -> VehicleFacts | None:
+        return next((c for c in self.cars if c.catalog_id == catalog_id), None)
 
 
 class Occupation(ConfigModel):

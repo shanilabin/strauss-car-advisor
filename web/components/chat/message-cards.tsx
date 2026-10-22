@@ -1,4 +1,5 @@
-import { Clock, Star } from "lucide-react";
+import { CarFront, Clock, ExternalLink, ShieldCheck, Star } from "lucide-react";
+import type { ReactNode } from "react";
 
 import type { components } from "@/lib/api/schema";
 import { formatDateTime, formatDelta } from "@/lib/format";
@@ -28,6 +29,8 @@ export function MessageCardView({ card, onSelectOption, askedAt }: MessageCardVi
       return <MissingMessageCard card={card} />;
     case "rep_pending":
       return <RepPendingMessageCard card={card} askedAt={askedAt} />;
+    case "vehicle_facts":
+      return <VehicleFactsMessageCard card={card} />;
     default:
       return null;
   }
@@ -155,6 +158,72 @@ function RepPendingMessageCard({
           נשאל ב-{formatDateTime(askedAt)}
         </time>
       )}
+    </div>
+  );
+}
+
+const SAFETY_MAX = 8; // the ministry's safety equipment scale is 0-8
+
+/** Seats, safety, body... as the Ministry of Transport publishes them - each value from the card DTO. */
+function VehicleFactsMessageCard({ card }: { card: components["schemas"]["VehicleFactsCard"] }) {
+  return (
+    <div className="mt-3 rounded-2xl border border-border bg-surface px-3 py-3">
+      <p className="flex items-center gap-1.5 px-1 text-xs font-bold text-muted-foreground">
+        <CarFront aria-hidden className="size-3.5" />
+        פרטי הרכב
+      </p>
+      <ul className="mt-2 flex flex-col gap-2">
+        {card.cars.map((car) => (
+          <li key={car.catalog_id} className="rounded-xl bg-mist/60 px-3 py-2">
+            <p className="font-bold">
+              <bdi>{car.label}</bdi>
+            </p>
+            {car.facts ? (
+              <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                {car.facts.seats != null && <Fact label="מקומות ישיבה">{car.facts.seats}</Fact>}
+                {car.facts.safety_level != null && (
+                  <Fact label="אבזור בטיחותי">
+                    <span className="inline-flex items-center gap-1">
+                      <ShieldCheck aria-hidden className="size-3.5 text-success" />
+                      <bdi dir="ltr">
+                        {car.facts.safety_level}/{SAFETY_MAX}
+                      </bdi>
+                    </span>
+                  </Fact>
+                )}
+                {car.facts.body && <Fact label="מרכב">{car.facts.body}</Fact>}
+                {car.facts.fuel && <Fact label="הנעה">{car.facts.fuel}</Fact>}
+                {car.facts.horsepower != null && <Fact label="כוח סוס">{car.facts.horsepower}</Fact>}
+                {car.facts.trim && (
+                  <Fact label="רמת גימור">
+                    <bdi>{car.facts.trim}</bdi>
+                  </Fact>
+                )}
+              </dl>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">אין לרכב הזה נתונים במאגר של משרד התחבורה לשנה שלו.</p>
+            )}
+          </li>
+        ))}
+      </ul>
+      <a
+        href={card.source.url}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-2 inline-flex items-center gap-1 px-1 text-xs text-link underline underline-offset-4"
+      >
+        מקור: {card.source.name}
+        <ExternalLink aria-hidden className="size-3" />
+      </a>
+    </div>
+  );
+}
+
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex min-w-0 items-baseline justify-between gap-2">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-semibold tabular-nums">{children}</dd>
     </div>
   );
 }

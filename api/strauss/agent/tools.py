@@ -15,7 +15,8 @@ from pydantic import ValidationError
 from pydantic_ai import ModelRetry, RunContext, Tool
 
 from strauss.agent.deps import AgentDeps, RepRequest
-from strauss.agent.schemas import ComparisonCard, MissingCard, OptionsCard
+from strauss.agent.schemas import CarFacts, ComparisonCard, MissingCard, OptionsCard, VehicleFactsCard
+from strauss.config.models import CatalogCar
 from strauss.domain.compare import IncompleteProfile, UnknownOption, rerun
 from strauss.domain.compare import compare as run_compare
 from strauss.domain.eligibility import check_eligibility as run_eligibility
@@ -36,6 +37,7 @@ from strauss.domain.models import (
 from strauss.domain.options import build_options
 
 SEARCH_LIMIT = 5
+NO_FACTS = "the ministry has no data for this car and year - say so, never guess"
 CLOSE_OCCUPATION = 0.6  # below this, "closest" was nonsense (a cleaner offered "department manager")
 SEARCH_POOL = 200  # variants looked through to find the catalog's or the payslip's one
 # Personal amounts are saved, not displayed: the 'show AI actions' timeline is visible on screen.
@@ -564,6 +566,50 @@ def compare(ctx: RunContext[AgentDeps], option_ids: list[str]) -> dict[str, Any]
 
 
 @traced
+def car_details(ctx: RunContext[AgentDeps], cars: list[str]) -> dict[str, Any]:
+    """What the Ministry of Transport publishes about catalog cars: seats, safety equipment level (its 0-8
+    scale, 8 = most equipped), body, fuel, horsepower and trim. For questions about the car itself, not
+    money. The details appear on the employee's screen in a card, with the source.
+
+    Args:
+        cars: Catalog car ids such as "CAR-08", or names as the employee wrote them ("kona ev").
+    """
+    deps = ctx.deps
+    found: list[CarFacts] = []
+    unknown: list[str] = []
+    for wanted in cars:
+        car = _catalog_car(deps, wanted)
+        if car is None:
+            unknown.append(wanted)
+        elif all(f.catalog_id != car.id for f in found):
+            label = f"{car.commercial_name} ({car.reg_year})"
+            found.append(CarFacts(catalog_id=car.id, label=label, facts=deps.facts.for_car(car.id)))
+    if not found:
+        return {"unknown": unknown, "hint": "not catalog cars - use the catalog ids or names"}
+    deps.turn.cards.append(VehicleFactsCard(cars=found, source=deps.facts.source))
+    return {
+        "shown_to_employee": True,
+        "source": deps.facts.source.name,
+        "cars": [
+            {"car": c.label, **c.facts.model_dump(exclude={"catalog_id"}, exclude_none=True)}
+            if c.facts
+            else {"car": c.label, "facts": NO_FACTS}
+            for c in found
+        ],
+        **({"unknown": unknown} if unknown else {}),
+    }
+
+
+def _catalog_car(deps: AgentDeps, wanted: str) -> CatalogCar | None:
+    """By id, else by name: "kona ev", "Kona EV" and "KONA EV" are the same car."""
+    key = "".join(wanted.split()).casefold()
+    for car in deps.bundle.catalog:
+        if car.id.casefold() == key or "".join(car.commercial_name.split()).casefold() == key:
+            return car
+    return None
+
+
+@traced
 def check_eligibility(ctx: RunContext[AgentDeps], option_id: str) -> dict[str, Any]:
     """Whether the employee may choose an option, and why - before comparing it.
 
@@ -647,6 +693,7 @@ TOOLS = tuple(
         set_current_car,
         list_options,
         compare,
+        car_details,
         check_eligibility,
         ask_representative,
     )

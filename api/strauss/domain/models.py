@@ -150,6 +150,13 @@ class NetBreakdown(DomainModel):
 WaterfallKey = Literal["value_of_use", "maintenance", "electric_refund", "participation", "track_share"]
 
 
+class DeltaOverYears(DomainModel):
+    """The monthly net delta added up over a horizon: "+661 a month" is "+23,796 in three years"."""
+
+    years: int
+    amount: Money
+
+
 class WaterfallStep(DomainModel):
     """One step of a sequential attribution: change one factor, recompute net."""
 
@@ -200,6 +207,9 @@ class OptionResult(DomainModel):
     waterfall: list[WaterfallStep] = Field(default_factory=list)
     explanation: list[str] = Field(default_factory=list, max_length=2)
     sources: list[Source] = Field(default_factory=list)
+    delta_over_years: list[DeltaOverYears] = Field(
+        default_factory=list, description="The delta over the years of rules.projection; empty without one"
+    )
     break_even_participation: Money | None = Field(
         default=None,
         description="The monthly participation in this car at which it leaves exactly the net of today: "

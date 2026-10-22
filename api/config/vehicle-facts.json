@@ -1,0 +1,181 @@
+{
+  "source": {
+    "name": "משרד התחבורה - תוצרים ודגמים של כלי רכב פרטי ומסחרי",
+    "url": "https://data.gov.il/dataset/degem-rechev-wltp",
+    "resourceId": "142afde2-6228-49f9-8a29-9b6c3a0cbe40",
+    "fetchedOn": "2026-10-23"
+  },
+  "cars": [
+    {
+      "catalogId": "CAR-01",
+      "seats": 5,
+      "safetyLevel": 1,
+      "body": "הצ'בק",
+      "fuel": "בנזין",
+      "horsepower": 79,
+      "trim": "LX"
+    },
+    {
+      "catalogId": "CAR-02",
+      "seats": 5,
+      "safetyLevel": 2,
+      "body": "פנאי-שטח",
+      "fuel": "בנזין",
+      "horsepower": 92,
+      "trim": "URBAN"
+    },
+    {
+      "catalogId": "CAR-03",
+      "seats": 5,
+      "safetyLevel": 7,
+      "body": "הצ'בק",
+      "fuel": "חשמל",
+      "horsepower": 204,
+      "trim": "DESIGN"
+    },
+    {
+      "catalogId": "CAR-04",
+      "seats": 5,
+      "safetyLevel": 1,
+      "body": "הצ'בק",
+      "fuel": "בנזין",
+      "horsepower": 110,
+      "trim": "STYLE"
+    },
+    {
+      "catalogId": "CAR-05",
+      "seats": 5,
+      "safetyLevel": 2,
+      "body": "הצ'בק",
+      "fuel": "בנזין",
+      "horsepower": 105,
+      "trim": "SILVER"
+    },
+    {
+      "catalogId": "CAR-06",
+      "seats": 5,
+      "safetyLevel": 3,
+      "body": "הצ'בק",
+      "fuel": "חשמל",
+      "horsepower": 204,
+      "trim": "LUXURY"
+    },
+    {
+      "catalogId": "CAR-07",
+      "seats": 5,
+      "safetyLevel": 1,
+      "body": "סדאן",
+      "fuel": "בנזין",
+      "horsepower": 125,
+      "trim": "COMFORT"
+    },
+    {
+      "catalogId": "CAR-08",
+      "seats": 5,
+      "safetyLevel": 8,
+      "body": "פנאי-שטח",
+      "fuel": "חשמל",
+      "horsepower": 214,
+      "trim": "PURE EV"
+    },
+    {
+      "catalogId": "CAR-09",
+      "seats": 5,
+      "safetyLevel": 4,
+      "body": "פנאי-שטח",
+      "fuel": "בנזין",
+      "horsepower": 97,
+      "trim": "DYNAMIC"
+    },
+    {
+      "catalogId": "CAR-10",
+      "seats": 5,
+      "safetyLevel": 6,
+      "body": "פנאי-שטח",
+      "fuel": "חשמל",
+      "horsepower": 204,
+      "trim": "DESIGN"
+    },
+    {
+      "catalogId": "CAR-11",
+      "seats": 5,
+      "safetyLevel": 7,
+      "body": "פנאי-שטח",
+      "fuel": "חשמל",
+      "horsepower": 204,
+      "trim": "PREMIUM SR"
+    },
+    {
+      "catalogId": "CAR-12",
+      "seats": 5,
+      "safetyLevel": 2,
+      "body": "פנאי-שטח",
+      "fuel": "בנזין",
+      "horsepower": 160,
+      "trim": "PREMIUM FL"
+    },
+    {
+      "catalogId": "CAR-13",
+      "seats": 5,
+      "safetyLevel": 2,
+      "body": "סדאן",
+      "fuel": "בנזין",
+      "horsepower": 191,
+      "trim": "SPIRIT"
+    },
+    {
+      "catalogId": "CAR-14",
+      "seats": 5,
+      "safetyLevel": 7,
+      "body": "סדאן",
+      "fuel": "חשמל",
+      "horsepower": null,
+      "trim": "RWD"
+    },
+    {
+      "catalogId": "CAR-15",
+      "seats": 5,
+      "safetyLevel": 1,
+      "body": "סדאן",
+      "fuel": "דיזל",
+      "horsepower": 150,
+      "trim": "AMBITION"
+    },
+    {
+      "catalogId": "CAR-16",
+      "seats": 5,
+      "safetyLevel": 7,
+      "body": "פנאי-שטח",
+      "fuel": "חשמל/בנזין",
+      "horsepower": 288,
+      "trim": "PREMIUM"
+    },
+    {
+      "catalogId": "CAR-17",
+      "seats": 5,
+      "safetyLevel": 4,
+      "body": "סדאן",
+      "fuel": "חשמל",
+      "horsepower": 530,
+      "trim": "DESIGN 4-4"
+    },
+    {
+      "catalogId": "CAR-18",
+      "seats": 5,
+      "safetyLevel": 1,
+      "body": "פנאי-שטח",
+      "fuel": "בנזין",
+      "horsepower": 178,
+      "trim": "COMFORT"
+    },
+    {
+      "catalogId": "CAR-19",
+      "seats": 8,
+      "safetyLevel": 7,
+      "body": "MPV",
+      "fuel": "בנזין",
+      "horsepower": 291,
+      "trim": "EX"
+    }
+  ]
+}

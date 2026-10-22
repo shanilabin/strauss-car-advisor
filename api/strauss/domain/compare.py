@@ -21,6 +21,7 @@ from strauss.domain.models import (
     CarArrangement,
     Comparison,
     Deductions,
+    DeltaOverYears,
     Eligibility,
     MissingField,
     NetBreakdown,
@@ -39,6 +40,7 @@ from strauss.domain.options import build_options, car_label
 from strauss.domain.waterfall import build_waterfall, shekel_net
 
 ZERO = Decimal(0)
+MONTHS_PER_YEAR = 12
 
 
 class IncompleteProfile(Exception):
@@ -147,6 +149,7 @@ def compare(
     # measured against all the eligible alternatives AND today - never just among the compared ones.
     results = [_option_result(profile, option, occupation, group, today, bundle) for option in options]
     results = [_with_break_even(r, profile, occupation, group, today, bundle) for r in results]
+    results = [_with_projection(r, bundle.rules.projection.years) for r in results]
     # computed options best-first, then eligible ones still waiting for data, then ineligible ones;
     # sorted() is stable, so ties keep catalog order
     ranked = sorted(
@@ -203,6 +206,14 @@ def _with_break_even(
     if check.delta != ZERO:
         return result
     return result.model_copy(update={"break_even_participation": candidate})
+
+
+def _with_projection(result: OptionResult, years: list[int]) -> OptionResult:
+    """The monthly delta over a year, three years...: the same delta every month, nothing assumed."""
+    if result.delta is None:
+        return result
+    over = [DeltaOverYears(years=y, amount=result.delta * MONTHS_PER_YEAR * y) for y in years]
+    return result.model_copy(update={"delta_over_years": over})
 
 
 def rerun(previous: Comparison, profile: Profile, bundle: ConfigBundle) -> Comparison:

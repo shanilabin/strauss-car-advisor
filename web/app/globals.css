@@ -384,6 +384,13 @@
   }
 }
 
+/* the waiting words fade from one to the next (chat-panel ThinkingLabel); without motion, they just change */
+@media (prefers-reduced-motion: no-preference) {
+  .thinking-step {
+    animation: enter 0.4s ease-out;
+  }
+}
+
 @keyframes typing {
   0%,
   80%,

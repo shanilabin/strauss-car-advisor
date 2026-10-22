@@ -5,6 +5,7 @@ Every call checks that the conversation belongs to the caller; a conversation th
 today's car is re-read from the Tax Authority data by its key.
 """
 
+import re
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -32,7 +33,24 @@ from strauss.ports.repositories import AuthUser, ConversationRecord, Conversatio
 
 CARDS = TypeAdapter(list[Card])
 LIST_LIMIT = 30
+TITLE_MAX = 45  # one line in "my conversations"
+SENTENCE_END = re.compile(r"[.!?](?=\s|$)")  # "2.75" is a number, not the end of a sentence
 TRACE = TypeAdapter(list[TraceEvent])
+
+
+def conversation_title(first_message: str) -> str:
+    """The conversation is named by what the employee wrote first: its first sentence, cut at a word to fit
+    one line. Instant, free and never wrong - no model is asked to make up a title."""
+    text = " ".join(first_message.split())
+    sentence = SENTENCE_END.split(text, maxsplit=1)[0].strip()
+    if len(sentence) >= 8:  # "היי." alone says nothing - then the whole message
+        text = sentence
+    if len(text) <= TITLE_MAX:
+        return text or "שיחה"
+    cut = text[:TITLE_MAX].rsplit(" ", 1)[0]
+    return f"{cut}…"
+
+
 # The details the employee edited, as the chat note names them
 FIELD_NAMES = {
     "first_name": "שם",
@@ -133,6 +151,7 @@ class ConversationService:
             items.append(
                 ConversationListItem(
                     id=row.id,
+                    title=conversation_title(row.first_message),
                     status=ConversationStatus(row.status),
                     created_at=datetime.fromisoformat(row.created_at),
                     updated_at=datetime.fromisoformat(row.updated_at),

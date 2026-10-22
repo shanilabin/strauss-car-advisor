@@ -76,11 +76,18 @@ export function MyConversations() {
                     <CarFront className="size-5" />
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="font-bold">
-                      {item.current_car ? <bdi>{item.current_car}</bdi> : "שיחה חדשה"}
-                      {item.occupation && <span className="font-normal text-muted-foreground"> · {item.occupation}</span>}
+                    {/* named by what the employee wrote first - recognisable at a glance */}
+                    <span className="truncate font-bold">
+                      <bdi>{item.title}</bdi>
                     </span>
-                    <span className="text-xs text-muted-foreground">עודכן ב-{formatDateTime(item.updated_at)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {[item.current_car, item.occupation].filter(Boolean).map((part) => (
+                        <span key={part}>
+                          <bdi>{part}</bdi> ·{" "}
+                        </span>
+                      ))}
+                      עודכן ב-{formatDateTime(item.updated_at)}
+                    </span>
                   </span>
                   <span className={cn("shrink-0 rounded-full px-3 py-1 text-xs font-bold", status.tone)}>{status.label}</span>
                   <ChevronLeft aria-hidden className="size-4 shrink-0 text-muted-foreground" />

@@ -427,6 +427,11 @@
           "status": {
             "$ref": "#/components/schemas/ConversationStatus"
           },
+          "title": {
+            "description": "From the employee's first message - no model is asked",
+            "title": "Title",
+            "type": "string"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -435,6 +440,7 @@
         },
         "required": [
           "id",
+          "title",
           "status",
           "created_at",
           "updated_at"

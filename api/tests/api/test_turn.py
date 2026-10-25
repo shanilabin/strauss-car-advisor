@@ -271,3 +271,21 @@ def test_a_chain_that_runs_out_of_time_answers_form_mode(
     model.factory = lambda: scripted(hangs)
     response = send(conversation_id, "שלום")
     assert response.status_code == 503 and response.json()["error"]["details"]["mode"] == "form"
+
+
+def test_a_car_details_card_is_saved_and_read_back_with_the_conversation(model: ModelSlot) -> None:
+    """Testers' "message failed": the vehicle facts card was saved in snake_case and could not be read back
+    (its config models read camelCase only) - every later message of that conversation answered 500."""
+    conversation_id = start()
+    model.factory = lambda: scripted(("car_details", {"cars": ["kona ev"]}), say("הפרטים בכרטיס."))
+    first = send(conversation_id, "כמה מקומות יש בקונה?")
+    assert first.status_code == 200
+    (card,) = first.json()["reply"]["cards"]
+    assert card["kind"] == "vehicle_facts" and card["source"]["fetched_on"]
+    model.factory = lambda: scripted(say("בשמחה."))
+    assert send(conversation_id, "ומה עוד?").status_code == 200
+    again = client.get(f"/v1/conversations/{conversation_id}", headers=AS_NOA)
+    assert again.status_code == 200
+    cards = [c for m in again.json()["messages"] for c in m.get("cards") or []]
+    saved = [c for c in cards if c["kind"] == "vehicle_facts"]
+    assert saved and saved[0]["cars"][0]["facts"]["seats"] == 5

@@ -695,3 +695,20 @@ def test_tools_called_together_run_in_order() -> None:
     assert [type(c) for c in cards] == [ComparisonCard]  # not "which car do you have?"
     (atto,) = cards[0].comparison.results  # type: ignore[union-attr]
     assert atto.delta == 661  # computed against the saved Corolla Cross
+
+
+def test_every_card_kind_reads_back_what_the_api_saved() -> None:
+    """Cards are saved as the API writes them (model_dump, snake_case) and read back when the conversation
+    is opened again - each kind must survive that round trip, or the conversation can no longer be read."""
+    from pydantic import TypeAdapter
+
+    from strauss.agent.schemas import Card
+
+    deps = deps_for(to_profile(next(e for e in load_sample_employees() if e.id == "E-001"), BUNDLE))
+    run(deps, ("list_options", {}), ("compare", {"option_ids": ["CAR-10"]}), FINAL)
+    run(deps, ("car_details", {"cars": ["CAR-08", "CAR-20"]}), FINAL)
+    kinds = {c.kind for c in deps.turn.cards}
+    assert {"options", "comparison", "vehicle_facts"} <= kinds
+    cards = TypeAdapter(list[Card])
+    saved = [c.model_dump(mode="json") for c in deps.turn.cards]
+    assert [c.kind for c in cards.validate_python(saved)] == [c.kind for c in deps.turn.cards]

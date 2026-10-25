@@ -39,7 +39,14 @@ class CatalogCar(ConfigModel):
     default_participation: Money
 
 
-class VehicleFacts(ConfigModel):
+class SavedConfigModel(ConfigModel):
+    """Read from the config file (camelCase) AND saved inside a chat card (snake_case, as the API writes it):
+    a conversation that showed one is read back from the database by its field names."""
+
+    model_config = ConfigDict(validate_by_alias=True, validate_by_name=True)
+
+
+class VehicleFacts(SavedConfigModel):
     """What the Ministry of Transport publishes about one catalog car - for questions about the car itself.
 
     Matched by the car's full key (maker, model, year); None where the ministry gives no value.
@@ -56,7 +63,7 @@ class VehicleFacts(ConfigModel):
     trim: str | None = None
 
 
-class FactsSource(ConfigModel):
+class FactsSource(SavedConfigModel):
     name: str
     url: str
     resource_id: str
